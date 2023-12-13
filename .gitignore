@@ -1,0 +1,6 @@
+*__pycache__/
+al_dir
+*.out
+template_script_head/*
+bk/*
+.vscode/*

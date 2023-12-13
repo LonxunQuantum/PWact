@@ -1,0 +1,10 @@
+4 1
+in.psp1 = Cu.SG15.PBE.UPF
+job = scf
+in.atom = atom.config
+out.force = T
+energy_decomp = T
+ecut = 60
+ecut2 = 240
+e_error = 1e-06
+rho_error = 0.0001
