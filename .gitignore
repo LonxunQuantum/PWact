@@ -4,3 +4,5 @@ al_dir
 template_script_head/*
 bk/*
 .vscode/*
+dpgen_al
+al_dir

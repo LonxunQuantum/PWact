@@ -1,16 +1,11 @@
 import os, sys
 import json
-import argparse
+# import argparse
 
-sys.path.insert(0, "/home/wuxingxing/codespace/MLFF_wu_dev/src/pre_data")
-sys.path.append("/home/wuxingxing/codespace/MLFF_wu_dev/active_learning")
-sys.path.append("/home/wuxingxing/codespace/MLFF_wu_dev/src")
-sys.path.append("/home/wuxingxing/codespace/MLFF_wu_dev/src/pre_data")
-sys.path.append("/home/wuxingxing/codespace/MLFF_wu_dev/src/optimizer")
-sys.path.append("/home/wuxingxing/codespace/MLFF_wu_dev/src/model")
+from utils.format_input_output import make_iter_name
+from utils.file_operation import write_to_file
 
-from active_learning.util import make_iter_name, write_to_file
-from active_learning.train_model import ModelTrian
+from active_learning.train.train_model import ModelTrian
 from active_learning.run_model_md import PWmat_MD
 from active_learning.labeling import Labeling
 from utils.separate_movement import MovementOp
@@ -113,12 +108,13 @@ def init_surface():
 def main():
     if "init_bulk".lower() in sys.argv:
         init_bulk()
+
     elif "int_surface".lower() in sys.argv:
         init_surface()
+
     else:
         run_iter()
     # test()
 
 if __name__ == "__main__":
-    
     main()

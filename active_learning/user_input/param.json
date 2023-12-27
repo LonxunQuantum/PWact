@@ -1,0 +1,53 @@
+{
+    "system": "cu_slab_1500k_system",
+    
+    "work_dir":"./cu_slab_1500k_system",
+
+    "record" : "cu_slab_1500k.al",
+
+    "init_mvm_files": ["/home/wuxingxing/datas/system_config/cu_4phases_system/dpkf_data/slab/dpkf_data_1500"],
+
+    "train": {
+        "train_input_file":"file path",
+        "data_retrain": 20,
+        "atom_type": [29],
+        "maxNeighborNum":100
+    },
+
+    "explore": {
+        "atom_config": ["/home/wuxingxing/datas/system_config/cu_4phases_system/atom_configs/slab/atom_configs/1500k/atom_799.config"
+        ],
+    
+        "iter_control": [{"atom_config":0, "method":6, "MD_steps":1000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500, "init_config":1, "min_slt":20},
+                   {"atom_config":0, "method":6, "MD_steps":2000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":2000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":4000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":4000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":4000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":4000, "step_time":1, "out_gap":10, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":8000, "step_time":1, "out_gap":20, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":8000, "step_time":1, "out_gap":20, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":8000, "step_time":1, "out_gap":20, "temp_start":1500, "temp_end":1500},
+                   {"atom_config":0, "method":6, "MD_steps":8000, "step_time":1, "out_gap":20, "temp_start":1500, "temp_end":1500}
+        ],
+
+        "md_strategy": {
+            "md":"lammps_std"
+        },
+
+        "uncertainty_strategy": {
+            "uncertainty":"KPU",
+            "_strategy":"KPU or committee, if committee: model_num more than 1",
+            "model_num": 1,
+            "max_select": 100
+        }
+   },
+
+    "scf": { "etot_input_file": "",
+            "out_force":"T", 
+            "energy_decomp": "T", 
+            "ecut": 60, "ecut2": 240, "e_error": 1.0e-6, "rho_error": 1.0e-4,
+            "out.wg":"F",
+            "UPF" : ["/home/wuxingxing/datas/system_config/NCPP-SG15-PBE/Cu.SG15.PBE.UPF"]
+    }
+}
