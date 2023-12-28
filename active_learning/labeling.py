@@ -2,7 +2,8 @@ import os, sys, subprocess
 import json
 import shutil
 from active_learning.workdir import WorkLabDir
-from active_learning.util import write_to_file, combine_files
+from utils.file_operation import write_to_file
+from active_learning.util import combine_files
 from active_learning.fp_util import get_fp_slurm_scripts, get_scf_work_list, split_fp_dirs, make_scf_slurm_script
 from active_learning.pre_al_data_util import get_movement_num
 from active_learning.slurm import SlurmJob, JobStatus, Mission

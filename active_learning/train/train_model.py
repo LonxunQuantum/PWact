@@ -8,12 +8,24 @@ import json
 import copy
 import glob
 
+from active_learning.train.train_util import split_train_dir
+
+
+from active_learning.user_input.resource import Resource
+from active_learning.user_input.param_input import InputParam
+
+from utils.format_input_output import make_train_name, get_seed_by_time
+from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD
+
+from utils.file_operation import search_mvm_files, save_json_file, write_to_file, mv_dir, del_dir
+from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis
+
+
 from active_learning.workdir import WorkTrainDir
-from active_learning.util import make_iter_name
+from utils.format_input_output import make_iter_name
 from active_learning.kpu_util import get_kpu_lower, select_image
 from active_learning.slurm import SlurmJob, JobStatus, Mission
 from active_learning.pre_al_data_util import get_image_nums
-from active_learning.train_util import split_train_dir, get_kpu_slurm_scripts
 
 '''
 description: model training method:
@@ -27,76 +39,203 @@ return {*}
 '''
 
 class ModelTrian(object):
-    def __init__(self, itername):
+    def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
-        self.system_info = json.load(open(sys.argv[1]))
-        self.train_config = self.system_info["train_config"]
-        self.work_root_dir = self.system_info["work_root_path"]
-        self.work_dir = WorkTrainDir("{}/{}/training".format(self.work_root_dir, itername))
-        
-        self.iter_result = json.load(open(os.path.join(self.work_root_dir, "iter_result.json"))) \
-            if os.path.exists(os.path.join(self.work_root_dir, "iter_result.json")) is True \
-                else {}
-        
-        self.kpu_res_json = json.load(open(os.path.join(self.work_root_dir, "kpu_result.json"))) \
-            if os.path.exists(os.path.join(self.work_root_dir, "kpu_result.json")) is True\
-                else {}
+        self.resouce = resource
+        self.input_param = input_param
 
-    '''
-    Description: 
-    param {*} self
-    Returns: 
-    Author: WU Xingxing
-    '''
-    def make_train(self):
-        #1. get train data paths
-        data_paths, retain_sign = self.get_feature_data_path()
-        if retain_sign is False:
-            self.copy_model_from_pre_iter()
-            return
-        #2. read train_config.yaml file
-        with open(self.train_config["config_yaml"], "r") as yamlfile:
-            config_yaml = yaml.load(yamlfile, Loader=yaml.FullLoader)
-        #3. write data paths to train_config.yaml
-        config_yaml["data_paths"] = data_paths
+        # train work dir
+        self.train_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.train)
 
-        #4. save to train work dir
-        with open(self.work_dir.config_yaml_path, "w") as f:
-            yaml.dump(config_yaml, f)
-        
-        #5. make script and run bash
-        if os.path.exists(self.work_dir.train_success_tag) is False:
-            if "slurm" in self.system_info.keys():
-                script_save_path = self.make_train_cmd_script_slurm()
-                slurm_cmd = "sbatch {} ".format(script_save_path)
+    def generate_feature(self):
+        feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
+        if not os.path.exists(feature_path):
+            os.makedirs(feature_path)
+        # make gen_feature.json file
+        train_dict = self.set_train_input_dict(is_mvm=True)
+        train_json_file_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_json)
+        save_json_file(train_dict, train_json_file_path)        
+        #make gen_feature.job file
+        tag_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_tag)
+        slrum_gen_feat_script = self.set_train_script(TRAIN_FILE_STRUCTUR.feature_dir, train_json_file_path, tag_path, MODEL_CMD.gen_feat)
+        slurm_job_file_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_job)
+        write_to_file(slurm_job_file_path, slrum_gen_feat_script, "w")        
+    
+    def do_gen_feature_work(self):
+        mission = Mission()
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.train_dir, \
+            job_patten="{}/{}".format(TRAIN_FILE_STRUCTUR.feature_dir, TRAIN_FILE_STRUCTUR.feature_job), \
+            tag_patten="{}/{}".format(TRAIN_FILE_STRUCTUR.feature_dir, TRAIN_FILE_STRUCTUR.feature_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        if slurm_done is False:
+            if len(slurm_remain) > 0:
+                slurm_cmd = "sbatch {} ".format(slurm_remain[0])
                 slurm_job = SlurmJob()
-                slurm_job.set_tag(self.work_dir.train_success_tag)
+                tag_path = os.path.join(os.path.dirname(slurm_remain[0]), TRAIN_FILE_STRUCTUR.feature_tag)
+                slurm_job.set_tag(tag_path)
                 slurm_job.set_cmd(slurm_cmd)
                 mission = Mission()
                 mission.add_job(slurm_job)
                 mission.commit_jobs()
                 mission.check_running_job()
+            
+            assert(mission.all_job_finished())
+    
+            self.do_post_process_gen_feature()
+    
+    def do_post_process_gen_feature(self):
+        #1. copy feature from work_dir to features_path
+        target_feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
+        source_feature_path = os.path.join(target_feature_path, TRAIN_FILE_STRUCTUR.work_dir, TRAIN_FILE_STRUCTUR.feature_dir)
+        if os.path.exists(source_feature_path):
+            mv_dir(source_feature_path, target_feature_path)
+        del_dir(os.path.join(target_feature_path, TRAIN_FILE_STRUCTUR.work_dir))
+        
+    def make_train_work(self):
+        for model_index in range(0, self.input_param.strategy.model_num):
+            # make model_i work dir
+            model_i = make_train_name(model_index)
+            model_i_dir = os.path.join(self.train_dir, model_i)
+            if not os.path.exists(model_i_dir):
+                os.makedirs(model_i_dir)
+            
+            # make train.json file
+            train_dict = self.set_train_input_dict(is_mvm=False)
+            train_json_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_json)
+            save_json_file(train_dict, train_json_file_path)
 
-        #6. calculate kpu of training data
-        data_index = "0"
-        train_kpu_success_tag = os.path.join(self.work_dir.model_dir, "train_kpu_success_{}.tag".format(data_index))
-        if os.path.exists(train_kpu_success_tag) is True:
-            return
-        if "slurm" in self.system_info.keys():
-            #3. generate kpu calculated script file and run
-            script_save_path = os.path.join(self.work_dir.work_dir, "train_kpu_slurm_{}.job".format(data_index))
-            frq = self.system_info["train_config"]["f"] if "f" in self.system_info["train_config"].keys() else 10
-            script_save_path, tag = self.make_kpu_cmd_script_slurm(self.work_dir.config_yaml_path, script_save_path, train_kpu_success_tag, \
-                                                      "train", data_index, frq)
-            slurm_cmd = "sbatch {}".format(script_save_path)
-            slurm_job = SlurmJob()
-            slurm_job.set_tag(tag)
-            slurm_job.set_cmd(slurm_cmd)
-            mission = Mission()
-            mission.add_job(slurm_job)
-            mission.commit_jobs()
-            mission.check_running_job()
+            # make train slurm script
+            tag_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_tag)
+            slrum_train_script = self.set_train_script(model_i, train_json_file_path, tag_path, MODEL_CMD.train)
+            slurm_job_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_job)
+            write_to_file(slurm_job_file_path, slrum_train_script, "w")
+    
+    def get_train_sub_dir(self):
+        train_sub_dir = []
+        for model_index in self.input_param.strategy.model_num:
+            model_i = make_train_name(model_index)
+            model_i_dir = os.path.join(self.train_dir, model_i)
+            train_sub_dir.append(model_i_dir)
+        return train_sub_dir
 
+    '''
+    description: 
+        If the user provides train.json, use it directly; \
+            otherwise, use the user's input settings if available, otherwise use the default values
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''
+    def set_train_input_dict(self, is_mvm:True):
+        mvm_files = []
+        train_feature_path = []
+        if is_mvm:
+            mvm_files = search_mvm_files(self.input_param.root_dir, self.itername)
+            for init_mvm in self.input_param.train.init_mvm_files:
+                if os.path.exists(init_mvm):
+                    mvm_files.append(init_mvm)
+        else:
+            train_feature_path = [os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)]
+            
+        if self.input_param.train.train_input_file is not None and \
+            os.path.exists(self.input_param.train.train_input_file):
+            # copy user input train.json file
+            train_json = json.load(open(self.input_param.train.train_input_file))
+            # set train data
+        else:
+            train_json = self.input_param.train.base_input_param
+        
+        if is_mvm > 0:
+            train_json[TRAIN_INPUT_PARAM.train_mvm_files] = mvm_files
+            train_json[TRAIN_INPUT_PARAM.train_feature_path] = []
+        else:
+            train_json[TRAIN_INPUT_PARAM.train_mvm_files] = []
+            train_json[TRAIN_INPUT_PARAM.train_feature_path] = train_feature_path
+        if TRAIN_INPUT_PARAM.reserve_feature not in train_json.keys():
+            train_json[TRAIN_INPUT_PARAM.reserve_feature] = False
+        if TRAIN_INPUT_PARAM.reserve_work_dir not in train_json.keys():
+            train_json[TRAIN_INPUT_PARAM.reserve_work_dir] = False
+        if TRAIN_INPUT_PARAM.seed not in train_json.keys():
+            train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
+        return train_json
+
+    '''
+    description: 
+    param {*} self
+    param {str} job_name
+    param {str} train_json
+    param {str} tag
+    param {str} work_type
+        'train' for training, 'gen_feat' for feature generation
+    return {*}
+    author: wuxingxing
+    '''
+    def set_train_script(self, job_name:str, train_json:str, tag:str, work_type:str="train"):
+        # set head
+        job_name = job_name.replace(".","")
+        script = ""
+        if self.resouce.train_resource.gpu_per_node is None:
+            script += CPU_SCRIPT_HEAD.format(job_name, 1, 1, self.resouce.train_resource.queue_name)
+        else:
+            script += GPU_SCRIPT_HEAD.format(job_name, 1, 1, 1, 1, self.resouce.train_resource.queue_name)
+
+        script += set_slurm_comm_basis(self.resouce.train_resource.custom_flags, \
+            self.resouce.train_resource.source_list, \
+                self.resouce.train_resource.module_list)
+        # set conda env
+        script += "\n"
+        script += CONDA_ENV
+
+        script += "\n\n"
+        script += "PWMLFF {} {}\n\n".format(work_type, train_json)
+        script += "test $? -ne 0 && exit 1\n\n"
+        script += "echo 0 > {}\n\n".format(tag)
+        script += "\n"
+        return script
+
+    def do_train_job(self):
+        mission = Mission()
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.train_dir, \
+            job_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_job), \
+            tag_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        if slurm_done == False:
+            #recover slurm jobs
+            if len(slurm_remain) > 0:
+                print("recover these train Jobs:\n")
+                print(slurm_remain)
+                for i, script_path in enumerate(slurm_remain):
+                    slurm_cmd = "sbatch {}".format(script_path)
+                    slurm_job = SlurmJob()
+                    tag = os.path.join(os.path.dirname(script_path),TRAIN_FILE_STRUCTUR.train_tag)
+                    slurm_job.set_tag(tag)
+                    slurm_job.set_cmd(slurm_cmd)
+                    mission.add_job(slurm_job)
+            else:
+                # generate new slurm jobs
+                train_sub_dir = self.get_train_sub_dir()
+                for train_sub in enumerate(train_sub_dir):
+                    success_tag = os.path.join(train_sub, TRAIN_FILE_STRUCTUR.train_tag)
+                    script_path = os.path.join(train_sub,TRAIN_FILE_STRUCTUR.train_job)
+                    slurm_cmd = "sbatch {}".format(script_path)
+                    slurm_job = SlurmJob()
+                    slurm_job.set_tag(success_tag)
+                    slurm_job.set_cmd(slurm_cmd)
+                    mission.add_job(slurm_job)
+            if len(mission.job_list) > 0:
+                mission.commit_jobs()
+                mission.check_running_job()
+                assert(mission.all_job_finished())
+            
+            self.post_process_train()
+        
+    def post_process_train(self):
+        if self.input_param.reserve_feature is False:
+            feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
+            del_dir(feature_path)
+
+
+    #####################################"""KPU code"""
     def make_kpu(self):
         mission = Mission()
         #1. get data path
@@ -146,7 +285,7 @@ class ModelTrian(object):
             if len(mission.job_list) > 0:
                 mission.commit_jobs()
                 mission.check_running_job()
-                assert(mission.all_job_finished())
+            assert(mission.all_job_finished())
 
         #5. select images
         select_image(self.system_info, self.work_dir, self.itername)

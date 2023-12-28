@@ -1,7 +1,6 @@
 import os
 import re
 import logging
-from active_learning.util import del_file
 
 """
 @Description :

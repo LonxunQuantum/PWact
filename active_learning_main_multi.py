@@ -5,15 +5,23 @@ import json
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
 
+from active_learning.user_input.resource import Resource
+from active_learning.user_input.param_input import InputParam
+
 from active_learning.train.train_model import ModelTrian
-from active_learning.run_model_md import PWmat_MD
+from active_learning.explore.run_model_md import PWmat_MD
 from active_learning.labeling import Labeling
 from utils.separate_movement import MovementOp
 
 def run_iter():
-    system_info = json.load(open(sys.argv[1]))
-    root_dir = system_info["work_root_path"]
-    record = os.path.join(root_dir, system_info["record"])
+    system_info = json.load(open(sys.argv[2]))
+    machine_info = json.load(open(sys.argv[3]))
+    resouce = Resource(machine_info)
+    input_param = InputParam(system_info)
+    cwd = os.getcwd()
+    os.chdir(input_param.root_dir)
+    print("The work dir change to {}".format(os.getcwd()))
+    record = input_param.record_file
     iter_rec = [0, -1]
     if os.path.isfile(record):
         with open (record) as frec :
@@ -26,7 +34,7 @@ def run_iter():
     cont = True
     ii = -1
     numb_task = 4
-    max_tasks = len(system_info["iter_control"])
+    max_tasks = input_param.explore.md_job_num
     
     while ii < max_tasks:#control by config.json
         ii += 1
@@ -39,10 +47,10 @@ def run_iter():
             print("{} - {}".format(iter_name, task_name))
             if   jj == 0:
                 print ("training start: iter {} - task {}".format(ii, jj))
-                make_train(iter_name)
+                do_training_work(iter_name, resouce, input_param)
             elif jj == 1:
-                print ("pwmat dpkf MD start: iter {} - task {}".format(ii, jj))
-                run_dpkf_md(iter_name)
+                print ("exploring start: iter {} - task {}".format(ii, jj))
+                do_exploring_work(iter_name, resouce, input_param)
             elif jj == 2:
                 print ("uncertainty analyse (kpu): iter {} - task {}".format(ii, jj))
                 uncertainty_analyse(iter_name) #exploring/kpu_dir
@@ -56,7 +64,7 @@ def run_fp(itername):
     lab = Labeling(itername)
     lab.do_labeling()
 
-def run_dpkf_md(itername):
+def do_exploring_work(itername:str, resouce : Resource, param_input: InputParam):
     md = PWmat_MD(itername)
     #do pwmat+dpkf md
     if "slurm" in md.system_info.keys():
@@ -83,10 +91,17 @@ def uncertainty_analyse(itername):
     mtrain = ModelTrian(itername)
     mtrain.make_kpu()
     print("{} done !".format("calculate kpu"))
-    
-def make_train(itername):
-    mtrain = ModelTrian(itername)
-    mtrain.make_train()
+
+def do_training_work(itername:str, resouce : Resource, param_input: InputParam):
+    mtrain = ModelTrian(itername, resouce, param_input)
+    # 1. generate feature
+    mtrain.generate_feature()
+    # 2. do gen_feat job
+    mtrain.do_gen_feature_work()
+    # 3. create train work dirs
+    mtrain.make_train_work()
+    # 4. run training job
+    mtrain.do_train_job()
     print("{} done !".format("train_model"))
     
 # def test():
@@ -106,13 +121,13 @@ def init_surface():
     pass
 
 def main():
-    if "init_bulk".lower() in sys.argv:
+    if "init_bulk".upper() in sys.argv[1].upper():
         init_bulk()
 
-    elif "int_surface".lower() in sys.argv:
+    elif "int_surface".upper() in sys.argv[1].upper():
         init_surface()
 
-    else:
+    elif "run".upper() in sys.argv[1].upper():
         run_iter()
     # test()
 

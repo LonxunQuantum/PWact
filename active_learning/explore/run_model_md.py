@@ -1,3 +1,7 @@
+from active_learning.user_input.resource import Resource
+from active_learning.user_input.param_input import InputParam
+from utils.constant import AL_STRUCTURE, EXPLORE_FILE_STRUCTURE
+
 from active_learning.workdir import WorkMDDir
 from active_learning.slurm import Mission, SlurmJob, JobStatus
 from utils.read_torch_wij_dp import read_torch_dp
@@ -12,6 +16,7 @@ import shutil
 import subprocess
 import time
 import math
+
 """
 md_dir:
   a. pwmat+dpkf run md ->MOVEMENT
@@ -24,8 +29,14 @@ kpu_dir:
   f. step d. select cadidate set by limited Delta0 and Delta1
 """
 class PWmat_MD(object):
-    def __init__(self, itername):
+    def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
+        self.resouce = resource
+        self.input_param = input_param
+        # train work dir
+        self.explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
+        
+    def _tmp(self):
         #读取MD控制文件
         self.system_info = json.load(open(sys.argv[1]))
         with open(self.system_info["train_config"]["config_yaml"], "r") as yamlfile:
@@ -42,7 +53,7 @@ class PWmat_MD(object):
         self.trained_model_path = "{}/{}/{}/{}".format(work_root_dir, itername, "training", "model_dir")
         
         self.curiter = int(self.itername[5:])
-        self.md_input_info = self.system_info["iter_control"][self.curiter]
+        self.md_input_info = self.system_info["md_jobs"][self.curiter]
         self.out_gap = self.md_input_info["out_gap"]
         self.atom_config_path = self.system_info["atom_config"][self.md_input_info["atom_config"]]
 

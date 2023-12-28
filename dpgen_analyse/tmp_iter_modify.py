@@ -1,7 +1,8 @@
 # iter4 do:
 import os, glob
 import shutil
-from active_learning.util import write_to_file, combine_files,get_random_nums
+from utils.file_operation import write_to_file
+from active_learning.util import combine_files,get_random_nums
 from active_learning.slurm import SlurmJob, Mission
 from active_learning.fp_util import get_scf_work_list, split_fp_dirs, get_fp_slurm_scripts, make_scf_slurm_script
 import pandas as pd

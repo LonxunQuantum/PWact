@@ -223,7 +223,7 @@ def select_image(system_info, work_dir, itername):
 
 def is_new_phase_md(itername, system_info):
     md_index = int(itername.split('.')[-1])
-    if "new_phase" in system_info["iter_control"][md_index].keys():
+    if "new_phase" in system_info["md_jobs"][md_index].keys():
         return True
     else:
         return False

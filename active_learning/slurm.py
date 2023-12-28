@@ -135,6 +135,19 @@ class Mission(object):
             if job.status == JobStatus.unsubmitted:
                     job.submit()
     
+    '''
+    description: 
+        return all job ids, the job id is the slurm job id
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''    
+    def get_all_job_ids(self):
+        job_id_list = []
+        for job in self.job_list:
+            job_ids.append(job.job_id)
+        return job_id_list
+    
     def check_running_job(self):
         while True:
             for job in self.job_list:

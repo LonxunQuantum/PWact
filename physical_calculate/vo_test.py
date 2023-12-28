@@ -4,7 +4,8 @@ import json
 import shutil
 import math
 
-from active_learning.util import write_to_file, combine_files
+from utils.file_operation import write_to_file
+from active_learning.util import combine_files
 from active_learning.fp_util import get_scf_work_list, split_fp_dirs, get_fp_slurm_scripts, make_scf_slurm_script
 from utils.movement2traindata import Scf2Movement
 

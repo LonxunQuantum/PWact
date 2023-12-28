@@ -2,7 +2,7 @@
 this script inculding the functions for data coverting in active learning iters
 """
 
-from active_learning.util import make_iter_name
+from utils.format_input_output import make_iter_name
 import os
 
 """
