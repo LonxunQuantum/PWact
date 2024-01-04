@@ -2,9 +2,55 @@ import os
 import numpy as np
 import json
 import glob
+import math
 
 from active_learning.kpu_util import read_kpu_from_csv
 from draw_pictures.draw_util import draw_lines
+
+# '''
+# Description: 
+# this function like the funtion split_train_dir() in tain_util.py, could be merged
+# param {*} fp_dirs
+# param {*} group_size
+# Returns: 
+# Author: WU Xingxing
+#     '''
+# def split_fp_dirs(groupsize:int , pwmat_num:int , scf_sub_list:list[str]):
+    
+#     group_num = len(scf_sub_list) // groupsize
+#     sub_list = []
+#     for i in range(group_num):
+#         sub_list.append(scf_sub_list[i*groupsize:(i+1)*groupsize])
+    
+#     if group_num*groupsize < len(scf_sub_list):
+#         for p in scf_sub_list[groupsize*groupsize:]:
+            
+#     remaining = len(scf_sub_list) % groupsize
+    
+#     for i, g in enumerate(list(range(0, group_num))):
+        
+#         sub_list = []
+#         for j, p in enumerate(list(range(0, pwmat_num))):
+#             sub_list.append(scf_sub_list[start])
+#             start += 1
+#         group_list.append(sub_list)
+#     if start < pwmat_jobs:
+#         sub_list = []
+        
+            
+#     index_list = list(range(0, pwmat_jobs))
+#     res_index = np.reshape(index_list, (group_num, pwmat_num))
+    
+#     return split_scf_sub_list
+
+
+
+
+
+
+
+
+######### old code
 
 '''
 Description: 
@@ -31,22 +77,7 @@ def get_scf_work_list(ab_dir, type="before", sort=True):
         fp_dir_list = sorted(fp_dir_list, key=lambda x: int(x.split('/')[-1].split('-')[-1]))
     return fp_dir_list
 
-'''
-Description: 
-this function like the funtion split_train_dir() in tain_util.py, could be merged
-param {*} fp_dirs
-param {*} group_size
-Returns: 
-Author: WU Xingxing
-    '''
-def split_fp_dirs(fp_dirs, group_size=10):
-    start = 0
-    res = []
-    while start < len(fp_dirs):
-        end = start+group_size if start+group_size < len(fp_dirs) else len(fp_dirs)
-        res.append(fp_dirs[start:end])
-        start += group_size
-    return res
+
     
 def get_fp_slurm_scripts(dir):
     #scf_slurm_7.job  scf_success_0.tag
