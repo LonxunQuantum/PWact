@@ -17,8 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pyparsing import col
 from torch import rand
-from active_learning.workdir import WorkTrainDir
-from active_learning.util import del_file, file_read_lines
+from draw_pictures.workdir import WorkTrainDir
 import seaborn as sns
 from scipy.stats import linregress
 picture_save_dir = "./mlff_wu_work_dir/picture_dir"

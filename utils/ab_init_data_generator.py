@@ -1,8 +1,8 @@
 import os
 import json
-from active_learning.workdir import WorkLabDir
-from active_learning.util import write_to_file
-from active_learning.pre_al_data_util import get_movement_num
+from draw_pictures.workdir import WorkLabDir
+from utils.file_operation import write_to_file
+from utils.pre_al_data_util import get_movement_num
 
 from utils.movement2traindata import Scf2Movement
 from utils.movement2traindata import movement2traindata

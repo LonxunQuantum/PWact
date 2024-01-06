@@ -1,7 +1,7 @@
 import os, glob
 import shutil
-from active_learning.util import get_random_nums
-from active_learning.slurm import SlurmJob, Mission
+from utils.file_operation import get_random_nums
+from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
 from active_learning.fp_util import get_scf_work_list, split_fp_dirs, get_fp_slurm_scripts, make_scf_slurm_script
 
 def contruct_scf_work(dir, iter_name, all_nums, need_nums):
@@ -61,8 +61,8 @@ def do_scf(work_dir):
         if len(slurm_jobs) > 0:
             print("recover these SCF Jobs:\n")
             print(slurm_jobs)
-            for i, script_save_path in enumerate(slurm_jobs):
-                slurm_cmd = "sbatch {}".format(script_save_path)
+            for i, script_path in enumerate(slurm_jobs):
+                slurm_cmd = get_slurm_sbatch_cmd(os.path.dirname(script_path), os.path.basename(script_path))
                 slurm_job = SlurmJob()
                 slurm_job.set_tag(res_tags[i])
                 slurm_job.set_cmd(slurm_cmd)
@@ -74,7 +74,7 @@ def do_scf(work_dir):
                 tag = os.path.join(work_dir, "scf_success_{}.tag".format(i))
                 tag = "/data"+tag[6:]
                 script_save_path, tag = make_scf_slurm_script(fp_list, script_save_path, tag, i)
-                slurm_cmd = "sbatch {}".format(script_save_path)
+                slurm_cmd = get_slurm_sbatch_cmd(os.path.dirname(script_save_path), os.path.basename(script_save_path))
                 slurm_job = SlurmJob()
                 slurm_job.set_tag(tag)
                 slurm_job.set_cmd(slurm_cmd)

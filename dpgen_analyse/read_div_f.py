@@ -1,5 +1,5 @@
 from draw_pictures.draw_util import draw_lines
-from active_learning.kpu_util import read_kpu_from_csv, get_kpu_lower
+from dpgen_analyse.kpu_util import read_kpu_from_csv, get_kpu_lower
 import json
 import os
 

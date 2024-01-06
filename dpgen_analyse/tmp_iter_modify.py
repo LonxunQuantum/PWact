@@ -1,8 +1,7 @@
 # iter4 do:
 import os, glob
 import shutil
-from utils.file_operation import write_to_file
-from active_learning.util import combine_files,get_random_nums
+from utils.file_operation import write_to_file, merge_files_to_one, get_random_nums
 from active_learning.slurm import SlurmJob, Mission
 from active_learning.fp_util import get_scf_work_list, split_fp_dirs, get_fp_slurm_scripts, make_scf_slurm_script
 import pandas as pd
@@ -136,7 +135,7 @@ def select(kpu_info, low, high):
 
 def tmp_convert_scf2movement():
     from utils.movement2traindata import Scf2Movement
-    from active_learning.make_slurm_job_script import make_feature_script_slurm
+    from dpgen_analyse.make_slurm_job_script import make_feature_script_slurm
 
     ab_dirs = ["/share/home/wuxingxing/datas/al_dir/cu_system/rand_test_i28/iter.0019/labeling/rand_lab",
                 "/share/home/wuxingxing/datas/al_dir/cu_system/rand_test_i28/iter.0020/labeling/rand_lab",
@@ -185,7 +184,7 @@ def tmp_convert_scf2movement():
         if os.path.exists(os.path.join(feat_dir, "PWdata")) is False:
             os.mkdir(os.path.join(feat_dir, "PWdata"))
         # write movements of other iters to one movement file, if target exists, just cover it.
-        combine_files(feat_dir, movement_list, os.path.join(feat_dir, "PWdata/MOVEMENT"))
+        merge_files_to_one(feat_dir, movement_list, os.path.join(feat_dir, "PWdata/MOVEMENT"))
 
 def contruct_movements():
     ab_dirs = glob.glob(os.path.join("/data/home/wuxingxing/al_dir/si_2", "iter.0*"))
@@ -201,7 +200,7 @@ def contruct_movements():
 
         itername = int(os.path.basename(ab_dir).split('.')[-1])
         save_path = os.path.join(save_dir, "{}_{}_MOVEMENT".format(itername, len(movement_list)))
-        combine_files(None, movement_list, save_path)
+        merge_files_to_one(None, movement_list, save_path)
         print("{} saved".format(os.path.basename(save_path)))
 
 def test_iter_done():

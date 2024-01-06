@@ -11,8 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import MultipleLocator
 from pyparsing import col
 from torch import rand
-from active_learning.workdir import WorkTrainDir
-from active_learning.util import del_file, file_read_lines
+from draw_pictures.workdir import WorkTrainDir
 import active_learning.active_learning_params as al_pm
 import statsmodels.formula.api as smf
 import seaborn as sns

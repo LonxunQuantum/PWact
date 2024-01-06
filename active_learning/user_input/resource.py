@@ -6,8 +6,12 @@ class Resource(object):
     def __init__(self, json_dict:dict) -> None:
         self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
         self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+        # check explore resource
+        if self.explore_resource.cpu_per_node < self.explore_resource.gpu_per_node:
+            raise Exception("Error! The number of CPUs need be greater than or equal to GPUs in explore resource! ")
         self.scf_resource = self.get_resource(get_required_parameter("scf", json_dict))
-
+        self.pwmat_run_num = get_parameter("pwmat_run_num", json_dict["scf"], 3)
+        
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):
     #     if not cls._instance:

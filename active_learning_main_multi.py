@@ -1,7 +1,7 @@
 import os, sys
 import json
 # import argparse
-
+from utils.constant import UNCERTAINTY
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
 
@@ -9,9 +9,9 @@ from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
 
 from active_learning.train.train_model import ModelTrian
-from active_learning.explore.run_model_md import PWmat_MD
-from active_learning.labeling import Labeling
-from utils.separate_movement import MovementOp
+from active_learning.train.dp_kpu import ModelKPU
+from active_learning.explore.run_model_md import Explore
+from active_learning.label.labeling import Labeling
 
 def run_iter():
     system_info = json.load(open(sys.argv[2]))
@@ -33,7 +33,7 @@ def run_iter():
 
     cont = True
     ii = -1
-    numb_task = 4
+    numb_task = 3
     max_tasks = input_param.explore.md_job_num
     
     while ii < max_tasks:#control by config.json
@@ -52,46 +52,21 @@ def run_iter():
                 print ("exploring start: iter {} - task {}".format(ii, jj))
                 do_exploring_work(iter_name, resouce, input_param)
             elif jj == 2:
-                print ("uncertainty analyse (kpu): iter {} - task {}".format(ii, jj))
-                uncertainty_analyse(iter_name) #exploring/kpu_dir
-            elif jj == 3:
                 print ("run_fp: iter {} - task {}".format(ii, jj))
-                run_fp(iter_name)
+                run_fp(iter_name, resouce, input_param)
             #record_iter
             write_to_file(record, "\n{} {}".format(ii, jj))
 
-def run_fp(itername):
-    lab = Labeling(itername)
+def run_fp(itername:str, resouce : Resource, param_input: InputParam):
+    lab = Labeling(itername, resouce, input_param)
+    #!. make scf work
+    lab.make_scf_work()
+    #2. do scf work
     lab.do_labeling()
-
-def do_exploring_work(itername:str, resouce : Resource, param_input: InputParam):
-    md = PWmat_MD(itername)
-    #do pwmat+dpkf md
-    if "slurm" in md.system_info.keys():
-        md.dpkf_md_slurm()
-    else:
-        md.dpkf_md()
-    print("{} done !".format("pwmat dpkf md_run"))
+    #3. post process, collect movement
+    lab.post_process_scf()
     
-    #separate the MOVEMENT file to single image
-    movement_path = os.path.join(md.work_dir.md_dir, "MOVEMENT")
-    atom_config_save_dir = md.work_dir.md_traj_dir
-    mop = MovementOp(movement_path)
-    if os.path.exists(os.path.join(md.work_dir.md_dpkf_dir, "MOVEMENT")) is False:
-        mop.save_all_image_as_one_movement(os.path.join(md.work_dir.md_dpkf_dir, "MOVEMENT"), md.out_gap)
-    mop = MovementOp(os.path.join(md.work_dir.md_dpkf_dir, "MOVEMENT"))
-    mop.save_each_image_as_atom_config(atom_config_save_dir) # #md_traj_dir
-    print("{} done !".format("movement separates to trajs"))
-
-    md.convert2dpinput()
-    # md.separate_train_dir()
-    print("{} done !".format("convert2dpinput"))
-
-def uncertainty_analyse(itername):
-    mtrain = ModelTrian(itername)
-    mtrain.make_kpu()
-    print("{} done !".format("calculate kpu"))
-
+    
 def do_training_work(itername:str, resouce : Resource, param_input: InputParam):
     mtrain = ModelTrian(itername, resouce, param_input)
     # 1. generate feature
@@ -102,17 +77,36 @@ def do_training_work(itername:str, resouce : Resource, param_input: InputParam):
     mtrain.make_train_work()
     # 4. run training job
     mtrain.do_train_job()
+    # 5. do post process after training
+    mtrain.post_process_train()
     print("{} done !".format("train_model"))
+
+def do_exploring_work(itername:str, resouce : Resource, param_input: InputParam):
+    md = Explore(itername, resouce, param_input)
+    # 1. make md work files
+    md.make_md_work()
     
-# def test():
-    # cwd = os.getcwd()
-    # stdpath = "/home/wuxingxing/codespace/MLFF_wu_dev/active_learning_dir/cuo_3phases_system/iter.0000/exploring/md_dpkf_dir"
-    # os.chdir(stdpath)
-    # import subprocess
-    # # result = subprocess.call("bash -i gen_dpkf_data.sh", shell=True)
-    # res = os.popen("bash -i gen_dpkf_data.sh")
-    # # assert(result == 0)
-    # print(res.readlines())
+    # 2. do md job
+    md.do_md_jobs()
+    
+    # 3. do post process after lammps md running
+    md.post_process_md()
+    
+    # 4. select images
+    if param_input.strategy.uncertainty == UNCERTAINTY.committee:
+        md.select_image_by_committee()
+        # committee: read model deviation file under md file
+    elif param_input.strategy.uncertainty == UNCERTAINTY.kpu:
+        uncertainty_analyse_kpu(itername, resouce, param_input)
+
+def uncertainty_analyse_kpu(itername:str, resouce : Resource, param_input: InputParam):
+    mkpu = ModelKPU(itername, resouce, param_input)
+    # 1. make kpu work dirs
+    mkpu.make_kpu_work()
+    # 2. do kpu job
+    mkpu.do_kpu_jobs()
+    # 3. post process after kpu calculate: select images
+    mkpu.post_process_kpu()
 
 def init_bulk():
     pass

@@ -2,7 +2,7 @@ from email.utils import getaddresses
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from active_learning.util import del_file
+from utils.file_operation import del_file
 import active_learning.active_learning_params as al_pm
 picture_save_dir = "./mlff_wu_work_dir/picture_dir"
 

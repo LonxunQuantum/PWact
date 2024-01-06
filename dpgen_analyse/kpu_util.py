@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 
-from active_learning.util import get_random_nums
+from utils.file_operation import get_random_nums
 from draw_pictures.draw_util import draw_lines
 '''
 Description: 

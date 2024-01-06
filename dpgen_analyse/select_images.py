@@ -1,8 +1,8 @@
 import os, sys, glob
 import numpy as np
 import pandas as pd
-from active_learning.kpu_util import read_kpu_from_csv, get_kpu_lower
-from active_learning.util import get_random_nums
+from dpgen_analyse.kpu_util import read_kpu_from_csv, get_kpu_lower
+from utils.file_operation import get_random_nums
 
 low_base = 2.5
 high_base=5

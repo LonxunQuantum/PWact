@@ -4,53 +4,7 @@ import json
 import glob
 import math
 
-from active_learning.kpu_util import read_kpu_from_csv
 from draw_pictures.draw_util import draw_lines
-
-# '''
-# Description: 
-# this function like the funtion split_train_dir() in tain_util.py, could be merged
-# param {*} fp_dirs
-# param {*} group_size
-# Returns: 
-# Author: WU Xingxing
-#     '''
-# def split_fp_dirs(groupsize:int , pwmat_num:int , scf_sub_list:list[str]):
-    
-#     group_num = len(scf_sub_list) // groupsize
-#     sub_list = []
-#     for i in range(group_num):
-#         sub_list.append(scf_sub_list[i*groupsize:(i+1)*groupsize])
-    
-#     if group_num*groupsize < len(scf_sub_list):
-#         for p in scf_sub_list[groupsize*groupsize:]:
-            
-#     remaining = len(scf_sub_list) % groupsize
-    
-#     for i, g in enumerate(list(range(0, group_num))):
-        
-#         sub_list = []
-#         for j, p in enumerate(list(range(0, pwmat_num))):
-#             sub_list.append(scf_sub_list[start])
-#             start += 1
-#         group_list.append(sub_list)
-#     if start < pwmat_jobs:
-#         sub_list = []
-        
-            
-#     index_list = list(range(0, pwmat_jobs))
-#     res_index = np.reshape(index_list, (group_num, pwmat_num))
-    
-#     return split_scf_sub_list
-
-
-
-
-
-
-
-
-######### old code
 
 '''
 Description: 
@@ -146,19 +100,6 @@ def read_energy_from_fp_dir(fp_dir):
             res[fp] = energy
             img_idxs.append(int(fp.split("-")[-1]))
     return res, img_idxs
-
-def draw_etot():
-    save_dir = "/share/home/wuxingxing/datas/al_dir/cu_bulk_system/iter.0000" 
-    fp_dir = "/share/home/wuxingxing/datas/al_dir/cu_bulk_system/iter.0000/400k_scf"
-    res,img_idxs = read_energy_from_fp_dir(fp_dir)
-    print(res)
-    kpu_dir = "/share/home/wuxingxing/datas/al_dir/cu_bulk_system/iter.0000/training/model_dir/md_kpu_dir"
-    kpu_info=read_kpu_from_csv(kpu_dir)
-    md_etot = kpu_info[['img_idx', 'etot_lab', 'etot_pre']].loc[kpu_info['img_idx'].isin(img_idxs)]
-    md_etot['fp_etot'] = list(res.values())[:40]
-
-    draw_lines( [md_etot['img_idx']*4], [abs(md_etot['fp_etot']-md_etot['etot_pre'])], os.path.join(save_dir, "etot_abs_1000.png"),\
-        [''], "abs energy error of scf and dpkf, step {} fs".format(1), "abs energy error", "fs")
 
 def read_Ei(dir):
     dirs = os.listdir(dir)

@@ -4,8 +4,7 @@ import json
 import shutil
 import math
 
-from utils.file_operation import write_to_file
-from active_learning.util import combine_files
+from utils.file_operation import write_to_file, merge_files_to_one
 from active_learning.fp_util import get_scf_work_list, split_fp_dirs, get_fp_slurm_scripts, make_scf_slurm_script
 from utils.movement2traindata import Scf2Movement
 
@@ -102,7 +101,7 @@ def tmp_convert_scf2movement(config):
     if len(movement_list) < 20:
         movement_list.extend([movement_list[-1] for _ in range(0, 20-len(movement_list),1)])
     # write movements of other iters to one movement file, if target exists, just cover it.
-    combine_files(None, movement_list, os.path.join(work_dir, "MOVEMENT"))
+    merge_files_to_one(None, movement_list, os.path.join(work_dir, "MOVEMENT"))
 
 def get_ep(config, type="dft"):
     work_dir = config["work_dir"]

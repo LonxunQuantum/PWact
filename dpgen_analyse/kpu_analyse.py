@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import glob
-from active_learning.kpu_util import read_kpu_from_csv, get_kpu_lower
+from dpgen_analyse.kpu_util import read_kpu_from_csv, get_kpu_lower
 
 """
 @Description :

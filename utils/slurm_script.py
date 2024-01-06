@@ -84,3 +84,27 @@ def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.
             slurm_failed.append(slurm_job_files[i])
             
     return slurm_failed, slurm_success
+
+
+'''
+description: 
+    split the job_list with groupsize
+param {int} groupsize
+param {list} job_list: N jobs
+return {*} [["job1","job2",...,"job_groupseze"], ..., [..., "job_N", "NONE",...,"NONE"]]
+author: wuxingxing
+'''
+def split_job_for_group(groupsize:int , job_list:list[str]):
+    group_num = len(job_list) // groupsize
+    sub_list = []
+    for i in range(group_num):
+        sub_list.append(job_list[i*groupsize:(i+1)*groupsize])
+    
+    last_sub = []
+    if len(sub_list)*groupsize < len(job_list):
+        for sub_index in range(len(sub_list)*groupsize, len(job_list)):
+            last_sub.append(job_list[sub_index])
+        while len(last_sub) < groupsize:
+            last_sub.append("NONE")
+        sub_list.append(last_sub)
+    return sub_list

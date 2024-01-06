@@ -2,6 +2,8 @@ import os
 import shutil
 import re
 import json
+import numpy as np
+import random
 
 from utils.constant import SCF_FILE_STRUCTUR
 from utils.format_input_output import make_iter_name, make_train_name
@@ -38,20 +40,42 @@ def file_read_last_line(file_path, type_name="int"):
         last_line = [float(i) for i in last_line]
     return last_line
 
-def file_read_lines(file_path, type_name="float"):
+'''
+description: 
+param {*} file_path
+param {*} data_type: 'float' or 'int'
+return {*}
+author: wuxingxing
+'''
+def file_read_lines(file_path, data_type="float"):
     data = []
     if os.path.exists(file_path):
         with open(file_path, 'r') as rf:
             lines = rf.readlines()  #the last line
             for line in lines:
                 line = re.sub('[\[\]\\n]','',line)
-                if len(line) > 0 and type_name == "int":
+                if len(line) > 0 and data_type == "int":
                     line = [int(i) for i in line.split(',')]
-                if len(line) > 0 and type_name == "float":
+                if len(line) > 0 and data_type == "float":
                     line = [float(i) for i in line.split(',')]
-                data.append(line)
+                if len(line) == 1:
+                    data.append(line[0])
+                else:
+                    data.append(line)
     return data
 
+'''
+description: 
+    load txt data
+param {str} file_path
+param {*} skiprows
+return {*}
+author: wuxingxing
+'''
+def read_data(file_path:str, skiprows=1):
+    datas = np.loadtxt(file_path,skiprows=1)
+    return datas
+    
 '''
 description: 
  save line str to file_path
@@ -65,6 +89,47 @@ def write_to_file(file_path, line, mode='a'):
     with open(file_path, mode) as wf:
         wf.write(line)
 
+'''
+description: 
+    merge file list to one file
+param {list} file_list
+param {str} save_file
+return {*}
+author: wuxingxing
+'''
+def merge_files_to_one(file_list:list[str], save_file:str):
+    with open(save_file, 'w') as wf:
+        for index, file in enumerate(file_list):
+            with open(file, 'r') as rf:
+                content = rf.read()
+            wf.write(content)
+            if index < len(file_list) - 1:
+                wf.write("\n")
+        
+'''
+description: 
+    copy file from source to target
+param {str} source_file
+param {str} target_file
+return {*}
+author: wuxingxing
+'''
+def copy_file(source_file:str, target_file:str):
+    shutil.copyfile(source_file, target_file)
+
+'''
+description: 
+ link source file to target file, if target file is exist, replace it.
+param {str} source_file
+param {str} target_file
+return {*}
+author: wuxingxing
+'''
+def link_file(source_file:str, target_file:str):
+    if os.path.exists(target_file):
+        os.remove(target_file)
+    os.symlink(source_file, target_file)
+        
 """
 @Description :
 删除指定目录下所有文件(该目录不删除) / 或者删除指定文件名文件
@@ -153,18 +218,37 @@ def get_parameter(param:str, json_input:dict, default_value, format_type:str=Non
 
 '''
 description: 
+    get file extension
+param {str} file_name
+param {*} split_char default is '.'
+return {*}
+author: wuxingxing
+'''
+def get_file_extension(file_name:str, split_char = "."):
+    return file_name.split(split_char)[-1].strip()
+
+
+'''
+description: 
     search mvm files from iter.0000 to iter.current
 param {str} root_dir
 param {str} current_itername
 return {*}
 author: wuxingxing
 '''
-def search_mvm_files(root_dir:str, current_itername:str):
-    mvm_list = []
-    current_iter = int(current_itername.split(".")[1])
-    for iter in range(0, current_iter):
-        iter_name = make_iter_name()
-        iter_scf_dir = os.path.join(root_dir, iter_name, SCF_FILE_STRUCTUR.RESULT)
-    print("not realized yet!")
-    return mvm_list
+def search_files(search_root_dir:str, template:str):
+    mvm_file_list = glob.glob(os.path.join(search_root_dir, template))
+    return mvm_file_list
 
+"""
+@Description :
+    randomly generate n different nums of int type in the range of [start, end)
+@Returns     :
+@Author       :wuxingxing
+"""
+
+def get_random_nums(start, end, n):
+    numsArray = set()
+    while len(numsArray) < n:
+        numsArray.add(random.randint(start, end-1))
+    return list(numsArray)

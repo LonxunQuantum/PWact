@@ -1,6 +1,6 @@
 from enum import Enum
 from subprocess import Popen, PIPE
-import os, sys
+import os, sys, shutil
 import time
 
 class JobStatus (Enum) :
@@ -10,6 +10,11 @@ class JobStatus (Enum) :
     terminated = 4
     finished = 5
     unknown = 100
+    submit_limit = 3
+
+def get_slurm_sbatch_cmd(job_dir:str, job_name:str):
+    cmd += "cd {} && sbatch {}".foramt(job_dir, job_name)
+    return cmd
 
 class SlurmJob(object):
     def __init__(self, job_id=None, status=JobStatus.unsubmitted, user=None, name=None, nodes=None, nodelist=None, partition=None) -> None:
@@ -20,9 +25,11 @@ class SlurmJob(object):
         self.partition=partition
         self.nodes = nodes
         self.nodelist = nodelist
-    
-    def set_cmd(self, submit_cmd):
+        self.submit_num = 0
+        
+    def set_cmd(self, submit_cmd, slurm_job_run_dir):
         #such as "sbatch main_MD_test.sh"
+        self.slurm_job_run_dir = slurm_job_run_dir
         self.submit_cmd = submit_cmd
     
     def set_tag(self, tag):
@@ -36,6 +43,7 @@ class SlurmJob(object):
             raise RuntimeError (stderr)
         job_id = str(stdout, encoding='ascii').replace('\n','').split()[-1]
         self.job_id = job_id
+        self.submit_num += 1
         status = self.update_status()
         print ("# job {} submitted, status is {}".format(self.job_id, status))
 
@@ -113,6 +121,13 @@ class Mission(object):
                 job_list.append(job)
         return job_list
 
+    def move_slurm_log_to_slurm_work_dir(self, slurm_log_dir_source:str):
+        for job in self.job_list:
+            slurm_log_source = os.path.join(slurm_log_dir_source, "slurm-{}.out".format(job.job_id))
+            slurm_job_log_target = os.path.join(os.path.dirname(job.slurm_job_path), os.path.basename(slurm_log_source))
+            if os.path.exists(slurm_log_source):
+                shutil.move(slurm_log_source, slurm_job_log_target)
+                
     '''
     Description: 
     job_finish_tag does not exist means this job running in error 
@@ -128,7 +143,15 @@ class Mission(object):
         return job_list
     
     def all_job_finished(self):
-        return True if len(self.get_error_jobs()) == 0 else False
+        error_jobs = self.get_error_jobs()
+        if len(error_jobs) >= 1:
+            error_log_content = ""
+            for error_job in error_jobs:
+                error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
+                error_log_content += "ERRIR! The cmd '{}' failed! Please check the slurm log file for more information: {}!".format(\
+                    error_job.submit_cmd, error_log_path)
+            raise Exception(error_log_content)
+        return True
     
     def commit_jobs(self):
         for job in self.job_list:
@@ -155,15 +178,24 @@ class Mission(object):
                 self.update_job_state(job.job_id, status)
             if len(self.get_running_jobs()) == 0:
                 break
-            else:
-                time.sleep(10)
-
+            # if the job failed, resubmit it until the resubmit time more than 3 times
+            self.resubmit_jobs()
+            
+            time.sleep(10)
         # error_jobs = self.get_error_jobs()
         # if len(error_jobs) > 0:
         #     error_info = "job error: {}".format([_.job_id for _ in error_jobs])
         #     raise Exception(error_info)
         return True
-
+    
+    def resubmit_jobs(self):
+        for job in self.job_list:
+            if job.status == JobStatus.terminated:
+                if job.submit_num < JobStatus.submit_limit:
+                    print("resubmit job: {}, the time is {}\n".format(job.submit_cmd, job.submit_num))
+                    job.submit()
+                     
+                
     '''
     Description: 
     after some jobs finished with some jobs terminated, we should try to recover these terminated jobs.
@@ -184,24 +216,3 @@ class Mission(object):
     def reset_job_state(self):
         for job in self.job_list:
             job.status == JobStatus.unsubmitted
-
-# if __name__ == "__main__":
-#     script_path1 = "/share/home/wuxingxing/codespace/active_learning_mlff_multi_job/active_learning/scf_slurm1.job"
-#     tag1 = "/share/home/wuxingxing/codespace/active_learning_mlff_multi_job/active_learning/tag1_success"
-#     script_path5 = "/share/home/wuxingxing/codespace/active_learning_mlff_multi_job/active_learning/scf_slurm5.job"
-#     tag5 = "/share/home/wuxingxing/codespace/active_learning_mlff_multi_job/active_learning/tag5_success"
-#     mission = Mission()
-
-#     slurm_job = SlurmJob()
-#     slurm_cmd = "sbatch {}".format(script_path1)
-#     slurm_job.set_tag(tag1)
-#     slurm_job.set_cmd(slurm_cmd)
-#     mission.add_job(slurm_job)
-#     slurm_job = SlurmJob()
-#     slurm_cmd = "sbatch {}".format(script_path5)
-#     slurm_job.set_tag(tag5)
-#     slurm_job.set_cmd(slurm_cmd)
-#     mission.add_job(slurm_job)
-
-#     mission.commit_jobs()
-#     mission.check_running_job()

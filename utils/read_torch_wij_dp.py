@@ -429,7 +429,6 @@ def read_torch_dp(config_yaml, model_pt_path, atom_config_path, out_path, davg_n
     print("******** gen_dp.in generation done *********")
 
 if __name__ == "__main__":
-    # from active_learning.util import get_recent_model
     # model_dir = "/home/wuxingxing/codespace/MLFF_wu_dev/mlff_wu_work_dir/dpnn_work_dir/ch4_system_test/init/model_dir/"
     # reload, model_pt_path, p_path = get_recent_model(model_dir)
     # out_path = os.path.join(model_dir, "read_torch_dp")
