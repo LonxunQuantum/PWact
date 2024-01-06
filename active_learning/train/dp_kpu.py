@@ -30,8 +30,6 @@ import numpy as np
 import pandas as pd
 import random
 
-from active_learning.train.train_util import split_train_dir
-
 from active_learning.slurm import SlurmJob, JobStatus, Mission, get_slurm_sbatch_cmd
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam

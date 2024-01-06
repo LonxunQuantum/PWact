@@ -1,6 +1,5 @@
 import os
 import json
-from draw_pictures.workdir import WorkLabDir
 from utils.file_operation import write_to_file
 from utils.pre_al_data_util import get_movement_num
 

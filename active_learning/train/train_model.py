@@ -1,27 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import shutil
-import subprocess
-import yaml
 import os,sys
 import json
 import copy
-import glob
 
-from active_learning.train.train_util import split_train_dir
-from active_learning.slurm import SlurmJob, JobStatus, Mission, get_slurm_sbatch_cmd
+from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time
-from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, UNCERTAINTY,\
-    LABEL_FILE_STRUCTURE
+from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
 
 from utils.file_operation import save_json_file, write_to_file, mv_dir, del_dir, search_files
 from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis
-
-
-from utils.format_input_output import make_iter_name
 
 '''
 description: model training method:

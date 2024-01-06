@@ -18,34 +18,20 @@
             md.000.sys.001-mvm: image_nums, atom_type
             ...
 """
-
-import os, sys, subprocess
+import os, sys
 import numpy as np
 import pandas as pd
-
-import json
-import shutil
 from math import ceil
+
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, SCFParam
-from active_learning.slurm import SlurmJob, JobStatus, Mission, get_slurm_sbatch_cmd
-from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-    FORCEFILED, ENSEMBLE, LAMMPSFILE, UNCERTAINTY,\
-        ELEMENTTABLE, PWMAT
+from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
+
+from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT
 from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
-from utils.format_input_output import get_iter_from_iter_name, \
-    make_md_sys_name, make_temp_press_name, make_temp_name, get_sub_md_sys_template_name, get_md_sys_template_name, \
-        make_train_name, get_traj_file_name,\
-            make_scf_name
-from utils.file_operation import save_json_file, write_to_file, copy_file, file_read_lines, link_file, merge_files_to_one
-
+from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
+from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
 from utils.app_lib.pwmat import set_etot_input_content, get_atom_type_from_atom_config
-from active_learning.label.fp_util import get_fp_slurm_scripts, get_scf_work_list, make_scf_slurm_script
-
-
-
-from utils.movement2traindata import Scf2Movement
-from utils.movement2traindata import movement2traindata
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):

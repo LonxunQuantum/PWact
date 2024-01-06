@@ -15,33 +15,22 @@
             traj_file_path2 index2
             ...
 """
-
+from active_learning.slurm import Mission, SlurmJob, get_slurm_sbatch_cmd
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, MdDetail
-from utils.constant import AL_STRUCTURE, EXPLORE_FILE_STRUCTURE,FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT, UNCERTAINTY, TRAIN_FILE_STRUCTUR, EXPLORE_FILE_STRUCTURE
-from utils.format_input_output import get_iter_from_iter_name, \
-    make_md_sys_name, make_temp_press_name, make_temp_name, get_sub_md_sys_template_name, \
-        make_train_name
+from utils.constant import AL_STRUCTURE, EXPLORE_FILE_STRUCTURE,FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT, TRAIN_FILE_STRUCTUR, EXPLORE_FILE_STRUCTURE
+from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
+    make_md_sys_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import save_json_file, write_to_file, copy_file, get_file_extension, link_file, read_data
 from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
-
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
-
-
-from active_learning.slurm import Mission, SlurmJob, JobStatus, get_slurm_sbatch_cmd
-from utils.read_torch_wij_dp import read_torch_dp
 
 import os
 import json
 import sys
-import yaml
-import shutil
-import subprocess
 import time
-import math
 import pandas as pd
-
 """
 md_dir:
   a. pwmat+dpkf run md ->MOVEMENT
