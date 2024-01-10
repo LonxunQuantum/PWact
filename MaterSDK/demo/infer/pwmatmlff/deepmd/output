@@ -1,0 +1,218 @@
+Torch version:  1.13.1+cu117
+CUDA available:  True
+Number of CUDA:  2
+torch.cuda.get_device_name :  NVIDIA GeForce RTX 3080 Ti
+torch.cuda.get_device_name :  NVIDIA GeForce RTX 3080 Ti
+center_neigh_rc :  (48, 36, 3) (48, 100, 3)
+center_neigh_rc :  (48, 18, 3) (48, 100, 3)
+center_neigh_rc :  (24, 34, 3) (24, 100, 3)
+center_neigh_rc :  (24, 16, 3) (24, 100, 3)
+relative_coords :  (72, 200, 3)
+model.to :  cuda:0
+DP(
+  (embedding_net): ModuleList(
+    (0): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (1): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (2): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (3): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+  )
+  (fitting_net): ModuleList(
+    (0): FittingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 400x50 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight3): Parameter containing: [torch.cuda.DoubleTensor of size 50x1 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias3): Parameter containing: [torch.cuda.DoubleTensor of size 1x1 (GPU 0)]
+      )
+      (resnet_dt): ParameterDict(
+          (resnet_dt1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (resnet_dt2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+      )
+    )
+    (1): FittingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 400x50 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight3): Parameter containing: [torch.cuda.DoubleTensor of size 50x1 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias3): Parameter containing: [torch.cuda.DoubleTensor of size 1x1 (GPU 0)]
+      )
+      (resnet_dt): ParameterDict(
+          (resnet_dt1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (resnet_dt2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+      )
+    )
+  )
+)
+/data/home/liuhanyu/hyliu/code/mlff/PWmatMLFF_dev/PWMLFF-dev/src/model/dp_dp.py: inner PWmat-MLFF, device:  cuda:1
+S 2.1. e_tot = -11885.437910185628 eV
+S 2.2. e_atoms.shape =  (72,)
+S 2.3. f_atoms.shape =  (72, 3)
+S 2.4. virial = 
+ [[ 6.438702    0.25380786 -0.02265036]
+ [ 0.25380786  6.16737837  0.38779026]
+ [-0.02265036  0.38779026 10.86695746]]
+Torch version:  1.13.1+cu117
+CUDA available:  True
+Number of CUDA:  2
+torch.cuda.get_device_name :  NVIDIA GeForce RTX 3080 Ti
+torch.cuda.get_device_name :  NVIDIA GeForce RTX 3080 Ti
+center_neigh_rc :  (48, 36, 3) (48, 100, 3)
+center_neigh_rc :  (48, 18, 3) (48, 100, 3)
+center_neigh_rc :  (24, 34, 3) (24, 100, 3)
+center_neigh_rc :  (24, 16, 3) (24, 100, 3)
+relative_coords :  (72, 200, 3)
+model.to :  cuda:0
+DP(
+  (embedding_net): ModuleList(
+    (0): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (1): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (2): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+    (3): EmbeddingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 25x25 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x25 (GPU 0)]
+      )
+    )
+  )
+  (fitting_net): ModuleList(
+    (0): FittingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 400x50 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight3): Parameter containing: [torch.cuda.DoubleTensor of size 50x1 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias3): Parameter containing: [torch.cuda.DoubleTensor of size 1x1 (GPU 0)]
+      )
+      (resnet_dt): ParameterDict(
+          (resnet_dt1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (resnet_dt2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+      )
+    )
+    (1): FittingNet(
+      (weights): ParameterDict(
+          (weight0): Parameter containing: [torch.cuda.DoubleTensor of size 400x50 (GPU 0)]
+          (weight1): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight2): Parameter containing: [torch.cuda.DoubleTensor of size 50x50 (GPU 0)]
+          (weight3): Parameter containing: [torch.cuda.DoubleTensor of size 50x1 (GPU 0)]
+      )
+      (bias): ParameterDict(
+          (bias0): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (bias3): Parameter containing: [torch.cuda.DoubleTensor of size 1x1 (GPU 0)]
+      )
+      (resnet_dt): ParameterDict(
+          (resnet_dt1): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+          (resnet_dt2): Parameter containing: [torch.cuda.DoubleTensor of size 1x50 (GPU 0)]
+      )
+    )
+  )
+)
+/data/home/liuhanyu/hyliu/code/mlff/PWmatMLFF_dev/PWMLFF-dev/src/model/dp_dp.py: inner PWmat-MLFF, device:  cuda:1
+S 2.1. e_tot = -11885.437910185628 eV
+S 2.2. e_atoms.shape =  (72,)
+S 2.3. f_atoms.shape =  (72, 3)
+S 2.4. virial = 
+ [[ 6.438702    0.25380786 -0.02265036]
+ [ 0.25380786  6.16737837  0.38779026]
+ [-0.02265036  0.38779026 10.86695746]]

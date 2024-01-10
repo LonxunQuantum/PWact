@@ -246,7 +246,7 @@ class ModelKPU(object):
                 mission.commit_jobs()
                 mission.check_running_job()
                 mission.all_job_finished()
-                mission.move_slurm_log_to_slurm_work_dir()
+                # mission.move_slurm_log_to_slurm_work_dir()
                     
     '''
     description: 
@@ -313,14 +313,14 @@ class ModelKPU(object):
         summary_info += "total configurations: {}\n".format(devi_pd.shape[0])
         summary_info += "select by model deviation force:\n"
         summary_info += "accurate configurations: {}, details in file {}\n".\
-            foramt(accurate_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
+            format(accurate_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
             
         summary_info += candi_info
             
         summary_info += "error configurations: {}, details in file {}\n".\
-            foramt(error_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
+            format(error_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
         
-        write_to_file(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info)
+        write_to_file(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
         print("committee method result:\n {}".format(summary_info))
         
     def get_lower_from_base_kpu(self):

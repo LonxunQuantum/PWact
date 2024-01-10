@@ -1,4 +1,5 @@
 import os
+import glob
 import shutil
 import re
 import json
@@ -85,7 +86,7 @@ param {*} mode :'a' or 'w', default is 'a'
 return {*}
 author: wuxingxing
 '''
-def write_to_file(file_path, line, mode='a'):
+def write_to_file(file_path, line, mode='w'):
     with open(file_path, mode) as wf:
         wf.write(line)
 
@@ -126,7 +127,7 @@ return {*}
 author: wuxingxing
 '''
 def link_file(source_file:str, target_file:str):
-    if os.path.exists(target_file):
+    if os.path.islink(target_file):
         os.remove(target_file)
     os.symlink(source_file, target_file)
         
@@ -189,9 +190,12 @@ param {str} info
 return {*}
 author: wuxingxing
 '''
-def get_required_parameter(param:str, json_input:dict):
+def get_required_parameter(param:str, json_input:dict, detail_infos:str=None):
     if param not in json_input.keys():
-        raise Exception("Input error! : The {} parameter is missing and must be specified in input json file!".format(param))
+        error_info = "Input error! : The {} parameter is missing and must be specified in input json file!".format(param)
+        if detail_infos is not None:
+            error_info += "\n{}\n".format(detail_infos)
+        raise Exception(error_info)
     return json_input[param]
 
 '''
@@ -216,6 +220,18 @@ def get_parameter(param:str, json_input:dict, default_value, format_type:str=Non
             res = res.upper()
     return res
 
+def str_list_format(input_value):
+    input_list = []
+    if isinstance(input_value, str):
+        input_value = input_value.replace(",", " ")
+        input_value = input_value.replace(";", " ")
+        input_list = input_value.strip().split()
+    elif isinstance(input_value, list):
+        input_list = input_value
+    else:
+        raise Exception("Error format of {}, it should be string or list!".format(input))
+    return input_list
+        
 '''
 description: 
     get file extension
@@ -230,15 +246,15 @@ def get_file_extension(file_name:str, split_char = "."):
 
 '''
 description: 
-    search mvm files from iter.0000 to iter.current
+    Use wildcard characters to search for files in directory search_root_dir that match the wildcard characters
 param {str} root_dir
 param {str} current_itername
 return {*}
 author: wuxingxing
 '''
 def search_files(search_root_dir:str, template:str):
-    mvm_file_list = glob.glob(os.path.join(search_root_dir, template))
-    return mvm_file_list
+    file_list = glob.glob(os.path.join(search_root_dir, template))
+    return file_list
 
 """
 @Description :

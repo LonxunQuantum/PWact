@@ -10,10 +10,11 @@ class JobStatus (Enum) :
     terminated = 4
     finished = 5
     unknown = 100
-    submit_limit = 3
+    resubmit_failed = 6
+    submit_limit:int = 3
 
 def get_slurm_sbatch_cmd(job_dir:str, job_name:str):
-    cmd += "cd {} && sbatch {}".foramt(job_dir, job_name)
+    cmd = "cd {} && sbatch {}".format(job_dir, job_name)
     return cmd
 
 class SlurmJob(object):
@@ -174,13 +175,14 @@ class Mission(object):
     def check_running_job(self):
         while True:
             for job in self.job_list:
+                if job.status == JobStatus.resubmit_failed: # For job resubmitted more than 3 times, do not check again
+                    continue
                 status = job.check_status()
                 self.update_job_state(job.job_id, status)
-            if len(self.get_running_jobs()) == 0:
-                break
             # if the job failed, resubmit it until the resubmit time more than 3 times
             self.resubmit_jobs()
-            
+            if len(self.get_running_jobs()) == 0:
+                break
             time.sleep(10)
         # error_jobs = self.get_error_jobs()
         # if len(error_jobs) > 0:
@@ -191,9 +193,14 @@ class Mission(object):
     def resubmit_jobs(self):
         for job in self.job_list:
             if job.status == JobStatus.terminated:
-                if job.submit_num < JobStatus.submit_limit:
+                if job.submit_num > JobStatus.submit_limit.value:
                     print("resubmit job: {}, the time is {}\n".format(job.submit_cmd, job.submit_num))
                     job.submit()
+                else:
+                    job.status = JobStatus.resubmit_failed
+                    slurm_name = "slurm-{}.out".format(job.job_id)
+                    print("Error! The job '{}' has been resubmitted more than {} times but still fialed, please check {} file for more information!".\
+                        format(job.submit_cmd, JobStatus.submit_limit.value, slurm_name))
                      
                 
     '''

@@ -2,7 +2,7 @@ import json
 import os
 
 from utils.file_operation import get_required_parameter, get_parameter
-from utils.constant import ENSEMBLE, TRAIN_INPUT_PARAM, FORCEFILED, UNCERTAINTY, SCF_FILE_STRUCTUR
+from utils.constant import ENSEMBLE, TRAIN_INPUT_PARAM, FORCEFILED, UNCERTAINTY, SCF_FILE_STRUCTUR, PWMAT
 from utils.app_lib.pwmat import read_and_check_etot_input
 class InputParam(object):
     # _instance = None
@@ -23,7 +23,7 @@ class InputParam(object):
         self.train = TrainParam(json_dict["train"], self.root_dir, init_mvm_files)
         self.strategy = StrategyParam(json_dict["strategy"])
         self.explore = ExploreParam(json_dict["explore"])
-        self.scf = SCFParam(json_dict["scf"])
+        self.scf = SCFParam(json_dict["scf"], is_scf=True, root_dir = self.root_dir)
 
     def to_dict(self):
         res = {}
@@ -122,6 +122,8 @@ class ExploreParam(object):
     def __init__(self, json_dict) -> None:
         sys_config_prefix = get_parameter("sys_config_prefix", json_dict, None)
         sys_configs = get_required_parameter("sys_configs", json_dict)
+        if isinstance(sys_configs, str):
+            sys_configs = [sys_configs]
         self.sys_configs = []
         for sys_config in sys_configs:
             config = os.path.join(sys_config_prefix, sys_config) if sys_config_prefix is not None else sys_config
@@ -190,19 +192,43 @@ class MdDetail(object):
                md_list.append(t, p) 
         
 class SCFParam(object):
-    def __init__(self, json_dict) -> None:
-        self.etot_input_file = get_parameter("etot_input_file", json_dict, None)
-        self.pseudo = get_required_parameter("pseudo", json_dict)
-        if isinstance(self.pseudo, str):
-            self.pseudo = list(self.pseudo)
-        self.__init_variable()
-        if self.etot_input_file is None:
-            self.set_etot_input_detail(json_dict)
-            self.etot_input_content = None
-        else:
-            if not os.path.exists(self.etot_input_file):
-                raise Exception("the input etot.input file {} dest not exist!".format(self.etot_input_file))
-            self.etot_input_content = read_and_check_etot_input(self.etot_input_file)
+    def __init__(self, json_dict, is_relax:bool=False, is_scf:bool=False, root_dir:str=None) -> None:
+        if is_scf:
+            scf_etot_input_file = get_required_parameter("scf_etot_input_file", json_dict)
+            if not os.path.isabs(scf_etot_input_file):
+                self.scf_etot_input_file = os.path.join(root_dir, scf_etot_input_file)
+            else:
+                self.scf_etot_input_file = scf_etot_input_file
+            if not os.path.exists(self.scf_etot_input_file):
+                raise Exception("the input scf etot.input file {} dest not exist!".format(self.scf_etot_input_file))
+            self.scf_etot_input_content = read_and_check_etot_input(self.scf_etot_input_file)
+        if is_relax:
+            relax_etot_input_file = get_required_parameter("relax_etot_input_file", json_dict)
+            if not os.path.isabs(relax_etot_input_file):
+                self.relax_etot_input_file = os.path.join(root_dir, relax_etot_input_file)
+            else:
+                self.relax_etot_input_file = relax_etot_input_file
+            if not os.path.exists(self.relax_etot_input_file):
+                raise Exception("the input relax etot.input file {} dest not exist!".format(self.relax_etot_input_file))
+            self.relax_etot_input_content = read_and_check_etot_input(self.relax_etot_input_file)
+                       
+        pseudo = get_required_parameter("pseudo", json_dict)
+        if isinstance(pseudo, str):
+            pseudo = list(pseudo)
+        self.pseudo = []
+        for pf in pseudo:
+           if not os.path.exists(pf):
+               raise Exception("Error! pseduo file {} does not exist!".format(pf))
+           self.pseudo.append(pf)
+        
+        # self.__init_variable()
+        # if self.etot_input_file is None:
+        #     self.set_etot_input_detail(json_dict)
+        #     self.scf_etot_input_content = None
+        # else:
+        #     if not os.path.exists(self.etot_input_file):
+        #         raise Exception("the input etot.input file {} dest not exist!".format(self.etot_input_file))
+        #     self.scf_etot_input_content = read_and_check_etot_input(self.etot_input_file)
 
     @staticmethod
     def get_pseudo_by_atom_name(pseduo_list:list[str], atom_name):
@@ -211,31 +237,31 @@ class SCFParam(object):
                 return pseduo
         return None
     
-    def __init_variable(self):
-        self.node1 = None
-        self.node2 = None
-        self.e_error = None
-        self.rho_error = None
-        self.ecut = None
-        self.ecut2 = None
-        self.kspacing = None
-        self.out_wg = None
-        self.out_rho = None
-        self.out = None
-        self.out_force = None
-        self.out_stress = None
-        self.out_mlmd = None
-        self.MP_N123 = None
-        self.SCF_ITER0_1 = None
-        self.SCF_ITER0_2 = None
-        self.energy_decomp = None
-        self.energy_decomp_special2 = None
-        self.flag_symm = None
-        self.icmix = None
-        self.smearing = None
-        self.sigma = None
+    # def __init_variable(self):
+    #     self.node1 = None
+    #     self.node2 = None
+    #     self.e_error = None
+    #     self.rho_error = None
+    #     self.ecut = None
+    #     self.ecut2 = None
+    #     self.kspacing = None
+    #     self.out_wg = None
+    #     self.out_rho = None
+    #     self.out = None
+    #     self.out_force = None
+    #     self.out_stress = None
+    #     self.out_mlmd = None
+    #     self.MP_N123 = None
+    #     self.SCF_ITER0_1 = None
+    #     self.SCF_ITER0_2 = None
+    #     self.energy_decomp = None
+    #     self.energy_decomp_special2 = None
+    #     self.flag_symm = None
+    #     self.icmix = None
+    #     self.smearing = None
+    #     self.sigma = None
 
-    def set_etot_input_detail(self, json_dict):
+    # def set_etot_input_detail(self, json_dict):
         self.node1 = get_required_parameter("node1", json_dict, 1)
         self.node2 = get_required_parameter("node2", json_dict, 4)
         
@@ -261,5 +287,5 @@ class SCFParam(object):
         self.icmix = get_parameter("icmix", json_dict, None)
         self.smearing = get_parameter("smearing", json_dict, None)
         self.sigma = get_parameter("sigma", json_dict, None)
-
-        
+        self.relax_detail = get_parameter("relax_detail", json_dict, None)
+        self.vdw = get_parameter("vdw", json_dict, None)

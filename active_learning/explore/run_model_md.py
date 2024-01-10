@@ -16,13 +16,14 @@
             ...
 """
 from active_learning.slurm import Mission, SlurmJob, get_slurm_sbatch_cmd
+from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, set_slurm_script_content
+
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, MdDetail
 from utils.constant import AL_STRUCTURE, EXPLORE_FILE_STRUCTURE,FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT, TRAIN_FILE_STRUCTUR, EXPLORE_FILE_STRUCTURE
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import save_json_file, write_to_file, copy_file, get_file_extension, link_file, read_data
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
 
@@ -82,23 +83,42 @@ class Explore(object):
                                 os.makedirs(temp_press_dir)
                             self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md)
                             md_work_list.append(temp_press_dir)
-                            
+        
+
+                           
         self.make_md_slurm_jobs(md_work_list)
              
     def make_md_slurm_jobs(self, md_work_list:list[str]):
-        #4. set slurm job file
-        group_list = split_job_for_group(self.resouce.explore_resource.group_size, md_work_list)
+        group_list = split_job_for_group(self.resouce.explore_resource.group_size, md_work_list, self.resouce.explore_resource.parallel_num)
         for g_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
             jobname = "md{}".format(g_index)
             tag_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_tag)
             tag = os.path.join(self.md_dir, tag_name)
-            slurm_job_script = self.set_md_slurm_job_script(group, jobname, tag)
+            # slurm_job_script = self.set_md_slurm_job_script(group, jobname, tag)
+            if self.resouce.explore_resource.gpu_per_node > 0:
+                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resouce.explore_resource.gpu_per_node, LAMMPSFILE.input_lammps)
+            else:
+                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resouce.explore_resource.cpu_per_node, LAMMPSFILE.input_lammps)
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resouce.explore_resource.gpu_per_node, 
+                            number_node = self.resouce.explore_resource.number_node, 
+                            cpu_per_node = self.resouce.explore_resource.cpu_per_node,
+                            queue_name = self.resouce.explore_resource.queue_name,
+                            custom_flags = self.resouce.explore_resource.custom_flags,
+                            source_list = self.resouce.explore_resource.source_list,
+                            module_list = self.resouce.explore_resource.module_list,
+                            job_name = jobname,
+                            run_cmd_template = run_cmd,
+                            group = group,
+                            job_tag = tag,
+                            task_tag = EXPLORE_FILE_STRUCTURE.md_tag,
+                            task_tag_faild = EXPLORE_FILE_STRUCTURE.md_tag_faild,
+                            parallel_num=self.resouce.explore_resource.parallel_num
+                            )
             slurm_script_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_job)
             slurm_job_file = os.path.join(self.md_dir, slurm_script_name)
-            write_to_file(slurm_job_file, slurm_job_script, "w")
-        
+            write_to_file(slurm_job_file, group_slurm_script, "w")
         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
         #1. set sys.config file
@@ -148,8 +168,8 @@ class Explore(object):
             link_file(sys_file, target_sys_config)
             atom_config_to_lammps_in(md_dir)
         # convert poscar to lammps.init file
-        elif get_file_extension(sys_config_name).upper() in LAMMPSFILE.vasp_sys_config.upper():
-            target_sys_config = os.path.join(md_dir, LAMMPSFILE.vasp_sys_config)
+        elif get_file_extension(sys_config_name).upper() in LAMMPSFILE.poscar.upper():
+            target_sys_config = os.path.join(md_dir, LAMMPSFILE.poscar)
             link_file(sys_file, target_sys_config)
             poscar_to_lammps_in(md_dir)
         else:
@@ -272,7 +292,7 @@ class Explore(object):
                 mission.commit_jobs()
                 mission.check_running_job()
                 mission.all_job_finished()
-                mission.move_slurm_log_to_slurm_work_dir()
+                # mission.move_slurm_log_to_slurm_work_dir()
         
     def post_process_md(self):
         pass
@@ -339,13 +359,13 @@ class Explore(object):
         summary_info += "total configurations: {}\n".format(devi_pd.shape[0])
         summary_info += "select by model deviation force:\n"
         summary_info += "accurate configurations: {}, details in file {}\n".\
-            foramt(accurate_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
+            format(accurate_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
             
         summary_info += candi_info
             
         summary_info += "error configurations: {}, details in file {}\n".\
-            foramt(error_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
+            format(error_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
         
-        write_to_file(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info)
+        write_to_file(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
         print("committee method result:\n {}".format(summary_info))
     

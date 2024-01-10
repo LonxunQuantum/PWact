@@ -1,17 +1,22 @@
 import os, sys
 import json
 # import argparse
-from utils.constant import UNCERTAINTY
+from utils.constant import UNCERTAINTY, AL_WORK
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
+from active_learning.user_input.init_bulk_input import InitBulkParam
 
 from active_learning.train.train_model import ModelTrian
 from active_learning.train.dp_kpu import ModelKPU
 from active_learning.explore.run_model_md import Explore
 from active_learning.label.labeling import Labeling
+
+from active_learning.init_bulk.relax import Relax
+from active_learning.init_bulk.duplicate_scale import duplicate_scale, do_pertub
+from active_learning.init_bulk.aimd import AIMD
 
 def run_iter():
     system_info = json.load(open(sys.argv[2]))
@@ -55,7 +60,7 @@ def run_iter():
                 print ("run_fp: iter {} - task {}".format(ii, jj))
                 run_fp(iter_name, resouce, input_param)
             #record_iter
-            write_to_file(record, "\n{} {}".format(ii, jj))
+            write_to_file(record, "\n{} {}".format(ii, jj), "a")
 
 def run_fp(itername:str, resouce : Resource, param_input: InputParam):
     lab = Labeling(itername, resouce, input_param)
@@ -109,7 +114,28 @@ def uncertainty_analyse_kpu(itername:str, resouce : Resource, param_input: Input
     mkpu.post_process_kpu()
 
 def init_bulk():
-    pass
+    system_info = json.load(open(sys.argv[2]))
+    machine_info = json.load(open(sys.argv[3]))
+    resouce = Resource(machine_info, job_type=AL_WORK.init_bulk)
+    input_param = InitBulkParam(system_info)
+    cwd = os.getcwd()
+    os.chdir(input_param.root_dir)
+    print("The work dir change to {}".format(os.getcwd()))
+    
+    #1. do relax
+    relax = Relax(resouce, input_param)
+    # make relax work dir
+    relax.make_relax_work()
+    # do relax jobs
+    relax.do_relax_jobs()
+    # do super cell and scale
+    duplicate_scale(resouce, input_param)
+    # do pertub
+    do_pertub(resouce, input_param)
+    # do scf
+    aimd = AIMD(resouce, input_param)
+    aimd.make_scf_work()
+    aimd.do_scf_jobs()
 
 def init_surface():
     pass

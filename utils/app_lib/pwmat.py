@@ -1,26 +1,41 @@
 import os
+import numpy as np
 import subprocess
 from utils.app_lib.poscar2lammps import p2l
-from utils.constant import LAMMPSFILE, ELEMENTTABLE_2
-from active_learning.user_input.param_input import SCFParam
+from utils.constant import LAMMPSFILE, ELEMENTTABLE_2, PWMAT
 
-        
-    
-def atom_config_to_lammps_in(atom_config_dir:str):
+def poscar_to_atom_config(poscar_dir:str, input_name:str="POSCAR", save_name:str="poscar_to_atom.config"):
+    cwd = os.getcwd()
+    os.chdir(poscar_dir)
+    subprocess.run(["poscar2config.x {} > /dev/null".format(input_name)], shell = True)
+    subprocess.run(["mv {} {} > /dev/null".format(PWMAT.atom_config, save_name)], shell = True)
+    os.chdir(cwd)
+
+def atom_config_to_poscar(atom_config_dir:str, input_name:str="atom.config", save_name:str="atom_to_POSCAR"):
     cwd = os.getcwd()
     os.chdir(atom_config_dir)
-    subprocess.run(["config2poscar.x atom.config > /dev/null"], shell = True)
+    subprocess.run(["config2poscar.x {} > /dev/null".format(input_name)], shell = True)
+    # remove the black space in ' Selective Dynamics' line in POSCAR file
+    subprocess.run(["sed -i '/^ *Selective Dynamics/s/^ *//' {} > /dev/null".format(LAMMPSFILE.poscar)], shell = True)
+    # remame the poscar file
+    subprocess.run(["mv {} {} > /dev/null".format(LAMMPSFILE.poscar, save_name)], shell = True)
+    os.chdir(cwd)
+     
+def atom_config_to_lammps_in(atom_config_dir:str, atom_config_name:str="atom.config"):
+    cwd = os.getcwd()
+    os.chdir(atom_config_dir)
+    subprocess.run(["config2poscar.x {} > /dev/null".format(atom_config_name)], shell = True)
     p2l(output_name = LAMMPSFILE.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
-
+    
 def poscar_to_lammps_in(poscar_dir:str):
     cwd = os.getcwd()
     os.chdir(atom_config_dir)    
     p2l(output_name = LAMMPSFILE.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
-    
+
 def traj_to_atom_config(tarj_file:str, atom_save_file:str):
     # read traj_file
     # return atom type name list: such as H, Cu
@@ -49,7 +64,7 @@ def _make_kspacing_kpoints(config, kspacing):
         lines = fp.read().split("\n")
     box = []
     for idx, ii in enumerate(lines):
-        if "lattice" in ii or "Lattice" in ii or "LATTICE" in ii:
+        if "LATTICE" in ii.upper():
             for kk in range(idx + 1, idx + 1 + 3):
                 vector = [float(jj) for jj in lines[kk].split()[0:3]]
                 box.append(vector)
@@ -65,7 +80,9 @@ def _make_kspacing_kpoints(config, kspacing):
 def make_pwmat_input_dict(
     node1,
     node2,
-    atom_config_name,
+    job_type,
+    atom_config,
+    pseudo_list,
     ecut,
     ecut2,
     e_error,
@@ -80,18 +97,26 @@ def make_pwmat_input_dict(
     flag_symm=None,
     out_wg="F",
     out_rho="F",
-    out_mlmd="T"
+    out_mlmd="T",
+    relax_detail=None,
+    vdw = None
 ):
+    icmix, smearing, sigma = _make_smearing(icmix, smearing, sigma)
+    flag_symm = _make_flag_symm(flag_symm)
+        
     script = ""
     script += "{} {}\n".format(node1, node2)
-    script += "{} {}\n".format("in.atom", atom_config_name)
-    script += "{} {}\n".format("ecut", ecut)
-    script += "{} {}\n".format("ecut2", ecut2)
-    script += "{} {}\n".format("e_error", e_error)
-    script += "{} {}\n".format("rho_error", rho_error)
-    script += "{} {}\n".format("out.force", out_force)
-    script += "{} {}\n".format("energy_decomp", energy_decomp)
-    script += "{} {}\n".format("out.stress", out_stress)
+    script += "job = {}\n".format(job_type)
+    script += "{} = {}\n".format("in.atom", os.path.basename(atom_config))
+    for pse_index, pseudo in enumerate(pseudo_list):
+        script += "IN.PSP{} = {}\n".format(pse_index+1, pseudo)
+    script += "{} =  {}\n".format("ecut", ecut)
+    script += "{} = {}\n".format("ecut2", ecut2)
+    script += "{} = {}\n".format("e_error", e_error)
+    script += "{} = {}\n".format("rho_error", rho_error)
+    script += "{} = {}\n".format("out.force", out_force)
+    script += "{} = {}\n".format("energy_decomp", energy_decomp)
+    script += "{} = {}\n".format("out.stress", out_stress)
     if icmix is not None:
         if sigma is not None:
             if smearing is not None:
@@ -125,42 +150,25 @@ def make_pwmat_input_dict(
             else:#run this config
                 SCF_ITER0_1 = "6 4 3 0.0000 0.025 2"
                 SCF_ITER0_2 = "94 4 3 1.0000 0.025 2"
-    script += "{} {}\n".format("scf_iter0_1", SCF_ITER0_1)
-    script += "{} {}\n".format("scf_iter0_2", SCF_ITER0_2)
+    script += "{} = {}\n".format("scf_iter0_1", SCF_ITER0_1)
+    script += "{} = {}\n".format("scf_iter0_2", SCF_ITER0_2)
     if flag_symm is not None:
         MP_N123 = _make_kspacing_kpoints(atom_config, kspacing)
         MP_N123 += str(flag_symm)
     else:
         MP_N123 = _make_kspacing_kpoints(atom_config, kspacing)
     # use pwmat defualt value
-    script += "{} {}\n".format("mp_n123", MP_N123)
-    script += "{} {}\n".format("out.wg", out_wg)
-    script += "{} {}\n".format("out.rho", out_rho)
-    script += "{} {}\n".format("out.mlmd", out_mlmd)
+    script += "{} = {}\n".format("mp_n123", MP_N123)
+    script += "{} = {}\n".format("out.wg", out_wg)
+    script += "{} = {}\n".format("out.rho", out_rho)
+    script += "{} = {}\n".format("out.mlmd", out_mlmd)
+    # if do relax
+    if job_type == PWMAT.relax:
+        if relax_detail is not None:
+            script += "{} = {}\n".format("relax_detail", relax_detail)
+        if vdw is not None:
+            script += "{} = {}\n".format("vdw", vdw)
     return script
-
-def _update_input_dict(input_dict_, user_dict):
-    if user_dict is None:
-        return input_dict_
-    input_dict = input_dict_
-    for ii in user_dict:
-        input_dict[ii] = user_dict[ii]
-    return input_dict
-
-
-def write_input_dict(input_dict):
-    lines = []
-    for key in input_dict:
-        if type(input_dict[key]) == bool:
-            if input_dict[key]:
-                rs = "T"
-            else:
-                rs = "F"
-        else:
-            rs = str(input_dict[key])
-        lines.append("%s=%s" % (key, rs))
-    return "\n".join(lines)
-
 
 def _make_smearing(icmix=None, smearing = None, sigma = None):
     if icmix == None:
@@ -196,41 +204,10 @@ def _make_flag_symm(flag_symm = None):
         raise RuntimeError("unknow flag_symm type " + str(flag_symm))
     return flag_symm
 
-
-def make_pwmat_input_user_dict(fp_params):
-    node1 = fp_params["node1"]
-    node2 = fp_params["node2"]
-    atom_config = fp_params["in.atom"]
-    ecut = fp_params["ecut"]
-    e_error = fp_params["e_error"]
-    rho_error = fp_params["rho_error"]
-    kspacing = fp_params["kspacing"]
-    if "user_pwmat_params" in fp_params:
-        user_dict = fp_params["user_pwmat_params"]
-    else:
-        user_dict = None
-    icmix, smearing, sigma = _make_smearing(fp_params)
-    flag_symm = _make_flag_symm(fp_params)
-    input_dict = make_pwmat_input_dict(
-        node1,
-        node2,
-        atom_config,
-        ecut,
-        e_error,
-        rho_error,
-        icmix=icmix,
-        smearing=smearing,
-        sigma=sigma,
-        kspacing=kspacing,
-        flag_symm=flag_symm,
-    )
-    input_dict = _update_input_dict(input_dict, user_dict)
-    input = write_input_dict(input_dict)
-    return input
-
-def read_and_check_etot_input(etot_input_path):
+def read_and_check_etot_input(etot_input_path:str):
     with open(etot_input_path, "r") as fp:
         lines = fp.readlines()
+    
     etot_lines = lines
     # key_type = ["string_keys", "char_keys", "bool_keys", "int_keys", "float_keys"]
     key_values = {}
@@ -246,7 +223,9 @@ def read_and_check_etot_input(etot_input_path):
                 raise Exception(" {} error, value should be char type, please check the file {}!".format(i, etot_input_path))
         elif key in bool_keys:
             value = i.split('=')[1].strip().upper()
-            if value not in ["T", "F"]:
+            if key == "ENERGY_DECOMP":
+                pass
+            elif value not in ["T", "F"]:
                 raise Exception(" {} error, value should be T or F, please check the file {}!".format(i, etot_input_path))
         elif key in int_keys:
             try:
@@ -277,8 +256,17 @@ param {str} atom_config
 return {*}
 author: wuxingxing
 '''
-def set_etot_input_by_file(etot_input_file:str, atom_config:str):
+def set_etot_input_by_file(etot_input_file:str, atom_config:str, resouce_node:list[int]):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file)
+    # check node1 and node2 are right
+    index = 0
+    while index < len(etot_lines):
+        if len(etot_lines[index].strip().split()) == 2:
+            node1, node2 = etot_lines[index].strip().split()
+            if node1 != resouce_node[0] or node2 != resouce_node[1]:
+                raise Exception("the node1 node2 '{}' in {} file is not consistent with resouce json file '{}', please check!".format(node1, node2, resouce_node))
+            break
+        index += 1
     key_list = list(key_values)
     # set OUT.MLMD
     if "OUT.MLMD" not in key_list:
@@ -300,36 +288,6 @@ def set_etot_input_by_file(etot_input_file:str, atom_config:str):
     
     return "".join(etot_lines)
 
-def set_etot_input_content(etot_input_file:str=None, atom_config:str=None, scfparam:SCFParam=None):
-    if etot_input_file is not None and os.path.exists(etot_input_file):
-        etot_input_content = set_etot_input_by_file(etot_input_file, atom_config)
-    else:
-
-        icmix, smearing, sigma = _make_smearing(scfparam.icmix, scfparam.smearing, scfparam.sigma)
-        flag_symm = _make_flag_symm(scfparam.flag_symm)
-        
-        etot_input_content = make_pwmat_input_dict(
-            node1 = scfparam.node1,
-            node2 = scfparam.node2,
-            atom_config_name = scfparam.atom_config_name,
-            ecut = scfparam.ecut,
-            ecut2 = scfparam.ecut2,
-            e_error = scfparam.e_error,
-            rho_error = scfparam.rho_error,
-            out_force = scfparam.out_force,
-            energy_decomp = scfparam.energy_decomp,
-            out_stress = scfparam.out_stress,
-            icmix = icmix,
-            smearing = smearing,
-            sigma = sigma,
-            kspacing = scfparam.kspacing,
-            flag_symm = flag_symm,
-            out_wg = scfparam.out_wg,
-            out_rho = scfparam.out_rho,
-            out_mlmd = scfparam.out_mlmd
-        )
-    return etot_input_content
-
 '''
 description: 
 get atom type list in the atom.config file
@@ -343,11 +301,11 @@ def get_atom_type_from_atom_config(atom_config:str):
     atom_num = int(lines[0].strip().split()[0].strip())
     index = 0
     while index < len(lines):
-        if "POSITION" in line.upper():
+        if "POSITION" in lines[index].upper():
             break
         index += 1
     atom_type_list = []
-    for atom_line in lines[index:index+atom_num]:
+    for atom_line in lines[index+1:index+atom_num+1]:
        atom_name = ELEMENTTABLE_2[int(atom_line.strip().split()[0].strip())]
        if atom_name not in atom_type_list:
            atom_type_list.append(atom_name)

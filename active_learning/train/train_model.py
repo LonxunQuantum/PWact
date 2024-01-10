@@ -5,6 +5,8 @@ import json
 import copy
 
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
+from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis, set_slurm_script_content
+
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
 
@@ -12,7 +14,6 @@ from utils.format_input_output import make_train_name, get_seed_by_time
 from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
 
 from utils.file_operation import save_json_file, write_to_file, mv_dir, del_dir, search_files
-from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis
 
 '''
 description: model training method:
@@ -44,6 +45,23 @@ class ModelTrian(object):
         save_json_file(train_dict, train_json_file_path)
         #make gen_feature.job file
         tag_path = TRAIN_FILE_STRUCTUR.feature_tag
+        
+        # slrum_gen_feat_script = set_slurm_script_content(gpu_per_node=self.resouce.train_resource.gpu_per_node, 
+        #                      number_node = self.resouce.train_resource.number_node, 
+        #                      cpu_per_node = self.resouce.train_resource.cpu_per_node,
+        #                      queue_name = self.resouce.train_resource.queue_name,
+        #                      custom_flags = self.resouce.train_resource.custom_flags,
+        #                      source_list = self.resouce.train_resource.source_list,
+        #                      module_list = self.resouce.train_resource.module_list,
+        #                      job_name = TRAIN_FILE_STRUCTUR.feature_dir.replace(".",""),
+        #                      run_cmd_template = "PWMLFF {} {}".format(MODEL_CMD.gen_feat, os.path.basename(train_json_file_path)),
+        #                      group = [feature_path],
+        #                      job_tag = os.path.join(feature_path, tag_path),
+        #                      task_tag = tag_path,
+        #                      task_tag_faild = feature_tag_failed,
+        #                      parallel_num=1
+        #                      )
+        
         slrum_gen_feat_script = self.set_train_script(TRAIN_FILE_STRUCTUR.feature_dir.replace(".",""), train_json_file_path, tag_path, MODEL_CMD.gen_feat)
         slurm_job_file_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_job)
         write_to_file(slurm_job_file_path, slrum_gen_feat_script, "w")        
@@ -67,7 +85,7 @@ class ModelTrian(object):
                 mission.check_running_job()
             
             mission.all_job_finished()
-            mission.move_slurm_log_to_slurm_work_dir(self.input_param.root_dir)
+            # mission.move_slurm_log_to_slurm_work_dir(self.input_param.root_dir)
             self.do_post_process_gen_feature()
     
     def do_post_process_gen_feature(self):
@@ -217,7 +235,7 @@ class ModelTrian(object):
                 mission.commit_jobs()
                 mission.check_running_job()
                 mission.all_job_finished()
-                mission.move_slurm_log_to_slurm_work_dir(self.input_param.root_dir)
+                # mission.move_slurm_log_to_slurm_work_dir(self.input_param.root_dir)
         
     def post_process_train(self):
         if self.input_param.reserve_feature is False:

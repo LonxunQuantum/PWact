@@ -4,6 +4,48 @@ class AL_STRUCTURE:
     train = "train"
     explore = "explore"
     labeling = "label"
+    pertub = "pertub"
+    aimd = "aimd"
+    collection = "collection"
+
+class AL_WORK:
+    init_bulk = "init_bulk"
+    init_surface = "init_surface"
+    run_iter = "run"
+
+class INIT_BULK:
+    relax = "relax"
+    relax_job ="relax.job"
+    relax_tag = "tag.relax.success"
+    relax_tag_failed = "tag.relax.failed"
+    final_config = "final.config"
+    
+    init_config = "init_config"
+    super_cell_scale = "super_cell_scale"
+    super_cell = "super_cell"
+    scale = "scale"
+    super_cell_config = "super_cell.config"
+    scale_config = "scale.config"
+    pertub = "pertub"
+    
+    aimd = "scf"
+    aimd_job = "scf.job"
+    aimd_tag = "tag.scf.success"
+    aimd_tag_failed ="tag.scf.failed"
+    
+    collection = "collection"
+    structures = "structures"
+    
+    @staticmethod
+    def get_work_type(work_type:str):
+        if INIT_BULK.relax.upper() in work_type.upper():
+            return INIT_BULK.relax
+        elif INIT_BULK.super_cell.upper() in work_type.upper():
+            return INIT_BULK.super_cell
+        elif INIT_BULK.scale.upper() in work_type.upper():
+            return INIT_BULK.scale
+        else:
+            return INIT_BULK.init_config
 
 class TRAIN_FILE_STRUCTUR:
     work_dir = "work_dir"
@@ -11,6 +53,7 @@ class TRAIN_FILE_STRUCTUR:
     feature_json = "feature.json"
     feature_job = "feature.job"
     feature_tag = "tag.feature.success"
+    feature_tag_failed = "tag.feature.failed"
     train_json = "train.json"
     train_job = "train.job"
     train_tag = "tag.train.success"
@@ -54,15 +97,14 @@ class EXPLORE_FILE_STRUCTURE:
     model_devi_energy = 1
     model_devi_step = 0
     
-    
+
 class LABEL_FILE_STRUCTURE:
     scf = "scf"
     result = "result"
     scf_tag = "tag.scf.success"
-    fail_scf_tag = "tag.scf.failed"
+    scf_tag_failed = "tag.scf.failed"
     scf_job = "scf.job"
-    
-    
+       
 class MODEL_CMD:
     train = "train"
     gen_feat = "gen_feat"
@@ -93,7 +135,7 @@ class TRAIN_INPUT_PARAM:
 
 class LAMMPSFILE:
     input_lammps="in.lammps"
-    vasp_sys_config = "POSCAR"
+    poscar = "POSCAR"
     lammps_sys_config = "lmp.config"
 
 class PWMAT:
@@ -102,6 +144,9 @@ class PWMAT:
     etot_input = "etot.input"
     out_mlmd = "OUT.MLMD"
     mvm = "mvm"
+    relax="RELAX"
+    scf = "SCF"
+    md = "MD"
     
 class FORCEFILED:
     fortran_lmps = 1 #

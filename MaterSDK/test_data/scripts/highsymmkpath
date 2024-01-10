@@ -1,0 +1,964 @@
+#!/usr/bin/env python
+import argparse
+import math
+import re
+#import itertools
+import numpy as np
+#from os import system
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+#from pymatgen.io.cif import CifParser
+#from pymatgen.io.cif import CifWriter
+#from pymatgen.io.vasp import Poscar
+from pymatgen.core import Lattice, Structure
+from warnings import warn
+from math import ceil, cos, e, pi, sin, tan
+
+class KPathSetyawanCurtarolo:
+    """
+    This class looks for path along high symmetry lines in
+    the Brillouin Zone.
+    It is based on Setyawan, W., & Curtarolo, S. (2010).
+    High-throughput electronic band structure calculations:
+    Challenges and tools. Computational Materials Science,
+    49(2), 299-312. doi:10.1016/j.commatsci.2010.05.010
+    It should be used with primitive structures that
+    comply with the definition from the paper.
+    The symmetry is determined by spglib through the
+    SpacegroupAnalyzer class. The analyzer can be used to
+    produce the correct primitive structure (method
+    get_primitive_standard_structure(international_monoclinic=False)).
+    A warning will signal possible compatibility problems
+    with the given structure. KPoints from get_kpoints() method
+    are returned in the reciprocal cell basis defined in the paper.
+    """
+    
+    def __init__(self, structure, symprec=0.1, angle_tolerance=5, atol=1e-5):
+        """
+        Args:
+        structure (Structure): Structure object
+        symprec (float): Tolerance for symmetry finding
+        angle_tolerance (float): Angle tolerance for symmetry finding.
+        atol (float): Absolute tolerance used to compare the input
+            structure with the one expected as primitive standard.
+            A warning will be issued if the lattices don't match.
+        """
+        if "magmom" in structure.site_properties.keys():
+            warn(
+                "'magmom' entry found in site properties but will be ignored \
+                  for the Setyawan and Curtarolo convention."
+            )
+        
+        self._structure = structure
+        self._sym = SpacegroupAnalyzer(structure, symprec=symprec, angle_tolerance=angle_tolerance)
+        self._prim = self._sym.get_primitive_standard_structure(international_monoclinic=False)
+        self._conv = self._sym.get_conventional_standard_structure(international_monoclinic=False)
+        #self._conv = self._sym.get_refined_structure()
+        self._rec_lattice = self._structure.lattice.reciprocal_lattice
+    
+        if np.allclose(self._structure.lattice.parameters,self._prim.lattice.parameters,atol=atol):
+            #symtype = 'prim'
+            lattice_type = self._sym.get_lattice_type()
+            spg_symbol = self._sym.get_space_group_symbol()
+        elif np.allclose(self._structure.lattice.parameters, self._conv.lattice.parameters,atol=atol):
+            #symtype = 'conv'
+            lattice_type = self._sym.get_lattice_type()
+            spg_symbol = "P1"
+            #self._conv = self._structure
+            #self._rec_lattice = self._structure.lattice.reciprocal_lattice
+            if lattice_type == "rhombohedral":
+                lattice_type = "hexagonal"
+        else:
+            #symtype = 'p1'
+            lattice_type = "triclinic"
+            spg_symbol = "P1"
+        # Note: this warning will be issued for space groups 38-41, since the primitive cell must be
+        # reformatted to match Setyawan/Curtarolo convention in order to work with the current k-path
+        # generation scheme.
+        #if not np.allclose(self._structure.lattice.matrix, self._prim.lattice.matrix, atol=atol):
+        #    warn(
+        #        "The input structure does not match the expected standard primitive! "
+        #        "The path can be incorrect. Use at your own risk."
+        #    )
+    
+        if lattice_type == "cubic":
+            if "P" in spg_symbol:
+                self._kpath = self.cubic()
+            elif "F" in spg_symbol:
+                self._kpath = self.fcc()
+            elif "I" in spg_symbol:
+                self._kpath = self.bcc()
+            else:
+                warn(f"Unexpected value for spg_symbol: {spg_symbol}")
+
+        elif lattice_type == "tetragonal":
+            if "P" in spg_symbol:
+                self._kpath = self.tet()
+            elif "I" in spg_symbol:
+                a = self._conv.lattice.abc[0]
+                c = self._conv.lattice.abc[2]
+                if c < a:
+                    self._kpath = self.bctet1(c, a)
+                else:
+                    self._kpath = self.bctet2(c, a)
+            else:
+                warn(f"Unexpected value for spg_symbol: {spg_symbol}")
+    
+        elif lattice_type == "orthorhombic":
+            a = self._conv.lattice.abc[0]
+            b = self._conv.lattice.abc[1]
+            c = self._conv.lattice.abc[2]
+    
+            if "P" in spg_symbol:
+                self._kpath = self.orc()
+    
+            elif "F" in spg_symbol:
+                if 1 / a**2 > 1 / b**2 + 1 / c**2:
+                    self._kpath = self.orcf1(a, b, c)
+                elif 1 / a**2 < 1 / b**2 + 1 / c**2:
+                    self._kpath = self.orcf2(a, b, c)
+                else:
+                    self._kpath = self.orcf3(a, b, c)
+    
+            elif "I" in spg_symbol:
+                self._kpath = self.orci(a, b, c)
+    
+            elif "C" in spg_symbol or "A" in spg_symbol:
+                self._kpath = self.orcc(a, b, c)
+            else:
+                warn(f"Unexpected value for spg_symbol: {spg_symbol}")
+    
+        elif lattice_type == "hexagonal":
+            self._kpath = self.hex()
+    
+        elif lattice_type == "rhombohedral":
+            alpha = self._structure.lattice.parameters[3]
+            #alpha = self._prim.lattice.parameters[3]
+            if alpha < 90:
+                self._kpath = self.rhl1(alpha * pi / 180)
+            else:
+                self._kpath = self.rhl2(alpha * pi / 180)
+    
+        elif lattice_type == "monoclinic":
+            a, b, c = self._conv.lattice.abc
+            alpha = self._conv.lattice.parameters[3]
+            # beta = self._conv.lattice.parameters[4]
+    
+            if "P" in spg_symbol:
+                self._kpath = self.mcl(b, c, alpha * pi / 180)
+    
+            elif "C" in spg_symbol:
+                kgamma = self._rec_lattice.parameters[5]
+                if kgamma > 90:
+                    self._kpath = self.mclc1(a, b, c, alpha * pi / 180)
+                if kgamma == 90:
+                    self._kpath = self.mclc2(a, b, c, alpha * pi / 180)
+                if kgamma < 90:
+                    if b * cos(alpha * pi / 180) / c + b**2 * sin(alpha * pi / 180) ** 2 / a**2 < 1:
+                        self._kpath = self.mclc3(a, b, c, alpha * pi / 180)
+                    if b * cos(alpha * pi / 180) / c + b**2 * sin(alpha * pi / 180) ** 2 / a**2 == 1:
+                        self._kpath = self.mclc4(a, b, c, alpha * pi / 180)
+                    if b * cos(alpha * pi / 180) / c + b**2 * sin(alpha * pi / 180) ** 2 / a**2 > 1:
+                        self._kpath = self.mclc5(a, b, c, alpha * pi / 180)
+            else:
+                warn(f"Unexpected value for spg_symbol: {spg_symbol}")
+    
+        elif lattice_type == "triclinic":
+            kalpha = self._rec_lattice.parameters[3]
+            kbeta = self._rec_lattice.parameters[4]
+            kgamma = self._rec_lattice.parameters[5]
+            if kalpha > 90 and kbeta > 90 and kgamma > 90:
+                self._kpath = self.tria()
+            elif kalpha < 90 and kbeta < 90 and kgamma < 90:
+                self._kpath = self.trib()
+            elif kalpha > 90 and kbeta > 90 and kgamma == 90:
+                self._kpath = self.tria()
+            elif kalpha < 90 and kbeta < 90 and kgamma == 90:
+                self._kpath = self.trib()
+            else:
+                self._kpath = self.trielse()
+    
+        else:
+            warn(f"Unknown lattice type {lattice_type}")
+    
+    def cubic(self):
+        """
+        CUB Path
+        """
+        self.name = "CUB"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "X": np.array([0.0, 0.5, 0.0]),
+            "R": np.array([0.5, 0.5, 0.5]),
+            "M": np.array([0.5, 0.5, 0.0]),
+        }
+        path = [["G", "X", "M", "G", "R", "X"], ["M", "R"]]
+        return {"kpoints": kpoints, "path": path}
+    
+    def fcc(self):
+        """
+        FCC Path
+        """
+        self.name = "FCC"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "K": np.array([3.0 / 8.0, 3.0 / 8.0, 3.0 / 4.0]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "U": np.array([5.0 / 8.0, 1.0 / 4.0, 5.0 / 8.0]),
+            "W": np.array([0.5, 1.0 / 4.0, 3.0 / 4.0]),
+            "X": np.array([0.5, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "X", "W", "K", "G", "L", "U", "W", "L", "K"],
+            ["U", "X"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def bcc(self):
+        """
+        BCC Path
+        """
+        self.name = "BCC"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "H": np.array([0.5, -0.5, 0.5]),
+            "P": np.array([0.25, 0.25, 0.25]),
+            "N": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [["G", "H", "N", "G", "P", "H"], ["P", "N"]]
+        return {"kpoints": kpoints, "path": path}
+    
+    def tet(self):
+        """
+        TET Path
+        """
+        self.name = "TET"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([0.5, 0.5, 0.5]),
+            "M": np.array([0.5, 0.5, 0.0]),
+            "R": np.array([0.0, 0.5, 0.5]),
+            "X": np.array([0.0, 0.5, 0.0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "X", "M", "G", "Z", "R", "A", "Z"],
+            ["X", "R"],
+            ["M", "A"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def bctet1(self, c, a):
+        """
+        BCT1 Path
+        """
+        self.name = "BCT1"
+        eta = (1 + c**2 / a**2) / 4.0
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "M": np.array([-0.5, 0.5, 0.5]),
+            "N": np.array([0.0, 0.5, 0.0]),
+            "P": np.array([0.25, 0.25, 0.25]),
+            "X": np.array([0.0, 0.0, 0.5]),
+            "Z_1": np.array([-eta, 1 - eta, eta]),
+        }
+        path = [["G", "X", "M", "G", "Z", "P", "N", "Z_1", "M"], ["X", "P"]]
+        return {"kpoints": kpoints, "path": path}
+    
+    def bctet2(self, c, a):
+        """
+        BCT2 Path
+        """
+        self.name = "BCT2"
+        eta = (1 + a**2 / c**2) / 4.0
+        zeta = a**2 / (2 * c**2)
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "N": np.array([0.0, 0.5, 0.0]),
+            "P": np.array([0.25, 0.25, 0.25]),
+            "S": np.array([-eta, eta, eta]),
+            "S_1": np.array([eta, 1 - eta, -eta]),
+            "X": np.array([0.0, 0.0, 0.5]),
+            "Y": np.array([-zeta, zeta, 0.5]),
+            "Y_1": np.array([0.5, 0.5, -zeta]),
+            "Z": np.array([0.5, 0.5, -0.5]),
+        }
+        path = [
+            [
+                "G",
+                "X",
+                "Y",
+                "S",
+                "G",
+                "Z",
+                "S_1",
+                "N",
+                "P",
+                "Y_1",
+                "Z",
+            ],
+            ["X", "P"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orc(self):
+        """
+        ORC Path
+        """
+        self.name = "ORC"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "R": np.array([0.5, 0.5, 0.5]),
+            "S": np.array([0.5, 0.5, 0.0]),
+            "T": np.array([0.0, 0.5, 0.5]),
+            "U": np.array([0.5, 0.0, 0.5]),
+            "X": np.array([0.5, 0.0, 0.0]),
+            "Y": np.array([0.0, 0.5, 0.0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "X", "S", "Y", "G", "Z", "U", "R", "T", "Z"],
+            ["Y", "T"],
+            ["U", "X"],
+            ["S", "R"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orcf1(self, a, b, c):
+        """
+        ORFC1 Path
+        """
+        self.name = "ORCF1"
+        zeta = (1 + a**2 / b**2 - a**2 / c**2) / 4
+        eta = (1 + a**2 / b**2 + a**2 / c**2) / 4
+    
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([0.5, 0.5 + zeta, zeta]),
+            "A_1": np.array([0.5, 0.5 - zeta, 1 - zeta]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "T": np.array([1, 0.5, 0.5]),
+            "X": np.array([0.0, eta, eta]),
+            "X_1": np.array([1, 1 - eta, 1 - eta]),
+            "Y": np.array([0.5, 0.0, 0.5]),
+            "Z": np.array([0.5, 0.5, 0.0]),
+        }
+        path = [
+            ["G", "Y", "T", "Z", "G", "X", "A_1", "Y"],
+            ["T", "X_1"],
+            ["X", "A", "Z"],
+            ["L", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orcf2(self, a, b, c):
+        """
+        ORFC2 Path
+        """
+        self.name = "ORCF2"
+        phi = (1 + c**2 / b**2 - c**2 / a**2) / 4
+        eta = (1 + a**2 / b**2 - a**2 / c**2) / 4
+        delta = (1 + b**2 / a**2 - b**2 / c**2) / 4
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "C": np.array([0.5, 0.5 - eta, 1 - eta]),
+            "C_1": np.array([0.5, 0.5 + eta, eta]),
+            "D": np.array([0.5 - delta, 0.5, 1 - delta]),
+            "D_1": np.array([0.5 + delta, 0.5, delta]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "H": np.array([1 - phi, 0.5 - phi, 0.5]),
+            "H_1": np.array([phi, 0.5 + phi, 0.5]),
+            "X": np.array([0.0, 0.5, 0.5]),
+            "Y": np.array([0.5, 0.0, 0.5]),
+            "Z": np.array([0.5, 0.5, 0.0]),
+        }
+        path = [
+            ["G", "Y", "C", "D", "X", "G", "Z", "D_1", "H", "C"],
+            ["C_1", "Z"],
+            ["X", "H_1"],
+            ["H", "Y"],
+            ["L", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orcf3(self, a, b, c):
+        """
+        ORFC3 Path
+        """
+        self.name = "ORCF3"
+        zeta = (1 + a**2 / b**2 - a**2 / c**2) / 4
+        eta = (1 + a**2 / b**2 + a**2 / c**2) / 4
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([0.5, 0.5 + zeta, zeta]),
+            "A_1": np.array([0.5, 0.5 - zeta, 1 - zeta]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "T": np.array([1, 0.5, 0.5]),
+            "X": np.array([0.0, eta, eta]),
+            "X_1": np.array([1, 1 - eta, 1 - eta]),
+            "Y": np.array([0.5, 0.0, 0.5]),
+            "Z": np.array([0.5, 0.5, 0.0]),
+        }
+        path = [
+            ["G", "Y", "T", "Z", "G", "X", "A_1", "Y"],
+            ["X", "A", "Z"],
+            ["L", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orci(self, a, b, c):
+        """
+        ORCI Path
+        """
+        self.name = "ORCI"
+        zeta = (1 + a**2 / c**2) / 4
+        eta = (1 + b**2 / c**2) / 4
+        delta = (b**2 - a**2) / (4 * c**2)
+        mu = (a**2 + b**2) / (4 * c**2)
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "L": np.array([-mu, mu, 0.5 - delta]),
+            "L_1": np.array([mu, -mu, 0.5 + delta]),
+            "L_2": np.array([0.5 - delta, 0.5 + delta, -mu]),
+            "R": np.array([0.0, 0.5, 0.0]),
+            "S": np.array([0.5, 0.0, 0.0]),
+            "T": np.array([0.0, 0.0, 0.5]),
+            "W": np.array([0.25, 0.25, 0.25]),
+            "X": np.array([-zeta, zeta, zeta]),
+            "X_1": np.array([zeta, 1 - zeta, -zeta]),
+            "Y": np.array([eta, -eta, eta]),
+            "Y_1": np.array([1 - eta, eta, -eta]),
+            "Z": np.array([0.5, 0.5, -0.5]),
+        }
+        path = [
+            ["G", "X", "L", "T", "W", "R", "X_1", "Z", "G", "Y", "S", "W"],
+            ["L_1", "Y"],
+            ["Y_1", "Z"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def orcc(self, a, b, c):
+        """
+        ORCC Path
+        """
+        self.name = "ORCC"
+        zeta = (1 + a**2 / b**2) / 4
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([zeta, zeta, 0.5]),
+            "A_1": np.array([-zeta, 1 - zeta, 0.5]),
+            "R": np.array([0.0, 0.5, 0.5]),
+            "S": np.array([0.0, 0.5, 0.0]),
+            "T": np.array([-0.5, 0.5, 0.5]),
+            "X": np.array([zeta, zeta, 0.0]),
+            "X_1": np.array([-zeta, 1 - zeta, 0.0]),
+            "Y": np.array([-0.5, 0.5, 0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            [
+                "G",
+                "X",
+                "S",
+                "R",
+                "A",
+                "Z",
+                "G",
+                "Y",
+                "X_1",
+                "A_1",
+                "T",
+                "Y",
+            ],
+            ["Z", "T"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def hex(self):
+        """
+        HEX Path
+        """
+        self.name = "HEX"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([0.0, 0.0, 0.5]),
+            "H": np.array([1.0 / 3.0, 1.0 / 3.0, 0.5]),
+            "K": np.array([1.0 / 3.0, 1.0 / 3.0, 0.0]),
+            "L": np.array([0.5, 0.0, 0.5]),
+            "M": np.array([0.5, 0.0, 0.0]),
+        }
+        path = [
+            ["G", "M", "K", "G", "A", "L", "H", "A"],
+            ["L", "M"],
+            ["K", "H"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def rhl1(self, alpha):
+        """
+        RHL1 Path
+        """
+        self.name = "RHL1"
+        eta = (1 + 4 * cos(alpha)) / (2 + 4 * cos(alpha))
+        nu = 3.0 / 4.0 - eta / 2.0
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "B": np.array([eta, 0.5, 1.0 - eta]),
+            "B_1": np.array([1.0 / 2.0, 1.0 - eta, eta - 1.0]),
+            "F": np.array([0.5, 0.5, 0.0]),
+            "L": np.array([0.5, 0.0, 0.0]),
+            "L_1": np.array([0.0, 0.0, -0.5]),
+            "P": np.array([eta, nu, nu]),
+            "P_1": np.array([1.0 - nu, 1.0 - nu, 1.0 - eta]),
+            "P_2": np.array([nu, nu, eta - 1.0]),
+            "Q": np.array([1.0 - nu, nu, 0.0]),
+            "X": np.array([nu, 0.0, -nu]),
+            "Z": np.array([0.5, 0.5, 0.5]),
+        }
+        path = [
+            ["G", "L", "B_1"],
+            ["B", "Z", "G", "X"],
+            ["Q", "F", "P_1", "Z"],
+            ["L", "P"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def rhl2(self, alpha):
+        """
+        RHL2 Path
+        """
+        self.name = "RHL2"
+        eta = 1 / (2 * tan(alpha / 2.0) ** 2)
+        nu = 3.0 / 4.0 - eta / 2.0
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "F": np.array([0.5, -0.5, 0.0]),
+            "L": np.array([0.5, 0.0, 0.0]),
+            "P": np.array([1 - nu, -nu, 1 - nu]),
+            "P_1": np.array([nu, nu - 1.0, nu - 1.0]),
+            "Q": np.array([eta, eta, eta]),
+            "Q_1": np.array([1.0 - eta, -eta, -eta]),
+            "Z": np.array([0.5, -0.5, 0.5]),
+        }
+        path = [["G", "P", "Z", "Q", "G", "F", "P_1", "Q_1", "L", "Z"]]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mcl(self, b, c, beta):
+        """
+        MCL Path
+        """
+        self.name = "MCL"
+        eta = (1 - b * cos(beta) / c) / (2 * sin(beta) ** 2)
+        nu = 0.5 - eta * c * cos(beta) / b
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "A": np.array([0.5, 0.5, 0.0]),
+            "C": np.array([0.0, 0.5, 0.5]),
+            "D": np.array([0.5, 0.0, 0.5]),
+            "D_1": np.array([0.5, 0.5, -0.5]),
+            "E": np.array([0.5, 0.5, 0.5]),
+            "H": np.array([0.0, eta, 1.0 - nu]),
+            "H_1": np.array([0.0, 1.0 - eta, nu]),
+            "H_2": np.array([0.0, eta, -nu]),
+            "M": np.array([0.5, eta, 1.0 - nu]),
+            "M_1": np.array([0.5, 1 - eta, nu]),
+            "M_2": np.array([0.5, 1 - eta, nu]),
+            "X": np.array([0.0, 0.5, 0.0]),
+            "Y": np.array([0.0, 0.0, 0.5]),
+            "Y_1": np.array([0.0, 0.0, -0.5]),
+            "Z": np.array([0.5, 0.0, 0.0]),
+        }
+        path = [
+            ["G", "Y", "H", "C", "E", "M_1", "A", "X", "H_1"],
+            ["M", "D", "Z"],
+            ["Y", "D"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mclc1(self, a, b, c, alpha):
+        """
+        MCLC1 Path
+        """
+        self.name = "MCLC1"
+        zeta = (2 - b * cos(alpha) / c) / (4 * sin(alpha) ** 2)
+        eta = 0.5 + 2 * zeta * c * cos(alpha) / b
+        psi = 0.75 - a**2 / (4 * b**2 * sin(alpha) ** 2)
+        phi = psi + (0.75 - psi) * b * cos(alpha) / c
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "N": np.array([0.5, 0.0, 0.0]),
+            "N_1": np.array([0.0, -0.5, 0.0]),
+            "F": np.array([1 - zeta, 1 - zeta, 1 - eta]),
+            "F_1": np.array([zeta, zeta, eta]),
+            "F_2": np.array([-zeta, -zeta, 1 - eta]),
+            "I": np.array([phi, 1 - phi, 0.5]),
+            "I_1": np.array([1 - phi, phi - 1, 0.5]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "M": np.array([0.5, 0.0, 0.5]),
+            "X": np.array([1 - psi, psi - 1, 0.0]),
+            "X_1": np.array([psi, 1 - psi, 0.0]),
+            "X_2": np.array([psi - 1, -psi, 0.0]),
+            "Y": np.array([0.5, 0.5, 0.0]),
+            "Y_1": np.array([-0.5, -0.5, 0.0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "Y", "F", "L", "I"],
+            ["I_1", "Z", "F_1"],
+            ["Y", "X_1"],
+            ["X", "G", "N"],
+            ["M", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mclc2(self, a, b, c, alpha):
+        """
+        MCLC2 Path
+        """
+        self.name = "MCLC2"
+        zeta = (2 - b * cos(alpha) / c) / (4 * sin(alpha) ** 2)
+        eta = 0.5 + 2 * zeta * c * cos(alpha) / b
+        psi = 0.75 - a**2 / (4 * b**2 * sin(alpha) ** 2)
+        phi = psi + (0.75 - psi) * b * cos(alpha) / c
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "N": np.array([0.5, 0.0, 0.0]),
+            "N_1": np.array([0.0, -0.5, 0.0]),
+            "F": np.array([1 - zeta, 1 - zeta, 1 - eta]),
+            "F_1": np.array([zeta, zeta, eta]),
+            "F_2": np.array([-zeta, -zeta, 1 - eta]),
+            "F_3": np.array([1 - zeta, -zeta, 1 - eta]),
+            "I": np.array([phi, 1 - phi, 0.5]),
+            "I_1": np.array([1 - phi, phi - 1, 0.5]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "M": np.array([0.5, 0.0, 0.5]),
+            "X": np.array([1 - psi, psi - 1, 0.0]),
+            "X_1": np.array([psi, 1 - psi, 0.0]),
+            "X_2": np.array([psi - 1, -psi, 0.0]),
+            "Y": np.array([0.5, 0.5, 0.0]),
+            "Y_1": np.array([-0.5, -0.5, 0.0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "Y", "F", "L", "I"],
+            ["I_1", "Z", "F_1"],
+            ["N", "G", "M"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mclc3(self, a, b, c, alpha):
+        """
+        MCLC3 Path
+        """
+        self.name = "MCLC3"
+        mu = (1 + b**2 / a**2) / 4.0
+        delta = b * c * cos(alpha) / (2 * a**2)
+        zeta = mu - 0.25 + (1 - b * cos(alpha) / c) / (4 * sin(alpha) ** 2)
+        eta = 0.5 + 2 * zeta * c * cos(alpha) / b
+        phi = 1 + zeta - 2 * mu
+        psi = eta - 2 * delta
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "F": np.array([1 - phi, 1 - phi, 1 - psi]),
+            "F_1": np.array([phi, phi - 1, psi]),
+            "F_2": np.array([1 - phi, -phi, 1 - psi]),
+            "H": np.array([zeta, zeta, eta]),
+            "H_1": np.array([1 - zeta, -zeta, 1 - eta]),
+            "H_2": np.array([-zeta, -zeta, 1 - eta]),
+            "I": np.array([0.5, -0.5, 0.5]),
+            "M": np.array([0.5, 0.0, 0.5]),
+            "N": np.array([0.5, 0.0, 0.0]),
+            "N_1": np.array([0.0, -0.5, 0.0]),
+            "X": np.array([0.5, -0.5, 0.0]),
+            "Y": np.array([mu, mu, delta]),
+            "Y_1": np.array([1 - mu, -mu, -delta]),
+            "Y_2": np.array([-mu, -mu, -delta]),
+            "Y_3": np.array([mu, mu - 1, delta]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "Y", "F", "H", "Z", "I", "F_1"],
+            ["H_1", "Y_1", "X", "G", "N"],
+            ["M", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mclc4(self, a, b, c, alpha):
+        """
+        MCLC4 Path
+        """
+        self.name = "MCLC4"
+        mu = (1 + b**2 / a**2) / 4.0
+        delta = b * c * cos(alpha) / (2 * a**2)
+        zeta = mu - 0.25 + (1 - b * cos(alpha) / c) / (4 * sin(alpha) ** 2)
+        eta = 0.5 + 2 * zeta * c * cos(alpha) / b
+        phi = 1 + zeta - 2 * mu
+        psi = eta - 2 * delta
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "F": np.array([1 - phi, 1 - phi, 1 - psi]),
+            "F_1": np.array([phi, phi - 1, psi]),
+            "F_2": np.array([1 - phi, -phi, 1 - psi]),
+            "H": np.array([zeta, zeta, eta]),
+            "H_1": np.array([1 - zeta, -zeta, 1 - eta]),
+            "H_2": np.array([-zeta, -zeta, 1 - eta]),
+            "I": np.array([0.5, -0.5, 0.5]),
+            "M": np.array([0.5, 0.0, 0.5]),
+            "N": np.array([0.5, 0.0, 0.0]),
+            "N_1": np.array([0.0, -0.5, 0.0]),
+            "X": np.array([0.5, -0.5, 0.0]),
+            "Y": np.array([mu, mu, delta]),
+            "Y_1": np.array([1 - mu, -mu, -delta]),
+            "Y_2": np.array([-mu, -mu, -delta]),
+            "Y_3": np.array([mu, mu - 1, delta]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "Y", "F", "H", "Z", "I"],
+            ["H_1", "Y_1", "X", "G", "N"],
+            ["M", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def mclc5(self, a, b, c, alpha):
+        """
+        MCLC5 Path
+        """
+        self.name = "MCLC5"
+        zeta = (b**2 / a**2 + (1 - b * cos(alpha) / c) / sin(alpha) ** 2) / 4
+        eta = 0.5 + 2 * zeta * c * cos(alpha) / b
+        mu = eta / 2 + b**2 / (4 * a**2) - b * c * cos(alpha) / (2 * a**2)
+        nu = 2 * mu - zeta
+        rho = 1 - zeta * a**2 / b**2
+        omega = (4 * nu - 1 - b**2 * sin(alpha) ** 2 / a**2) * c / (2 * b * cos(alpha))
+        delta = zeta * c * cos(alpha) / b + omega / 2 - 0.25
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "F": np.array([nu, nu, omega]),
+            "F_1": np.array([1 - nu, 1 - nu, 1 - omega]),
+            "F_2": np.array([nu, nu - 1, omega]),
+            "H": np.array([zeta, zeta, eta]),
+            "H_1": np.array([1 - zeta, -zeta, 1 - eta]),
+            "H_2": np.array([-zeta, -zeta, 1 - eta]),
+            "I": np.array([rho, 1 - rho, 0.5]),
+            "I_1": np.array([1 - rho, rho - 1, 0.5]),
+            "L": np.array([0.5, 0.5, 0.5]),
+            "M": np.array([0.5, 0.0, 0.5]),
+            "N": np.array([0.5, 0.0, 0.0]),
+            "N_1": np.array([0.0, -0.5, 0.0]),
+            "X": np.array([0.5, -0.5, 0.0]),
+            "Y": np.array([mu, mu, delta]),
+            "Y_1": np.array([1 - mu, -mu, -delta]),
+            "Y_2": np.array([-mu, -mu, -delta]),
+            "Y_3": np.array([mu, mu - 1, delta]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["G", "Y", "F", "L", "I"],
+            ["I_1", "Z", "H", "F_1"],
+            ["H_1", "Y_1", "X", "G", "N"],
+            ["M", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def tria(self):
+        """
+        TRI1a Path
+        """
+        self.name = "TRI1a"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "L": np.array([0.5, 0.5, 0.0]),
+            "M": np.array([0.0, 0.5, 0.5]),
+            "N": np.array([0.5, 0.0, 0.5]),
+            "R": np.array([0.5, 0.5, 0.5]),
+            "X": np.array([0.5, 0.0, 0.0]),
+            "Y": np.array([0.0, 0.5, 0.0]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+        }
+        path = [
+            ["X", "G", "Y"],
+            ["L", "G", "Z"],
+            ["N", "G", "M"],
+            ["R", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+    
+    def trib(self):
+        """
+        TRI1b Path
+        """
+        self.name = "TRI1b"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "L": np.array([0.5, -0.5, 0.0]),
+            "M": np.array([0.0, 0.0, 0.5]),
+            "N": np.array([-0.5, -0.5, 0.5]),
+            "R": np.array([0.0, -0.5, 0.5]),
+            "X": np.array([0.0, -0.5, 0.0]),
+            "Y": np.array([0.5, 0.0, 0.0]),
+            "Z": np.array([-0.5, 0.0, 0.5]),
+        }
+        path = [
+            ["X", "G", "Y"],
+            ["L", "G", "Z"],
+            ["N", "G", "M"],
+            ["R", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+
+    def trielse(self):
+        """
+        TRI else Path
+        """
+        self.name = "TRIelse"
+        kpoints = {
+            "G": np.array([0.0, 0.0, 0.0]),
+            "F": np.array([0.0, 0.5, 0.0]),
+            "Q": np.array([0.0, 0.5, 0.5]),
+            "Z": np.array([0.0, 0.0, 0.5]),
+            "B": np.array([0.5, 0.0, 0.0]),
+        }
+        path = [
+            ["G", "F", "Q", "Z", "G"],
+            ["B", "G"],
+        ]
+        return {"kpoints": kpoints, "path": path}
+
+    def kpath(self):
+        return self._kpath
+
+ELEMENTS=['H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K',  
+    'Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr', 
+    'Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd',  
+    'Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg', 
+    'Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm', 
+    'Md','No','Lr','Rf','Db','Sg','Bh','Hs','Mt','Ds','Rg','Cn','Nh','Fl','Mc','Lv','Ts','Og']
+# Classes
+#class Cell:
+#    def __init__(self):
+#        a = None
+#        b = None
+#        c = None
+#        alpha = None
+#        beta = None
+#        gamma = None
+def pwmat2structure(fs,magnetic=False):
+    #cell = Cell()
+    atoms = []
+    coords = []
+    lattice = []
+    constraint = []
+    magmom = []
+
+    f=open(fs, 'r')
+    string = f.read()
+    #find pattern
+    str_latt = "".join(re.findall('lattice.*',string,re.I)[0]).strip()
+    str_pos = "".join(re.findall('position.*',string,re.I)[0]).strip()
+    if magnetic:
+        try:
+            re.findall('magnetic.*',string,re.I)
+            str_mag = "".join(re.findall('magnetic.*',string,re.I)[0]).strip()
+        except:
+            flag = False
+        else:
+            flag = True
+    else:
+        flag = False
+
+    f.seek(0)
+    atomconlines = f.readlines()
+    list2 = [x.strip() for x in atomconlines if x.strip()]
+    f.close()
+    #check index
+    natoms = int(atomconlines[0].split()[0])
+    index_pos_begin = list2.index(str_pos) + 1
+    index_pos_end = index_pos_begin + natoms
+    index_latt_begin = list2.index(str_latt) + 1
+    index_latt_end = index_latt_begin + 3
+    if flag:
+        index_mag_begin = list2.index(str_mag) + 1
+        index_mag_end = index_mag_begin + natoms
+    #read magnetic moments
+        for line in atomconlines[index_mag_begin:index_mag_end]:
+            split_line = line.split()
+            magmom.append([float(split_line[1])])
+    #read atoms
+    for line in atomconlines[index_pos_begin:index_pos_end]:
+        split_line = line.split()
+        atoms.append(ELEMENTS[int(split_line[0])-1])
+        coords.append([float(split_line[1]),float(split_line[2]),float(split_line[3])])
+        constraint.append([True if int(split_line[4])==1 else False, True if (int(split_line[5])==1) else False, True if (int(split_line[6])==1) else False])
+    #print constraint
+
+        #Read cell vectors
+    for line in atomconlines[index_latt_begin:index_latt_end]:
+        split_line = line.split()
+        lattice.append([float(split_line[0]),float(split_line[1]),float(split_line[2])])
+    lattice = Lattice(lattice)
+    if flag:
+        struct = Structure(lattice, atoms, coords, site_properties={"selective_dynamics":constraint,"magmom":magmom})
+        struct = struct.get_sorted_structure()
+    else:
+        struct = Structure(lattice, atoms, coords, site_properties={"selective_dynamics":constraint})
+        struct = struct.get_sorted_structure()
+    return struct
+
+def pwmat_kpath(inputfile, outputfile, outputfile2, density):
+    struct = pwmat2structure(inputfile)
+    rec_latt = np.matrix(struct.lattice.reciprocal_lattice_crystallographic.matrix)
+    to_output = 'High symmetry kpoints generated by Q-Flow, '+'structure:'+struct.formula+', fractional coordinates in reciprocal lattice\n'
+    to_output2 = 'K-path generated by Q-Flow, '+'structure:'+struct.formula+', density:'+str(density)+', fractional coordinates in reciprocal lattice\n'
+    #vol = struct.volume
+    #sf = SpacegroupAnalyzer(struct, 0.1)
+    #struct_prim = sf.get_primitive_standard_structure(international_monoclinic=False)
+    #prim_vol = struct_prim.volume
+    #if vol-prim_vol>0.1:
+    #    struct = sf.get_conventional_standard_structure()
+    #else:
+    #    struct = struct_prim
+    highk = KPathSetyawanCurtarolo(struct)
+    #highk = HighSymmKpath(struct)
+    kpoints = highk.kpath()['kpoints']
+    kpath = highk.kpath()['path']
+    for k in kpoints:
+        position = kpoints[k]
+        to_output += ' '.join(['%12.6f' % i for i in position]) + '    ' + k + '\n'
+        with open("./{0}.txt".format(k), "wt") as f:
+            f.write("{0}\n".format(k))
+            f.write("{0}\t{1}\t{2}\n".format(position[0], position[1], position[2]))
+            f.write(to_output)
+
+    for index, path in enumerate(kpath):
+        point_to = ''
+        for index2,point in enumerate(path):
+            if index2 == 0:
+                point_from = point
+                point_to = point
+                position_to = kpoints[point].tolist()
+            else:
+                point_from = point_to
+                position_from = position_to
+                point_to = point
+                position_to = kpoints[point].tolist()
+                pathlength=np.linalg.norm((np.matrix(position_to)-np.matrix(position_from))*rec_latt)
+                bandpoint=ceil(pathlength/density)
+                to_output2 += str(bandpoint)+'\n' + ' '.join(['%12.6f' % i for i in position_from]) + '    ' + point_from + '\n' + ' '.join(['%12.6f' % i for i in position_to]) + '    ' + point_to + '\n'
+    
+    with open(outputfile,"wt") as f:
+        f.write(to_output)
+    with open(outputfile2,"wt") as f:
+        f.write(to_output2)
+                
+
+parser = argparse.ArgumentParser('manual')
+parser.add_argument("--input-file",type=str,default='atom.config')
+parser.add_argument("--kpoint",type=str,default='HIGHK')
+parser.add_argument("--kpath",type=str,default='gen.kpt')
+parser.add_argument("--density",type=float,default=0.01)
+args = parser.parse_args()
+
+pwmat_kpath(args.input_file,
+            args.kpoint,
+            args.kpath,
+            args.density)

@@ -31,7 +31,7 @@ from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRU
 from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
 from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
-from utils.app_lib.pwmat import set_etot_input_content, get_atom_type_from_atom_config
+from utils.app_lib.pwmat import make_pwmat_input_dict, set_etot_input_by_file, get_atom_type_from_atom_config
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
@@ -113,7 +113,7 @@ class Labeling(object):
                 mission.commit_jobs()
                 mission.check_running_job()
                 mission.all_job_finished()
-                mission.move_slurm_log_to_slurm_work_dir()
+                # mission.move_slurm_log_to_slurm_work_dir()
                     
     def make_scf_file(self, scf_dir:str, source_config:str):
         #1. link atom.config file
@@ -122,14 +122,44 @@ class Labeling(object):
         #2. copy pseudo potential file
         # from atom.config get atom type
         atom_type_list = get_atom_type_from_atom_config(source_config)
+        pseudo_list = []
         for atom in atom_type_list:
             pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.scf.pseudo, atom)
             pseduo_name = os.path.basename(pseudo_atom_path)
             copy_file(pseudo_atom_path, os.path.join(scf_dir, pseduo_name))
+            pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_content(target_atom_config)
+        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        
+        # if self.input_param.scf.etot_input_file is not None:
+        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        # else:
+        #     etot_script = make_pwmat_input_dict(
+        #     node1 = scfparam.node1,
+        #     node2 = scfparam.node2,
+        #     job_type = PWMAT.scf,
+        #     pseudo_list = pseudo_list,
+        #     atom_config = target_atom_config,
+        #     ecut = scfparam.ecut,
+        #     ecut2 = scfparam.ecut2,
+        #     e_error = scfparam.e_error,
+        #     rho_error = scfparam.rho_error,
+        #     out_force = scfparam.out_force,
+        #     energy_decomp = scfparam.energy_decomp,
+        #     out_stress = scfparam.out_stress,
+        #     icmix = scfparam.icmix,
+        #     smearing = scfparam.smearing,
+        #     sigma = scfparam.sigma,
+        #     kspacing = scfparam.kspacing,
+        #     flag_symm = scfparam.flag_symm,
+        #     out_wg = scfparam.out_wg,
+        #     out_rho = scfparam.out_rho,
+        #     out_mlmd = scfparam.out_mlmd,
+        #     vdw=scfparam.vdw,
+        #     relax_detail=scfparam.relax_detail
+        #     )        
         etot_input_file = os.path.join(scf_dir, PWMAT.etot_input)
-        write_to_file(etot_input_file, etot_script)
+        write_to_file(etot_input_file, etot_script, "w")
 
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
         pwmat_num = self.resouce.pwmat_run_num
@@ -141,8 +171,8 @@ class Labeling(object):
             if groupsize_adj*pwmat_num > groupsize:
                 groupsize_adj = ceil(groupsize/pwmat_num)*pwmat_num
                 print("the groupsize automatically adjusts from {} to {}".format(groupsize, groupsize_adj))
-            else:
-                groupsize_adj = groupsize
+        else:
+            groupsize_adj = groupsize
         group_list = split_job_for_group(groupsize_adj, scf_sub_list)
         
         group_script_path = []
@@ -187,7 +217,6 @@ class Labeling(object):
         script += CONDA_ENV
         
         script += "\n\n"
-        script += "cd {}\n".format(job_dir)
         
         script += "start=$(date +%s)\n"
 
@@ -196,14 +225,16 @@ class Labeling(object):
         while job_id < len(group):
             for i in range(self.self.resouce.pwmat_run_num):
                 if group[job_id] == "NONE":
+                    job_id += 1
                     continue
                 scf_cmd += "{\n"
                 scf_cmd += "cd {}\n".format(group[job_id])
                 scf_cmd += "if [ ! -f {} ] ; then\n".format(LABEL_FILE_STRUCTURE.scf_tag)
                 scf_cmd += "    {}\n".format(mpirun_cmd_template)
-                scf_cmd += "    if test $? -eq 0; then touch {}; else touch {}; fi\n".format(LABEL_FILE_STRUCTURE.scf_tag, LABEL_FILE_STRUCTURE.fail_scf_tag)
+                scf_cmd += "    if test $? -eq 0; then touch {}; else touch {}; fi\n".format(LABEL_FILE_STRUCTURE.scf_tag, LABEL_FILE_STRUCTURE.scf_tag_failed)
                 scf_cmd += "fi\n"
                 scf_cmd += "} &\n\n"
+                job_id += 1
             scf_cmd += "wait\n\n"
         
         script += scf_cmd
@@ -212,7 +243,7 @@ class Labeling(object):
         
         script += "end=$(date +%s)\n"
         script += "take=$(( end - start ))\n"
-        script += "echo Time taken to execute commands is ${take} seconds > {}\n\n".format(tag)
+        script += "echo Time taken to execute commands is ${{take}} seconds > {}\n\n".format(tag)
         script += "\n"
         return script
 
