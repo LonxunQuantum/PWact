@@ -1,7 +1,0 @@
-setup.py
-/data/home/liuhanyu/hyliu/code/matersdk/source/nblist/bind/nblist_bind.cc
-/data/home/liuhanyu/hyliu/code/matersdk/source/nblist/bind/gen/nblist_wrap.cxx
-nblist.egg-info/PKG-INFO
-nblist.egg-info/SOURCES.txt
-nblist.egg-info/dependency_links.txt
-nblist.egg-info/top_level.txt
