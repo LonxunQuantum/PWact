@@ -37,7 +37,7 @@ class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
         self.iter = get_iter_from_iter_name(self.itername)
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
         
         self.md_job = self.input_param.explore.md_job_list[self.iter]
@@ -129,10 +129,10 @@ class Labeling(object):
             copy_file(pseudo_atom_path, os.path.join(scf_dir, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         
         # if self.input_param.scf.etot_input_file is not None:
-        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         # else:
         #     etot_script = make_pwmat_input_dict(
         #     node1 = scfparam.node1,
@@ -162,9 +162,9 @@ class Labeling(object):
         write_to_file(etot_input_file, etot_script, "w")
 
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
-        pwmat_num = self.resouce.pwmat_run_num
-        groupsize = 1 if self.resouce.scf_resource.group_size is None \
-            else self.resouce.scf_resource.group_size
+        pwmat_num = self.resource.pwmat_run_num
+        groupsize = 1 if self.resource.scf_resource.group_size is None \
+            else self.resource.scf_resource.group_size
         
         if groupsize > 1:
             groupsize_adj = ceil(groupsize/pwmat_num)
@@ -192,25 +192,25 @@ class Labeling(object):
     def set_scf_slurm_job_script(self,group:list[str], job_name:str, tag:str):
         # set head
         script = ""
-        if self.resouce.scf_resource.gpu_per_node is None:
+        if self.resource.scf_resource.gpu_per_node is None:
             script += CPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.scf_resource.number_node,\
-                self.resouce.scf_resource.cpu_per_node,\
-                    self.resouce.scf_resource.queue_name)
-            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resouce.scf_resource.cpu_per_node)
+                self.resource.scf_resource.number_node,\
+                self.resource.scf_resource.cpu_per_node,\
+                    self.resource.scf_resource.queue_name)
+            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resource.scf_resource.cpu_per_node)
             
         else:
             script += GPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.scf_resource.number_node,\
-                self.resouce.scf_resource.gpu_per_node,\
-                    self.resouce.scf_resource.gpu_per_node,\
+                self.resource.scf_resource.number_node,\
+                self.resource.scf_resource.gpu_per_node,\
+                    self.resource.scf_resource.gpu_per_node,\
                     1,\
-                    self.resouce.scf_resource.queue_namee)
-            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resouce.scf_resource.gpu_per_node)
+                    self.resource.scf_resource.queue_namee)
+            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resource.scf_resource.gpu_per_node)
                             
-        script += set_slurm_comm_basis(self.resouce.scf_resource.custom_flags, \
-            self.resouce.scf_resource.source_list, \
-                self.resouce.scf_resource.module_list)
+        script += set_slurm_comm_basis(self.resource.scf_resource.custom_flags, \
+            self.resource.scf_resource.source_list, \
+                self.resource.scf_resource.module_list)
         
         # set conda env
         script += "\n"
@@ -223,7 +223,7 @@ class Labeling(object):
         scf_cmd = ""
         job_id = 0
         while job_id < len(group):
-            for i in range(self.self.resouce.pwmat_run_num):
+            for i in range(self.self.resource.pwmat_run_num):
                 if group[job_id] == "NONE":
                     job_id += 1
                     continue

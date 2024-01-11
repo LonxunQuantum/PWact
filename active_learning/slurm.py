@@ -149,7 +149,7 @@ class Mission(object):
             error_log_content = ""
             for error_job in error_jobs:
                 error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
-                error_log_content += "ERRIR! The cmd '{}' failed! Please check the slurm log file for more information: {}!".format(\
+                error_log_content += "ERRIR! The cmd '{}' failed! Please check the slurm log file for more information: {}!\n\n".format(\
                     error_job.submit_cmd, error_log_path)
             raise Exception(error_log_content)
         return True
@@ -193,7 +193,7 @@ class Mission(object):
     def resubmit_jobs(self):
         for job in self.job_list:
             if job.status == JobStatus.terminated:
-                if job.submit_num > JobStatus.submit_limit.value:
+                if job.submit_num <= JobStatus.submit_limit.value:
                     print("resubmit job: {}, the time is {}\n".format(job.submit_cmd, job.submit_num))
                     job.submit()
                 else:

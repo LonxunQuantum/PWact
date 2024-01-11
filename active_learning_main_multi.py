@@ -14,14 +14,11 @@ from active_learning.train.dp_kpu import ModelKPU
 from active_learning.explore.run_model_md import Explore
 from active_learning.label.labeling import Labeling
 
-from active_learning.init_bulk.relax import Relax
-from active_learning.init_bulk.duplicate_scale import duplicate_scale, do_pertub
-from active_learning.init_bulk.aimd import AIMD
-
+from active_learning.init_bulk.init_bulk_run import init_bulk_run
 def run_iter():
     system_info = json.load(open(sys.argv[2]))
     machine_info = json.load(open(sys.argv[3]))
-    resouce = Resource(machine_info)
+    resource = Resource(machine_info)
     input_param = InputParam(system_info)
     cwd = os.getcwd()
     os.chdir(input_param.root_dir)
@@ -52,18 +49,18 @@ def run_iter():
             print("{} - {}".format(iter_name, task_name))
             if   jj == 0:
                 print ("training start: iter {} - task {}".format(ii, jj))
-                do_training_work(iter_name, resouce, input_param)
+                do_training_work(iter_name, resource, input_param)
             elif jj == 1:
                 print ("exploring start: iter {} - task {}".format(ii, jj))
-                do_exploring_work(iter_name, resouce, input_param)
+                do_exploring_work(iter_name, resource, input_param)
             elif jj == 2:
                 print ("run_fp: iter {} - task {}".format(ii, jj))
-                run_fp(iter_name, resouce, input_param)
+                run_fp(iter_name, resource, input_param)
             #record_iter
             write_to_file(record, "\n{} {}".format(ii, jj), "a")
 
-def run_fp(itername:str, resouce : Resource, param_input: InputParam):
-    lab = Labeling(itername, resouce, input_param)
+def run_fp(itername:str, resource : Resource, param_input: InputParam):
+    lab = Labeling(itername, resource, input_param)
     #!. make scf work
     lab.make_scf_work()
     #2. do scf work
@@ -72,8 +69,8 @@ def run_fp(itername:str, resouce : Resource, param_input: InputParam):
     lab.post_process_scf()
     
     
-def do_training_work(itername:str, resouce : Resource, param_input: InputParam):
-    mtrain = ModelTrian(itername, resouce, param_input)
+def do_training_work(itername:str, resource : Resource, param_input: InputParam):
+    mtrain = ModelTrian(itername, resource, param_input)
     # 1. generate feature
     mtrain.generate_feature()
     # 2. do gen_feat job
@@ -86,8 +83,8 @@ def do_training_work(itername:str, resouce : Resource, param_input: InputParam):
     mtrain.post_process_train()
     print("{} done !".format("train_model"))
 
-def do_exploring_work(itername:str, resouce : Resource, param_input: InputParam):
-    md = Explore(itername, resouce, param_input)
+def do_exploring_work(itername:str, resource : Resource, param_input: InputParam):
+    md = Explore(itername, resource, param_input)
     # 1. make md work files
     md.make_md_work()
     
@@ -102,10 +99,10 @@ def do_exploring_work(itername:str, resouce : Resource, param_input: InputParam)
         md.select_image_by_committee()
         # committee: read model deviation file under md file
     elif param_input.strategy.uncertainty == UNCERTAINTY.kpu:
-        uncertainty_analyse_kpu(itername, resouce, param_input)
+        uncertainty_analyse_kpu(itername, resource, param_input)
 
-def uncertainty_analyse_kpu(itername:str, resouce : Resource, param_input: InputParam):
-    mkpu = ModelKPU(itername, resouce, param_input)
+def uncertainty_analyse_kpu(itername:str, resource : Resource, param_input: InputParam):
+    mkpu = ModelKPU(itername, resource, param_input)
     # 1. make kpu work dirs
     mkpu.make_kpu_work()
     # 2. do kpu job
@@ -116,27 +113,14 @@ def uncertainty_analyse_kpu(itername:str, resouce : Resource, param_input: Input
 def init_bulk():
     system_info = json.load(open(sys.argv[2]))
     machine_info = json.load(open(sys.argv[3]))
-    resouce = Resource(machine_info, job_type=AL_WORK.init_bulk)
+    resource = Resource(machine_info, job_type=AL_WORK.init_bulk)
     input_param = InitBulkParam(system_info)
     cwd = os.getcwd()
     os.chdir(input_param.root_dir)
     print("The work dir change to {}".format(os.getcwd()))
+    init_bulk_run(resource, input_param)
+    print("Init Bulk Work Done!")
     
-    #1. do relax
-    relax = Relax(resouce, input_param)
-    # make relax work dir
-    relax.make_relax_work()
-    # do relax jobs
-    relax.do_relax_jobs()
-    # do super cell and scale
-    duplicate_scale(resouce, input_param)
-    # do pertub
-    do_pertub(resouce, input_param)
-    # do scf
-    aimd = AIMD(resouce, input_param)
-    aimd.make_scf_work()
-    aimd.do_scf_jobs()
-
 def init_surface():
     pass
 

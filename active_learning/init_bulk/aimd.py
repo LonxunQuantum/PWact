@@ -27,8 +27,8 @@ from active_learning.init_bulk.duplicate_scale import get_config_files_with_orde
 
 from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT, INIT_BULK
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, \
-    set_slurm_comm_basis, split_job_for_group, get_job_tag_check_string, set_slurm_script_content
+from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHECK_TYPE,\
+    get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, set_slurm_script_content
     
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
 from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
@@ -36,7 +36,7 @@ from utils.app_lib.pwmat import set_etot_input_by_file, make_pwmat_input_dict, g
 
 class AIMD(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
         self.init_configs = self.input_param.sys_config
         self.relax_dir = os.path.join(self.input_param.root_dir, INIT_BULK.relax)
@@ -47,7 +47,6 @@ class AIMD(object):
     def make_scf_work(self):
         scf_paths = []
         for init_config in self.init_configs:
-            print(init_config.AIMD)
             if init_config.AIMD is False:
                 continue
             init_config_name = "init_config_{}".format(init_config.config_index)
@@ -101,9 +100,9 @@ class AIMD(object):
             link_file(pseudo_atom_path, os.path.join(scf_dir, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         # if self.input_param.scf.etot_input_file is not None:
-        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         # else:
         #     scfparam = self.input_param.scf
         #     etot_script = make_pwmat_input_dict(
@@ -134,18 +133,7 @@ class AIMD(object):
         write_to_file(etot_input_file, etot_script, "w")
 
     def make_scf_slurm_job_files(self, scf_dir_list:list[str]):
-        pwmat_num = self.resouce.pwmat_run_num
-        groupsize = 1 if self.resouce.scf_resource.group_size is None \
-            else self.resouce.scf_resource.group_size
-        
-        if groupsize > 1:
-            groupsize_adj = ceil(groupsize/pwmat_num)
-            if groupsize_adj*pwmat_num > groupsize:
-                groupsize_adj = ceil(groupsize/pwmat_num)*pwmat_num
-                print("the groupsize automatically adjusts from {} to {}".format(groupsize, groupsize_adj))
-        else:
-            groupsize_adj = groupsize
-        group_list = split_job_for_group(groupsize_adj, scf_dir_list)
+        group_list = split_job_for_group(self.resource.scf_resource.group_size, scf_dir_list, self.resource.scf_resource.parallel_num)
         
         group_script_path = []
         for group_index, group in enumerate(group_list):
@@ -154,24 +142,25 @@ class AIMD(object):
             jobname = "scf{}".format(group_index)
             tag_name = "{}-{}".format(group_index, INIT_BULK.aimd_tag)
             tag = os.path.join(self.aimd_dir, tag_name)
-            if self.resouce.scf_resource.gpu_per_node > 0:
-                run_cmd = "mpirun -np {} PWmat".format(self.resouce.scf_resource.gpu_per_node)
+            if self.resource.scf_resource.gpu_per_node > 0:
+                run_cmd = "mpirun -np {} PWmat".format(self.resource.scf_resource.gpu_per_node)
             else:
                 raise Exception("ERROR! the cpu version of pwmat not support yet!")
-            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resouce.scf_resource.gpu_per_node, 
-                number_node = self.resouce.scf_resource.number_node, 
-                cpu_per_node = self.resouce.scf_resource.cpu_per_node,
-                queue_name = self.resouce.scf_resource.queue_name,
-                custom_flags = self.resouce.scf_resource.custom_flags,
-                source_list = self.resouce.scf_resource.source_list,
-                module_list = self.resouce.scf_resource.module_list,
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.scf_resource.gpu_per_node, 
+                number_node = self.resource.scf_resource.number_node, 
+                cpu_per_node = self.resource.scf_resource.cpu_per_node,
+                queue_name = self.resource.scf_resource.queue_name,
+                custom_flags = self.resource.scf_resource.custom_flags,
+                source_list = self.resource.scf_resource.source_list,
+                module_list = self.resource.scf_resource.module_list,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
                 job_tag = tag,
                 task_tag = INIT_BULK.aimd_tag, 
                 task_tag_faild = INIT_BULK.aimd_tag_failed,
-                parallel_num=self.resouce.scf_resource.parallel_num
+                parallel_num=self.resource.scf_resource.parallel_num,
+                check_type=CHECK_TYPE.pwmat
                 )
             slurm_script_name = "{}-{}".format(group_index, INIT_BULK.aimd_job)
             slurm_job_file =  os.path.join(self.aimd_dir, slurm_script_name)

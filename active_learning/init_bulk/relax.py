@@ -25,27 +25,35 @@ from active_learning.user_input.param_input import SCFParam
 from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, \
-    set_slurm_comm_basis, split_job_for_group, get_job_tag_check_string, set_slurm_script_content
+from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHECK_TYPE,\
+    get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, get_job_tag_check_string, set_slurm_script_content
     
-from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT, INIT_BULK, LAMMPSFILE
+from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT, INIT_BULK, LAMMPSFILE, TEMP_STRUCTURE
 
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
+from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one, search_files, mv_file, del_file
 from utils.app_lib.pwmat import set_etot_input_by_file, make_pwmat_input_dict, get_atom_type_from_atom_config
 
 class Relax(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
         self.init_configs = self.input_param.sys_config
-        self.relax_dir = os.path.join(self.input_param.root_dir, INIT_BULK.relax)
+        self.relax_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_work_dir, INIT_BULK.relax)
+        self.relax_real_dir = os.path.join(self.input_param.root_dir, INIT_BULK.relax)
         
+    def check_work_done(self):
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.relax_dir, \
+        job_patten="*-{}".format(INIT_BULK.relax_job), \
+        tag_patten="*-{}".format(INIT_BULK.relax_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        return slurm_done
+    
     def make_relax_work(self):
         relax_paths = []
         for init_config in self.init_configs:
             if init_config.relax:
-                init_config_name = "init_config_{}".format(init_config.config_index)
+                init_config_name = "{}_{}".format(INIT_BULK.init_config, init_config.config_index)
                 relax_path = os.path.join(self.relax_dir, init_config_name)
                 if not os.path.exists(relax_path):
                     os.makedirs(relax_path)
@@ -94,9 +102,11 @@ class Relax(object):
             link_file(pseudo_atom_path, os.path.join(relax_path, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(self.input_param.scf.relax_etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(self.input_param.scf.relax_etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
+        etot_input_file = os.path.join(relax_path, PWMAT.etot_input)
+        write_to_file(etot_input_file, etot_script, "w")
         # if self.input_param.scf.etot_input_file is not None:
-        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resouce.scf_resource.number_node, self.resouce.scf_resource.gpu_per_node])
+        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         # else:
         #     scfparam = self.input_param.scf
         #     etot_script = make_pwmat_input_dict(
@@ -123,96 +133,51 @@ class Relax(object):
         #     vdw=scfparam.vdw,
         #     relax_detail=scfparam.relax_detail
         #     )
-        etot_input_file = os.path.join(relax_path, PWMAT.etot_input)
-        write_to_file(etot_input_file, etot_script, "w")
+
 
     def make_relax_slurm_job_files(self, relax_sub_list:list[str]):
-        group_list = split_job_for_group(self.resouce.scf_resource.group_size, relax_sub_list, self.resouce.scf_resource.parallel_num)
+        group_list = split_job_for_group(self.resource.scf_resource.group_size, relax_sub_list, self.resource.scf_resource.parallel_num)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
             jobname = "relax{}".format(group_index)
             tag_name = "{}-{}".format(group_index, INIT_BULK.relax_tag)
             tag = os.path.join(self.relax_dir, tag_name)
-            if self.resouce.scf_resource.gpu_per_node > 0:
-                run_cmd = "mpirun -np {} PWmat".format(self.resouce.scf_resource.gpu_per_node, LAMMPSFILE.input_lammps)
+            if self.resource.scf_resource.gpu_per_node > 0:
+                run_cmd = "mpirun -np {} PWmat".format(self.resource.scf_resource.gpu_per_node, LAMMPSFILE.input_lammps)
             else:
                 raise Exception("ERROR! the cpu version of pwmat not support yet!")
-            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resouce.scf_resource.gpu_per_node, 
-                number_node = self.resouce.scf_resource.number_node, 
-                cpu_per_node = self.resouce.scf_resource.cpu_per_node,
-                queue_name = self.resouce.scf_resource.queue_name,
-                custom_flags = self.resouce.scf_resource.custom_flags,
-                source_list = self.resouce.scf_resource.source_list,
-                module_list = self.resouce.scf_resource.module_list,
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.scf_resource.gpu_per_node, 
+                number_node = self.resource.scf_resource.number_node, 
+                cpu_per_node = self.resource.scf_resource.cpu_per_node,
+                queue_name = self.resource.scf_resource.queue_name,
+                custom_flags = self.resource.scf_resource.custom_flags,
+                source_list = self.resource.scf_resource.source_list,
+                module_list = self.resource.scf_resource.module_list,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
                 job_tag = tag,
                 task_tag = INIT_BULK.relax_tag, 
                 task_tag_faild = INIT_BULK.relax_tag_failed,
-                parallel_num=self.resouce.scf_resource.parallel_num
+                parallel_num=self.resource.scf_resource.parallel_num,
+                check_type=CHECK_TYPE.pwmat
                 )
             slurm_script_name = "{}-{}".format(group_index, INIT_BULK.relax_job)
             slurm_job_file = os.path.join(self.relax_dir, slurm_script_name)
             write_to_file(slurm_job_file, group_slurm_script, "w")
-    
-    def set_relax_slurm_job_script(self,group:list[str], job_name:str, tag:str):
-        # set head
-        script = ""
-        if self.resouce.scf_resource.gpu_per_node is None:
-            script += CPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.scf_resource.number_node,\
-                self.resouce.scf_resource.cpu_per_node,\
-                    self.resouce.scf_resource.queue_name)
-            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resouce.scf_resource.cpu_per_node)
-            
-        else:
-            script += GPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.scf_resource.number_node,\
-                self.resouce.scf_resource.gpu_per_node,\
-                    self.resouce.scf_resource.gpu_per_node,\
-                    1,\
-                    self.resouce.scf_resource.queue_name)
-            mpirun_cmd_template = "mpirun -np {} PWmat".format(self.resouce.scf_resource.gpu_per_node)
-                            
-        script += set_slurm_comm_basis(self.resouce.scf_resource.custom_flags, \
-            self.resouce.scf_resource.source_list, \
-                self.resouce.scf_resource.module_list)
-        
-        # set conda env
-        script += "\n"
-        script += CONDA_ENV
-        script += "\n"        
-        script += "start=$(date +%s)\n"
 
-        scf_cmd = ""
-        job_id = 0
-        job_tag_list = []
-        while job_id < len(group):
-            for i in range(self.resouce.pwmat_run_num):
-                if group[job_id] == "NONE":
-                    job_id += 1
-                    continue
-                scf_cmd += "{\n"
-                scf_cmd += "cd {}\n".format(group[job_id])
-                scf_cmd += "if [ ! -f {} ] ; then\n".format(INIT_BULK.relax_tag)
-                scf_cmd += "    {}\n".format(mpirun_cmd_template)
-                scf_cmd += "    if test $? -eq 0; then touch {}; else touch {}; fi\n".format(INIT_BULK.relax_tag, INIT_BULK.relax_tag_failed)
-                scf_cmd += "fi\n"
-                scf_cmd += "} &\n\n"
-                job_tag_list.append(os.path.join(group[job_id], INIT_BULK.relax_tag))
-                job_id += 1
-            scf_cmd += "wait\n\n"
+    def do_post_process(self):
+        # 1. link relax_dir to relax_real_dir
+        link_file(self.relax_dir, self.relax_real_dir)
+    
+    def delete_nouse_files(self):
+        #1. mv init_config_* to real_dir
+        mv_file(self.relax_dir, self.relax_real_dir)
+        #2. delete tag and slurm files
+        tag_list  = search_files(self.relax_real_dir,  template="*-tag-*")
+        slurm_log = search_files(self.relax_real_dir,  template="*slurm-*.out")
+        del_file(tag_list)
+        del_file(slurm_log)
         
-        script += scf_cmd
-        
-        right_script = ""
-        right_script += "    end=$(date +%s)\n"
-        right_script += "    take=$(( end - start ))\n"
-        right_script += "    echo Time taken to execute commands is ${{take}} seconds > {}\n".format(tag)
-        right_script += "    exit 0\n"   
-        error_script  = "    exit 1\n"
-        
-        script += get_job_tag_check_string(job_tag_list, right_script, error_script)
-        return script
+    

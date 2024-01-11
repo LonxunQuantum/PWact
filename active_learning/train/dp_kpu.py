@@ -38,7 +38,7 @@ from utils.format_input_output import make_train_name, get_seed_by_time, get_ite
 from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, UNCERTAINTY, \
     EXPLORE_FILE_STRUCTURE, LABEL_FILE_STRUCTURE
 
-from utils.file_operation import save_json_file, write_to_file, mv_dir, del_dir, link_file, search_files
+from utils.file_operation import save_json_file, write_to_file, mv_file, del_dir, link_file, search_files
 from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
 from utils.app_lib.pwmat import convert_config_to_mvm
 
@@ -58,7 +58,7 @@ return {*}
 class ModelKPU(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
 
         # train work dir
@@ -120,7 +120,7 @@ class ModelKPU(object):
     
     def make_kpu_slurm_jobs(self, kpu_work_list:list[str]):
         #4. set slurm job file
-        group_list = split_job_for_group(self.resouce.explore_resource.group_size, kpu_work_list)
+        group_list = split_job_for_group(self.resource.explore_resource.group_size, kpu_work_list)
         for g_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
@@ -181,14 +181,14 @@ class ModelKPU(object):
     def set_kpu_slurm_job_script(self, group:list[str], job_name:str, tag:str, train_json:str):
         # set head
         script = ""
-        if self.resouce.train_resource.gpu_per_node is None:
-            script += CPU_SCRIPT_HEAD.format(job_name, 1, 1, self.resouce.train_resource.queue_name)
+        if self.resource.train_resource.gpu_per_node is None:
+            script += CPU_SCRIPT_HEAD.format(job_name, 1, 1, self.resource.train_resource.queue_name)
         else:
-            script += GPU_SCRIPT_HEAD.format(job_name, 1, 1, 1, 1, self.resouce.train_resource.queue_name)
+            script += GPU_SCRIPT_HEAD.format(job_name, 1, 1, 1, 1, self.resource.train_resource.queue_name)
 
-        script += set_slurm_comm_basis(self.resouce.train_resource.custom_flags, \
-            self.resouce.train_resource.source_list, \
-                self.resouce.train_resource.module_list)
+        script += set_slurm_comm_basis(self.resource.train_resource.custom_flags, \
+            self.resource.train_resource.source_list, \
+                self.resource.train_resource.module_list)
         # set conda env
         script += "\n"
         script += CONDA_ENV

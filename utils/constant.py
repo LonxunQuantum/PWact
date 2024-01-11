@@ -1,5 +1,9 @@
 from enum import Enum
 
+class TEMP_STRUCTURE:
+    tmp_work_dir = "temp_work"
+    tmp_prefix = "temp"
+    
 class AL_STRUCTURE:
     train = "train"
     explore = "explore"

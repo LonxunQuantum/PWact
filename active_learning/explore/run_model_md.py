@@ -16,7 +16,8 @@
             ...
 """
 from active_learning.slurm import Mission, SlurmJob, get_slurm_sbatch_cmd
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, set_slurm_script_content
+from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHECK_TYPE, \
+    get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, set_slurm_script_content
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, MdDetail
@@ -47,7 +48,7 @@ class Explore(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
         self.iter = get_iter_from_iter_name(self.itername)
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
         self.sys_paths = self.input_param.explore.sys_configs
         self.md_job = self.input_param.explore.md_job_list[self.iter]
@@ -89,7 +90,7 @@ class Explore(object):
         self.make_md_slurm_jobs(md_work_list)
              
     def make_md_slurm_jobs(self, md_work_list:list[str]):
-        group_list = split_job_for_group(self.resouce.explore_resource.group_size, md_work_list, self.resouce.explore_resource.parallel_num)
+        group_list = split_job_for_group(self.resource.explore_resource.group_size, md_work_list, self.resource.explore_resource.parallel_num)
         for g_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
@@ -97,24 +98,25 @@ class Explore(object):
             tag_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_tag)
             tag = os.path.join(self.md_dir, tag_name)
             # slurm_job_script = self.set_md_slurm_job_script(group, jobname, tag)
-            if self.resouce.explore_resource.gpu_per_node > 0:
-                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resouce.explore_resource.gpu_per_node, LAMMPSFILE.input_lammps)
+            if self.resource.explore_resource.gpu_per_node > 0:
+                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resource.explore_resource.gpu_per_node, LAMMPSFILE.input_lammps)
             else:
-                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resouce.explore_resource.cpu_per_node, LAMMPSFILE.input_lammps)
-            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resouce.explore_resource.gpu_per_node, 
-                            number_node = self.resouce.explore_resource.number_node, 
-                            cpu_per_node = self.resouce.explore_resource.cpu_per_node,
-                            queue_name = self.resouce.explore_resource.queue_name,
-                            custom_flags = self.resouce.explore_resource.custom_flags,
-                            source_list = self.resouce.explore_resource.source_list,
-                            module_list = self.resouce.explore_resource.module_list,
+                run_cmd = "mpirun -np {} lmp_mpi -in {}".format(self.resource.explore_resource.cpu_per_node, LAMMPSFILE.input_lammps)
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.explore_resource.gpu_per_node, 
+                            number_node = self.resource.explore_resource.number_node, 
+                            cpu_per_node = self.resource.explore_resource.cpu_per_node,
+                            queue_name = self.resource.explore_resource.queue_name,
+                            custom_flags = self.resource.explore_resource.custom_flags,
+                            source_list = self.resource.explore_resource.source_list,
+                            module_list = self.resource.explore_resource.module_list,
                             job_name = jobname,
                             run_cmd_template = run_cmd,
                             group = group,
                             job_tag = tag,
                             task_tag = EXPLORE_FILE_STRUCTURE.md_tag,
                             task_tag_faild = EXPLORE_FILE_STRUCTURE.md_tag_faild,
-                            parallel_num=self.resouce.explore_resource.parallel_num
+                            parallel_num=self.resource.explore_resource.parallel_num,
+                            check_type=CHECK_TYPE.lammps
                             )
             slurm_script_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_job)
             slurm_job_file = os.path.join(self.md_dir, slurm_script_name)
@@ -207,31 +209,31 @@ class Explore(object):
     def set_md_slurm_job_script(self, group:list[str], job_name:str, tag:str):
         # set head
         script = ""
-        if self.resouce.explore_resource.gpu_per_node is None or\
-            self.resouce.explore_resource.gpu_per_node == 0:
+        if self.resource.explore_resource.gpu_per_node is None or\
+            self.resource.explore_resource.gpu_per_node == 0:
             script += CPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.explore_resource.number_node,\
-                self.resouce.explore_resource.cpu_per_node,\
-                    self.resouce.explore_resource.queue_name)
+                self.resource.explore_resource.number_node,\
+                self.resource.explore_resource.cpu_per_node,\
+                    self.resource.explore_resource.queue_name)
             mpirun_cmd_template = "mpirun -np {} lmp_mpi -in {}\n"\
-                .format(self.resouce.explore_resource.cpu_per_node, \
+                .format(self.resource.explore_resource.cpu_per_node, \
                         LAMMPSFILE.input_lammps)
             
         else:
             script += GPU_SCRIPT_HEAD.format(job_name, \
-                self.resouce.explore_resource.number_node,\
-                self.resouce.explore_resource.gpu_per_node,\
-                    self.resouce.explore_resource.gpu_per_node,\
+                self.resource.explore_resource.number_node,\
+                self.resource.explore_resource.gpu_per_node,\
+                    self.resource.explore_resource.gpu_per_node,\
                     1,\
-                    self.resouce.explore_resource.queue_name)
+                    self.resource.explore_resource.queue_name)
             mpirun_cmd_template = "mpirun -np {} lmp_mpi -in {}\n"\
-                .format(self.resouce.explore_resource.gpu_per_node,\
-                        self.resouce.explore_resource.gpu_per_node,\
+                .format(self.resource.explore_resource.gpu_per_node,\
+                        self.resource.explore_resource.gpu_per_node,\
                         LAMMPSFILE.input_lammps)
                             
-        script += set_slurm_comm_basis(self.resouce.explore_resource.custom_flags, \
-            self.resouce.explore_resource.source_list, \
-                self.resouce.explore_resource.module_list)
+        script += set_slurm_comm_basis(self.resource.explore_resource.custom_flags, \
+            self.resource.explore_resource.source_list, \
+                self.resource.explore_resource.module_list)
         
         # set conda env
         script += "\n"

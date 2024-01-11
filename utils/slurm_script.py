@@ -35,6 +35,11 @@ CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'sh
        '# <<< conda initialize <<<\n' \
        'conda activate torch2\n\n'
 
+class CHECK_TYPE:
+    pwmat = "PWMAT"
+    lammps = "LAMMPS"
+    train = "PWMLFF"
+    
 '''
 description: 
     Set the basic app for Slurm job dependency
@@ -151,7 +156,8 @@ def set_slurm_script_content(gpu_per_node,
                              job_tag:str,
                              task_tag:str,
                              task_tag_faild:str,
-                             parallel_num:int=1
+                             parallel_num:int=1,
+                             check_type:str=CHECK_TYPE.pwmat
                              ):
         # set head
         script = ""
@@ -171,6 +177,12 @@ def set_slurm_script_content(gpu_per_node,
         job_cmd = ""
         job_id = 0
         job_tag_list = []
+        
+        if check_type == CHECK_TYPE.pwmat:
+            check_info = pwmat_check_success(task_tag, task_tag_faild)
+        else:
+            check_info = common_check_success(task_tag, task_tag_faild)
+            
         while job_id < len(group):
             for i in range(parallel_num):
                 if group[job_id] == "NONE":
@@ -180,7 +192,7 @@ def set_slurm_script_content(gpu_per_node,
                 job_cmd += "cd {}\n".format(group[job_id])
                 job_cmd += "if [ ! -f {} ] ; then\n".format(task_tag)
                 job_cmd += "    {}\n".format(run_cmd_template)
-                job_cmd += "    if test $? -eq 0; then touch {}; else touch {}; fi\n".format(task_tag, task_tag_faild)
+                job_cmd += check_info
                 job_cmd += "fi\n"
                 job_cmd += "} &\n\n"
                 job_tag_list.append(os.path.join(group[job_id], task_tag))
@@ -198,3 +210,26 @@ def set_slurm_script_content(gpu_per_node,
         
         script += get_job_tag_check_string(job_tag_list, right_script, error_script)
         return script
+    
+
+def pwmat_check_success(task_tag:str, task_tag_faild:str):
+    script  = ""
+    script += "    if [ -f REPORT ]; then\n"
+    script += "        last_line=$(tail -n 1 REPORT)\n"
+    script += "        if [[ $last_line == *\"time\"* ]]; then\n"
+    script += "            touch {}\n".format(task_tag)
+    script += "        else\n"
+    script += "            touch {}\n".format(task_tag_faild)
+    script += "        fi\n"
+    script += "    else\n"
+    script += "        touch {}\n".format(task_tag_faild)
+    script += "    fi\n"
+    return script
+
+def common_check_success(task_tag:str, task_tag_failed:str):
+    script = ""
+    script += "    if test $? eq 0; then\n"
+    script += "        touch {}\n".format(task_tag)
+    script += "    else\n"
+    script += "        touch {}\n".format(task_tag_faild)
+    script += "    fi\n"

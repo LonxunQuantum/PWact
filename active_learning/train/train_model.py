@@ -5,15 +5,15 @@ import json
 import copy
 
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis, set_slurm_script_content
-
+from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, CHECK_TYPE, \
+    get_slurm_job_run_info, set_slurm_comm_basis, set_slurm_script_content
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time
 from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
 
-from utils.file_operation import save_json_file, write_to_file, mv_dir, del_dir, search_files
+from utils.file_operation import save_json_file, write_to_file, mv_file, del_dir, search_files
 
 '''
 description: model training method:
@@ -29,7 +29,7 @@ return {*}
 class ModelTrian(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
-        self.resouce = resource
+        self.resource = resource
         self.input_param = input_param
         self.iter = get_iter_from_iter_name(self.itername)
         # train work dir
@@ -46,13 +46,13 @@ class ModelTrian(object):
         #make gen_feature.job file
         tag_path = TRAIN_FILE_STRUCTUR.feature_tag
         
-        # slrum_gen_feat_script = set_slurm_script_content(gpu_per_node=self.resouce.train_resource.gpu_per_node, 
-        #                      number_node = self.resouce.train_resource.number_node, 
-        #                      cpu_per_node = self.resouce.train_resource.cpu_per_node,
-        #                      queue_name = self.resouce.train_resource.queue_name,
-        #                      custom_flags = self.resouce.train_resource.custom_flags,
-        #                      source_list = self.resouce.train_resource.source_list,
-        #                      module_list = self.resouce.train_resource.module_list,
+        # slrum_gen_feat_script = set_slurm_script_content(gpu_per_node=self.resource.train_resource.gpu_per_node, 
+        #                      number_node = self.resource.train_resource.number_node, 
+        #                      cpu_per_node = self.resource.train_resource.cpu_per_node,
+        #                      queue_name = self.resource.train_resource.queue_name,
+        #                      custom_flags = self.resource.train_resource.custom_flags,
+        #                      source_list = self.resource.train_resource.source_list,
+        #                      module_list = self.resource.train_resource.module_list,
         #                      job_name = TRAIN_FILE_STRUCTUR.feature_dir.replace(".",""),
         #                      run_cmd_template = "PWMLFF {} {}".format(MODEL_CMD.gen_feat, os.path.basename(train_json_file_path)),
         #                      group = [feature_path],
@@ -93,7 +93,7 @@ class ModelTrian(object):
         target_feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
         source_feature_path = os.path.join(target_feature_path, TRAIN_FILE_STRUCTUR.work_dir, TRAIN_FILE_STRUCTUR.feature_dir)
         if os.path.exists(source_feature_path):
-            mv_dir(source_feature_path, target_feature_path)
+            mv_file(source_feature_path, target_feature_path)
         del_dir(os.path.join(target_feature_path, TRAIN_FILE_STRUCTUR.work_dir))
         
     def make_train_work(self):
@@ -172,14 +172,14 @@ class ModelTrian(object):
     def set_train_script(self, job_name:str, train_json:str, tag:str, work_type:str="train"):
         # set head
         script = ""
-        if self.resouce.train_resource.gpu_per_node is None:
-            script += CPU_SCRIPT_HEAD.format(job_name, 1, 1, self.resouce.train_resource.queue_name)
+        if self.resource.train_resource.gpu_per_node is None:
+            script += CPU_SCRIPT_HEAD.format(job_name, 1, 1, self.resource.train_resource.queue_name)
         else:
-            script += GPU_SCRIPT_HEAD.format(job_name, 1, 1, 1, 1, self.resouce.train_resource.queue_name)
+            script += GPU_SCRIPT_HEAD.format(job_name, 1, 1, 1, 1, self.resource.train_resource.queue_name)
 
-        script += set_slurm_comm_basis(self.resouce.train_resource.custom_flags, \
-            self.resouce.train_resource.source_list, \
-                self.resouce.train_resource.module_list)
+        script += set_slurm_comm_basis(self.resource.train_resource.custom_flags, \
+            self.resource.train_resource.source_list, \
+                self.resource.train_resource.module_list)
         # set conda env
         script += "\n"
         script += CONDA_ENV

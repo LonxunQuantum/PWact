@@ -161,14 +161,27 @@ param {str} target_dir
 return {*}
 author: wuxingxing
 '''
-def mv_dir(source_dir:str, target_dir:str):
-    if not os.path.exists(source_dir):
-        os.makedirs(source_dir)
-    files = os.listdir(source_dir)
-    for file in files:
-        shutil.move(os.path.join(source_dir, file), target_dir)
-    del_dir(source_dir)
+def mv_file(source_file:str, target_file:str):
+    if os.path.islink(target_file):
+        os.remove(target_file)
+    if os.path.exists(target_file):
+        shutil.rmtree(target_file)
+    shutil.move(source_file, target_file)
 
+# '''
+# description: 
+# param {str} source_file
+# param {str} target_file
+# return {*}
+# author: wuxingxing
+# '''
+# def mv_file(source_file:str, target_file:str):
+#     if os.path.islink(target_file):
+#         os.remove(target_file)
+#     if os.path.exists(target_file):
+#         shutil.rmtree(target_file)
+#     shutil.move(source_file, target_file)
+    
 '''
 description: 
     delete dir or file if exists.
@@ -179,7 +192,19 @@ author: wuxingxing
 def del_dir(del_dir:str):
     if os.path.exists(del_dir):
         shutil.rmtree(del_dir)
-        
+
+'''
+description: 
+    Use wildcard characters to search for files in directory search_root_dir that match the wildcard characters
+param {str} root_dir
+param {str} current_itername
+return {*}
+author: wuxingxing
+'''
+def search_files(search_root_dir:str, template:str):
+    file_list = glob.glob(os.path.join(search_root_dir, template))
+    return file_list
+           
 '''
 description: 
     get value of param in json_input which is required parameters which need input by user
@@ -242,19 +267,6 @@ author: wuxingxing
 '''
 def get_file_extension(file_name:str, split_char = "."):
     return file_name.split(split_char)[-1].strip()
-
-
-'''
-description: 
-    Use wildcard characters to search for files in directory search_root_dir that match the wildcard characters
-param {str} root_dir
-param {str} current_itername
-return {*}
-author: wuxingxing
-'''
-def search_files(search_root_dir:str, template:str):
-    file_list = glob.glob(os.path.join(search_root_dir, template))
-    return file_list
 
 """
 @Description :

@@ -256,15 +256,15 @@ param {str} atom_config
 return {*}
 author: wuxingxing
 '''
-def set_etot_input_by_file(etot_input_file:str, atom_config:str, resouce_node:list[int]):
+def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:list[int]):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file)
     # check node1 and node2 are right
     index = 0
     while index < len(etot_lines):
         if len(etot_lines[index].strip().split()) == 2:
-            node1, node2 = etot_lines[index].strip().split()
-            if node1 != resouce_node[0] or node2 != resouce_node[1]:
-                raise Exception("the node1 node2 '{}' in {} file is not consistent with resouce json file '{}', please check!".format(node1, node2, resouce_node))
+            node1, node2 = [int(_) for _ in etot_lines[index].strip().split()]
+            if node1 != resource_node[0] or node2 != resource_node[1]:
+                raise Exception("the node1 node2 '{}' in {} file is not consistent with resource json file '{}', please check!".format(node1, node2, resource_node))
             break
         index += 1
     key_list = list(key_values)
