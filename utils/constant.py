@@ -1,7 +1,6 @@
-from enum import Enum
-
 class TEMP_STRUCTURE:
-    tmp_work_dir = "temp_work"
+    tmp_init_bulk_dir = "temp_init_bulk_work"
+    tmp_run_iter_dir = "temp_run_iter_work"
     tmp_prefix = "temp"
     
 class AL_STRUCTURE:
@@ -23,26 +22,30 @@ class INIT_BULK:
     relax_tag = "tag.relax.success"
     relax_tag_failed = "tag.relax.failed"
     final_config = "final.config"
+    final = "final"
+    realx_config = "relaxed_atom.config"
     
     init_config = "init_config"
+    init = "init"
     super_cell_scale = "super_cell_scale"
+    tag_super_cell = "tag.success.super_cell_scale"
     super_cell = "super_cell"
     scale = "scale"
     super_cell_config = "super_cell.config"
     scale_config = "scale.config"
     pertub = "pertub"
+    tag_pertub = "tag.success.pertub"
     
-    aimd = "scf"
-    aimd_job = "scf.job"
-    aimd_tag = "tag.scf.success"
-    aimd_tag_failed ="tag.scf.failed"
+    aimd = "aimd"
+    aimd_job = "aimd.job"
+    aimd_tag = "tag.aimd.success"
+    aimd_tag_failed ="tag.aimd.failed"
     
     collection = "collection"
-    structures = "structures"
     
     @staticmethod
     def get_work_type(work_type:str):
-        if INIT_BULK.relax.upper() in work_type.upper():
+        if INIT_BULK.final.upper() in work_type.upper():
             return INIT_BULK.relax
         elif INIT_BULK.super_cell.upper() in work_type.upper():
             return INIT_BULK.super_cell
@@ -151,6 +154,8 @@ class PWMAT:
     relax="RELAX"
     scf = "SCF"
     md = "MD"
+    MOVEMENT="MOVEMENT"
+    kspacing_default = 0.5
     
 class FORCEFILED:
     fortran_lmps = 1 #

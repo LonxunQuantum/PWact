@@ -117,6 +117,7 @@ def init_bulk():
     input_param = InitBulkParam(system_info)
     cwd = os.getcwd()
     os.chdir(input_param.root_dir)
+    
     print("The work dir change to {}".format(os.getcwd()))
     init_bulk_run(resource, input_param)
     print("Init Bulk Work Done!")

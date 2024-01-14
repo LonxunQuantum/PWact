@@ -1,13 +1,11 @@
 import os
+import subprocess
 import glob
 import shutil
 import re
 import json
 import numpy as np
 import random
-
-from utils.constant import SCF_FILE_STRUCTUR
-from utils.format_input_output import make_iter_name, make_train_name
 
 '''
 description: 
@@ -129,6 +127,8 @@ author: wuxingxing
 def link_file(source_file:str, target_file:str):
     if os.path.islink(target_file):
         os.remove(target_file)
+    if os.path.isfile(target_file):
+        os.remove(target_file)
     os.symlink(source_file, target_file)
         
 """
@@ -139,7 +139,7 @@ def link_file(source_file:str, target_file:str):
 """
 
 def del_file(path_dir):
-    if os.path.exists(path_dir) == False:
+    if os.path.exists(path_dir) is False:
         return
 
     if os.path.isfile(path_dir):
@@ -148,7 +148,7 @@ def del_file(path_dir):
         
     for i in os.listdir(path_dir) :
         file_path = os.path.join(path_dir, i)
-        if os.path.isfile(file_path) == True:#os.path.isfile判断是否为文件,如果是文件,就删除.如果是文件夹.递归给del_file.
+        if os.path.isfile(file_path) is True:#os.path.isfile判断是否为文件,如果是文件,就删除.如果是文件夹.递归给del_file.
             os.remove(file_path)
         else:
             del_file(file_path)
@@ -168,6 +168,8 @@ def mv_file(source_file:str, target_file:str):
         shutil.rmtree(target_file)
     shutil.move(source_file, target_file)
 
+def file_shell_op(shell_cmd: str):
+    subprocess.call(shell_cmd, shell=True)
 # '''
 # description: 
 # param {str} source_file

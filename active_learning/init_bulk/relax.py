@@ -15,31 +15,26 @@
     -----------------/*_init_config/relax_mvm_*_init_config if need; aimd_mvm_*_init_config if need
     
 """
-import os, sys
-import numpy as np
-import pandas as pd
-from math import ceil
-
+import os
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import SCFParam
 from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHECK_TYPE,\
-    get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, get_job_tag_check_string, set_slurm_script_content
+from utils.slurm_script import CHECK_TYPE,\
+    get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT, INIT_BULK, LAMMPSFILE, TEMP_STRUCTURE
+from utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE
 
-from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one, search_files, mv_file, del_file
-from utils.app_lib.pwmat import set_etot_input_by_file, make_pwmat_input_dict, get_atom_type_from_atom_config
+from utils.file_operation import write_to_file, link_file, search_files, mv_file, del_file
+from utils.app_lib.pwmat import set_etot_input_by_file, get_atom_type_from_atom_config
 
 class Relax(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
         self.resource = resource
         self.input_param = input_param
         self.init_configs = self.input_param.sys_config
-        self.relax_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_work_dir, INIT_BULK.relax)
+        self.relax_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax)
         self.relax_real_dir = os.path.join(self.input_param.root_dir, INIT_BULK.relax)
         
     def check_work_done(self):
@@ -68,7 +63,7 @@ class Relax(object):
             job_patten="*-{}".format(INIT_BULK.relax_job), \
             tag_patten="*-{}".format(INIT_BULK.relax_tag))
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        if slurm_done == False:
+        if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
                 print("Doing these relax Jobs:\n")
@@ -97,12 +92,14 @@ class Relax(object):
         atom_type_list = get_atom_type_from_atom_config(init_conifg.config)
         pseudo_list = []
         for atom in atom_type_list:
-            pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.scf.pseudo, atom)
+            pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.etot_input.pseudo, atom)
             pseduo_name = os.path.basename(pseudo_atom_path)
             link_file(pseudo_atom_path, os.path.join(relax_path, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(self.input_param.scf.relax_etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(init_conifg.relax_etot_file, target_atom_config, \
+            [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node],\
+                init_conifg.relax_etot_file)
         etot_input_file = os.path.join(relax_path, PWMAT.etot_input)
         write_to_file(etot_input_file, etot_script, "w")
         # if self.input_param.scf.etot_input_file is not None:
@@ -144,7 +141,7 @@ class Relax(object):
             tag_name = "{}-{}".format(group_index, INIT_BULK.relax_tag)
             tag = os.path.join(self.relax_dir, tag_name)
             if self.resource.scf_resource.gpu_per_node > 0:
-                run_cmd = "mpirun -np {} PWmat".format(self.resource.scf_resource.gpu_per_node, LAMMPSFILE.input_lammps)
+                run_cmd = "mpirun -np {} PWmat".format(self.resource.scf_resource.gpu_per_node)
             else:
                 raise Exception("ERROR! the cpu version of pwmat not support yet!")
             group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.scf_resource.gpu_per_node, 
@@ -169,7 +166,8 @@ class Relax(object):
 
     def do_post_process(self):
         # 1. link relax_dir to relax_real_dir
-        link_file(self.relax_dir, self.relax_real_dir)
+        if not os.path.exists(self.relax_real_dir):
+            link_file(self.relax_dir, self.relax_real_dir)
     
     def delete_nouse_files(self):
         #1. mv init_config_* to real_dir

@@ -15,61 +15,67 @@
     -----------------/*_init_config/relax_mvm_*_init_config if need; aimd_mvm_*_init_config if need
     
 """
-import os, sys
-import numpy as np
-import pandas as pd
-from math import ceil
+import os
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import SCFParam
-from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
+from active_learning.user_input.init_bulk_input import InitBulkParam
 from active_learning.init_bulk.duplicate_scale import get_config_files_with_order
 
-from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT, INIT_BULK
+from utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHECK_TYPE,\
-    get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group, set_slurm_script_content
+from utils.slurm_script import CHECK_TYPE, get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
-from utils.app_lib.pwmat import set_etot_input_by_file, make_pwmat_input_dict, get_atom_type_from_atom_config
+from utils.file_operation import write_to_file, link_file
+from utils.app_lib.pwmat import set_etot_input_by_file, get_atom_type_from_atom_config
 
 class AIMD(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
         self.resource = resource
         self.input_param = input_param
         self.init_configs = self.input_param.sys_config
-        self.relax_dir = os.path.join(self.input_param.root_dir, INIT_BULK.relax)
-        self.super_cell_scale_dir = os.path.join(self.input_param.root_dir, INIT_BULK.super_cell_scale)
-        self.pertub_dir = os.path.join(self.input_param.root_dir,INIT_BULK.pertub)
-        self.aimd_dir = os.path.join(self.input_param.root_dir, INIT_BULK.aimd)
+        self.relax_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax)
+        self.super_cell_scale_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.super_cell_scale)
+        self.pertub_dir = os.path.join(self.input_param.root_dir,TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.pertub)
+        self.aimd_dir = os.path.join(self.input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.aimd)
+        self.real_aimd_dir = os.path.join(self.input_param.root_dir, INIT_BULK.aimd)
         
-    def make_scf_work(self):
-        scf_paths = []
+    def make_aimd_work(self):
+        aimd_paths = []
         for init_config in self.init_configs:
-            if init_config.AIMD is False:
+            if init_config.aimd is False:
                 continue
             init_config_name = "init_config_{}".format(init_config.config_index)
-            config_list = get_config_files_with_order(self.super_cell_scale_dir, self.relax_dir, init_config_name, init_config.config, self.pertub_dir)
+            config_list, config_type = get_config_files_with_order(self.super_cell_scale_dir, self.relax_dir, init_config_name, init_config.config, self.pertub_dir)
             for index, config in enumerate(config_list):
-                scf_dir = os.path.join(self.aimd_dir, init_config_name, "{}-{}".format(index, INIT_BULK.aimd))
-                if not os.path.exists(scf_dir):
-                    os.makedirs(scf_dir)
-                self.make_scf_file(scf_dir, config_file=config)
-                scf_paths.append(scf_dir)
+                if config_type == INIT_BULK.scale: 
+                    config_type = os.path.basename(os.path.basename(config).replace(PWMAT.config_postfix, ""))
+                aimd_dir = os.path.join(self.aimd_dir, init_config_name, config_type, "{}_{}".format(index, INIT_BULK.aimd))
+                
+                if not os.path.exists(aimd_dir):
+                    os.makedirs(aimd_dir)
+                self.make_aimd_file(aimd_dir, config_file=config, aimd_etot_input=init_config.aimd_etot_file)
+                aimd_paths.append(aimd_dir)
         # make slurm script and slurm job
-        self.make_scf_slurm_job_files(scf_paths)
+        self.make_aimd_slurm_job_files(aimd_paths)
     
-    def do_scf_jobs(self):
+    def check_work_done(self):
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.aimd_dir, \
+            job_patten="*-{}".format(INIT_BULK.aimd_job), \
+            tag_patten="*-{}".format(INIT_BULK.aimd_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        return slurm_done
+            
+    def do_aimd_jobs(self):
         mission = Mission()
         slurm_remain, slurm_done = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        if slurm_done == False:
+        if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these scf Jobs:\n")
+                print("Doing these aimd Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_cmd = get_slurm_sbatch_cmd(os.path.dirname(script_path), os.path.basename(script_path))
@@ -86,21 +92,23 @@ class AIMD(object):
                 mission.all_job_finished()
                 # mission.move_slurm_log_to_slurm_work_dir()
                 
-    def make_scf_file(self, scf_dir:str, config_file:str):
+    def make_aimd_file(self, aimd_dir:str, config_file:str, aimd_etot_input:str):
         #1. link config file
-        target_atom_config = os.path.join(scf_dir, PWMAT.atom_config)
+        target_atom_config = os.path.join(aimd_dir, PWMAT.atom_config)
         link_file(config_file, target_atom_config)
-        #2. make scf etot.input file
+        #2. make aimd etot.input file
         # from atom.config get atom type
         atom_type_list = get_atom_type_from_atom_config(config_file)
         pseudo_list = []
         for atom in atom_type_list:
-            pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.scf.pseudo, atom)
+            pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.etot_input.pseudo, atom)
             pseduo_name = os.path.basename(pseudo_atom_path)
-            link_file(pseudo_atom_path, os.path.join(scf_dir, pseduo_name))
+            link_file(pseudo_atom_path, os.path.join(aimd_dir, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(self.input_param.scf.scf_etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(aimd_etot_input, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
+        etot_input_file = os.path.join(aimd_dir, PWMAT.etot_input)
+        write_to_file(etot_input_file, etot_script, "w")
         # if self.input_param.scf.etot_input_file is not None:
         #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         # else:
@@ -129,17 +137,15 @@ class AIMD(object):
         #     vdw=scfparam.vdw,
         #     relax_detail=scfparam.relax_detail
         #     )
-        etot_input_file = os.path.join(scf_dir, PWMAT.etot_input)
-        write_to_file(etot_input_file, etot_script, "w")
 
-    def make_scf_slurm_job_files(self, scf_dir_list:list[str]):
-        group_list = split_job_for_group(self.resource.scf_resource.group_size, scf_dir_list, self.resource.scf_resource.parallel_num)
+
+    def make_aimd_slurm_job_files(self, aimd_dir_list:list[str]):
+        group_list = split_job_for_group(self.resource.scf_resource.group_size, aimd_dir_list, self.resource.scf_resource.parallel_num)
         
-        group_script_path = []
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
-            jobname = "scf{}".format(group_index)
+            jobname = "aimd{}".format(group_index)
             tag_name = "{}-{}".format(group_index, INIT_BULK.aimd_tag)
             tag = os.path.join(self.aimd_dir, tag_name)
             if self.resource.scf_resource.gpu_per_node > 0:
@@ -165,3 +171,17 @@ class AIMD(object):
             slurm_script_name = "{}-{}".format(group_index, INIT_BULK.aimd_job)
             slurm_job_file =  os.path.join(self.aimd_dir, slurm_script_name)
             write_to_file(slurm_job_file, group_slurm_script, "w")
+
+    def do_post_process(self):
+        if not os.path.exists(self.real_aimd_dir):
+            link_file(self.aimd_dir, self.real_aimd_dir)
+    
+    # def delete_nouse_files(self):
+    #     #1. mv init_config_* to real_dir
+    #     mv_file(self.aimd_dir, self.real_aimd_dir)
+    #     #2. delete tag and slurm files
+    #     tag_list  = search_files(self.real_aimd_dir,  template="*-tag-*")
+    #     slurm_log = search_files(self.real_aimd_dir,  template="*slurm-*.out")
+    #     del_file(tag_list)
+    #     del_file(slurm_log)
+        

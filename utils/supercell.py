@@ -1,5 +1,4 @@
-import sys, os
-import numpy as np
+import os
 import argparse
 from utils.app_lib.pwmat import poscar_to_atom_config, atom_config_to_poscar
 from utils.constant import PWMAT
@@ -41,7 +40,6 @@ def super_cell(dims:list[int], filename:str, savepath:str=None):
 
     atom_type = [0 for row in range(num_atom)]
     x_frac = [ [0.0, 0.0, 0.0] for row in range(num_atom)]
-    x_cart = [ [0.0, 0.0, 0.0] for row in range(num_atom)]
     imov_at = [[0, 0, 0] for row in range(num_atom)]
     #initial new variables
     new_num_atom = num_atom * n123
@@ -73,7 +71,7 @@ def super_cell(dims:list[int], filename:str, savepath:str=None):
     super_cell_content = []
     super_cell_content.append("%d\n" % new_num_atom)
     super_cell_content.append("Lattice vector\n")
-    lattic_index = len(super_cell_contents)+1
+    lattic_index = len(super_cell_content)+1
     super_cell_content.append("%16.10f %16.10f %16.10f\n" % (new_lat[0][0], new_lat[0][1], new_lat[0][2]))
     super_cell_content.append("%16.10f %16.10f %16.10f\n" % (new_lat[1][0], new_lat[1][1], new_lat[1][2]))
     super_cell_content.append("%16.10f %16.10f %16.10f\n" % (new_lat[2][0], new_lat[2][1], new_lat[2][2]))
@@ -84,7 +82,6 @@ def super_cell(dims:list[int], filename:str, savepath:str=None):
     new_imov[i][0], new_imov[i][1], new_imov[i][2]))
     
     if savepath is not None:
-        fout = open("supercell.atom.config", "w+")
         with open(savepath, 'w') as wf:
             wf.writelines(super_cell_content)
     return super_cell_content, lattic_index

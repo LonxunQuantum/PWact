@@ -1,6 +1,6 @@
 import glob
 import os
-
+from math import ceil
 GPU_SCRIPT_HEAD = \
 "#!/bin/sh\n\
 #SBATCH --job-name={}\n\
@@ -231,5 +231,5 @@ def common_check_success(task_tag:str, task_tag_failed:str):
     script += "    if test $? eq 0; then\n"
     script += "        touch {}\n".format(task_tag)
     script += "    else\n"
-    script += "        touch {}\n".format(task_tag_faild)
+    script += "        touch {}\n".format(task_tag_failed)
     script += "    fi\n"

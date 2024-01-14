@@ -1,7 +1,9 @@
 from enum import Enum
 from subprocess import Popen, PIPE
-import os, sys, shutil
+import os
+import sys
 import time
+import shutil
 
 class JobStatus (Enum) :
     unsubmitted = 1 #
@@ -169,7 +171,7 @@ class Mission(object):
     def get_all_job_ids(self):
         job_id_list = []
         for job in self.job_list:
-            job_ids.append(job.job_id)
+            job_id_list.append(job.job_id)
         return job_id_list
     
     def check_running_job(self):

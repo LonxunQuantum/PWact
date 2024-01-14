@@ -31,7 +31,7 @@ def atom_config_to_lammps_in(atom_config_dir:str, atom_config_name:str="atom.con
     
 def poscar_to_lammps_in(poscar_dir:str):
     cwd = os.getcwd()
-    os.chdir(atom_config_dir)    
+    os.chdir(poscar_dir)
     p2l(output_name = LAMMPSFILE.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
@@ -171,32 +171,32 @@ def make_pwmat_input_dict(
     return script
 
 def _make_smearing(icmix=None, smearing = None, sigma = None):
-    if icmix == None:
-        if smearing == None:
-            if sigma == None:
+    if icmix is None:
+        if smearing is None:
+            if sigma is None:
                 return None, None, None
             else:
                 return None, None, sigma
         else:
-            if sigma == None:
+            if sigma is None:
                 return None, smearing, None
             else:
                 return None, smearing, sigma
     else:
-        if smearing == None:
-            if sigma == None:
+        if smearing is None:
+            if sigma is None:
                 return icmix, None, None
             else:
                 return icmix, None, sigma
         else:
-            if sigma == None:
+            if sigma is None:
                 return icmix, smearing, None
             else:
                 return icmix, smearing, sigma
     
 
 def _make_flag_symm(flag_symm = None):
-    if flag_symm == None:
+    if flag_symm is None:
         return None
     if flag_symm == "NONE":
         flag_symm = None
@@ -204,7 +204,7 @@ def _make_flag_symm(flag_symm = None):
         raise RuntimeError("unknow flag_symm type " + str(flag_symm))
     return flag_symm
 
-def read_and_check_etot_input(etot_input_path:str):
+def read_and_check_etot_input(etot_input_path:str, kspacing:float=None, flag_symm:int=None):
     with open(etot_input_path, "r") as fp:
         lines = fp.readlines()
     
@@ -230,19 +230,14 @@ def read_and_check_etot_input(etot_input_path:str):
         elif key in int_keys:
             try:
                 value = int(i.split('=')[1].strip().upper())
-            except:
+            except Exception:
                 raise Exception(" {} error, value should be int type, please check the file {}!".format(i, etot_input_path))
         elif key in float_keys:
             try:
                 value = float(i.split('=')[1].strip().upper())
-            except:
+            except Exception:
                 raise Exception(" {} error, value should be float type, please check the file {}!".format(i, etot_input_path))
         key_values[key] = value
-    key_list = key_values.keys()
-    # check necessary keys:
-    if "MP_N123" not in key_list and "KSPACING" not in key_list:
-        raise Exception(" MP_N123 or KSPACING must be set, please check the file {}!".format(etot_input_path))
-    
     return key_values, etot_lines
 
 '''
@@ -256,8 +251,8 @@ param {str} atom_config
 return {*}
 author: wuxingxing
 '''
-def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:list[int]):
-    key_values, etot_lines = read_and_check_etot_input(etot_input_file)
+def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:list[int], kspacing:float=None, flag_symm:int=None):
+    key_values, etot_lines = read_and_check_etot_input(etot_input_file, atom_config)
     # check node1 and node2 are right
     index = 0
     while index < len(etot_lines):
@@ -280,12 +275,15 @@ def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:l
         etot_lines.append("OUT.VR = F\n")
     # if MP_N123 is not in etot.input file then using 'kespacing' generates it
     if "MP_N123" not in key_list:
-        MP_N123 = _make_kspacing_kpoints(atom_config, key_values["KSPACING"])
+        kspacing = PWMAT.kspacing_default if kspacing is None else kspacing
+        MP_N123 = _make_kspacing_kpoints(atom_config, kspacing)
         if "FLAG_SYMM" in key_list:
             MP_N123 += str(key_values["FLAG_SYMM"])
+        else:
+            MP_N123 += str(flag_symm)
         etot_lines.append("MP_N123 = {}\n".format(MP_N123))
     etot_lines.append("\n")
-    
+
     return "".join(etot_lines)
 
 '''
