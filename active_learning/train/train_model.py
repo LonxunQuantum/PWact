@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os,sys
-import json
-import copy
+import os
 
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
-from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, CHECK_TYPE, \
-    get_slurm_job_run_info, set_slurm_comm_basis, set_slurm_script_content
+from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, \
+    get_slurm_job_run_info, set_slurm_comm_basis
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam
 
-from utils.format_input_output import make_train_name, get_seed_by_time
-from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
+from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name
+from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
 
 from utils.file_operation import save_json_file, write_to_file, mv_file, del_dir, search_files
 
@@ -33,7 +31,7 @@ class ModelTrian(object):
         self.input_param = input_param
         self.iter = get_iter_from_iter_name(self.itername)
         # train work dir
-        self.train_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.train)
+        self.train_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
 
     def generate_feature(self):
         feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
@@ -45,7 +43,9 @@ class ModelTrian(object):
         save_json_file(train_dict, train_json_file_path)
         #make gen_feature.job file
         tag_path = TRAIN_FILE_STRUCTUR.feature_tag
-        
+        slrum_gen_feat_script = self.set_train_script(TRAIN_FILE_STRUCTUR.feature_dir.replace(".",""), train_json_file_path, tag_path, MODEL_CMD.gen_feat)
+        slurm_job_file_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_job)
+        write_to_file(slurm_job_file_path, slrum_gen_feat_script, "w")        
         # slrum_gen_feat_script = set_slurm_script_content(gpu_per_node=self.resource.train_resource.gpu_per_node, 
         #                      number_node = self.resource.train_resource.number_node, 
         #                      cpu_per_node = self.resource.train_resource.cpu_per_node,
@@ -60,11 +60,7 @@ class ModelTrian(object):
         #                      task_tag = tag_path,
         #                      task_tag_faild = feature_tag_failed,
         #                      parallel_num=1
-        #                      )
-        
-        slrum_gen_feat_script = self.set_train_script(TRAIN_FILE_STRUCTUR.feature_dir.replace(".",""), train_json_file_path, tag_path, MODEL_CMD.gen_feat)
-        slurm_job_file_path = os.path.join(feature_path, TRAIN_FILE_STRUCTUR.feature_job)
-        write_to_file(slurm_job_file_path, slrum_gen_feat_script, "w")        
+        #                      )   
     
     def do_gen_feature_work(self):
         mission = Mission()
@@ -219,7 +215,7 @@ class ModelTrian(object):
             job_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_job), \
             tag_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_tag))
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        if slurm_done == False:
+        if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
                 print("recover these train Jobs:\n")

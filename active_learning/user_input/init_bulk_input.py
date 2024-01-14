@@ -10,8 +10,8 @@ class InitBulkParam(object):
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
         
-        self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False)
-
+        # self.reserve_pwmat_files = get_parameter("reserve_pwmat_files", json_dict, False)
+        self.reserve_work = get_parameter("reserve_work", json_dict, False)
         # read init configs
         sys_config_prefix = get_parameter("sys_config_prefix", json_dict, None)
         sys_configs = get_required_parameter("sys_configs", json_dict)
@@ -32,14 +32,18 @@ class InitBulkParam(object):
                 
         # set etot.input files and persudo files
         self.etot_input = SCFParam(json_dict=json_dict, is_relax=is_relax, is_aimd=is_aimd, root_dir=self.root_dir)
-        # check and set etot.input file
+        # check and set relax etot.input file
         for config in self.sys_config:
             if config.relax_etot_idx >= len(self.etot_input.relax_etot_input_list):
                 raise Exception("Error! for config '{}' 'relax_etot_idx' {} not in 'relax_etot_input'!".format(os.path.basename(config.config), config.relax_etot_idx))
             if is_relax:
                 config.set_relax_etot_input_file(self.etot_input.relax_etot_input_list[config.relax_etot_idx])
+        # check and set aimd etot.input file
+        for config in self.sys_config:
+            if config.aimd_etot_idx >= len(self.etot_input.aimd_etot_input_list):
+                raise Exception("Error! for config '{}' 'aimd_etot_idx' {} not in 'aimd_etot_input'!".format(os.path.basename(config.config), config.aimd_etot_idx))
             if is_aimd:
-                config.set_aimd_etot_input_file(self.etot_input.relax_etot_input_list[config.relax_etot_idx])
+                config.set_aimd_etot_input_file(self.etot_input.aimd_etot_input_list[config.aimd_etot_idx])
 
 class Stage(object):
     def __init__(self, json_dict: dict, index:int, sys_config_prefix:str = None) -> None:
@@ -87,10 +91,10 @@ class Stage(object):
     
     def set_relax_etot_input_file(self, etot_input:EtotInput):
         self.relax_etot_file = etot_input.etot_input
-        self.relax_etot_input = etot_input.kspacing 
-        self.relax_etot_input = etot_input.flag_symm
+        self.relax_kspacing = etot_input.kspacing 
+        self.relax_flag_symm = etot_input.flag_symm
 
     def set_aimd_etot_input_file(self, etot_input:EtotInput):
         self.aimd_etot_file = etot_input.etot_input
-        self.aimd_etot_input = etot_input.kspacing
-        self.aimd_etot_input = etot_input.flag_symm
+        self.aimd_kspacing = etot_input.kspacing
+        self.aimd_flag_symm = etot_input.flag_symm

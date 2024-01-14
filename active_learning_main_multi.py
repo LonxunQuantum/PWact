@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import json
 # import argparse
 from utils.constant import UNCERTAINTY, AL_WORK
@@ -20,7 +21,6 @@ def run_iter():
     machine_info = json.load(open(sys.argv[3]))
     resource = Resource(machine_info)
     input_param = InputParam(system_info)
-    cwd = os.getcwd()
     os.chdir(input_param.root_dir)
     print("The work dir change to {}".format(os.getcwd()))
     record = input_param.record_file
@@ -33,7 +33,6 @@ def run_iter():
                 iter_rec = [int(x) for x in line.split()]
         print ("continue from iter %03d task %02d" % (iter_rec[0], iter_rec[1]))
 
-    cont = True
     ii = -1
     numb_task = 3
     max_tasks = input_param.explore.md_job_num
@@ -59,7 +58,7 @@ def run_iter():
             #record_iter
             write_to_file(record, "\n{} {}".format(ii, jj), "a")
 
-def run_fp(itername:str, resource : Resource, param_input: InputParam):
+def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)
     #!. make scf work
     lab.make_scf_work()
@@ -69,8 +68,8 @@ def run_fp(itername:str, resource : Resource, param_input: InputParam):
     lab.post_process_scf()
     
     
-def do_training_work(itername:str, resource : Resource, param_input: InputParam):
-    mtrain = ModelTrian(itername, resource, param_input)
+def do_training_work(itername:str, resource : Resource, input_param: InputParam):
+    mtrain = ModelTrian(itername, resource, input_param)
     # 1. generate feature
     mtrain.generate_feature()
     # 2. do gen_feat job
@@ -83,8 +82,8 @@ def do_training_work(itername:str, resource : Resource, param_input: InputParam)
     mtrain.post_process_train()
     print("{} done !".format("train_model"))
 
-def do_exploring_work(itername:str, resource : Resource, param_input: InputParam):
-    md = Explore(itername, resource, param_input)
+def do_exploring_work(itername:str, resource : Resource, input_param: InputParam):
+    md = Explore(itername, resource, input_param)
     # 1. make md work files
     md.make_md_work()
     
@@ -95,14 +94,14 @@ def do_exploring_work(itername:str, resource : Resource, param_input: InputParam
     md.post_process_md()
     
     # 4. select images
-    if param_input.strategy.uncertainty == UNCERTAINTY.committee:
+    if input_param.strategy.uncertainty == UNCERTAINTY.committee:
         md.select_image_by_committee()
         # committee: read model deviation file under md file
-    elif param_input.strategy.uncertainty == UNCERTAINTY.kpu:
-        uncertainty_analyse_kpu(itername, resource, param_input)
+    elif input_param.strategy.uncertainty == UNCERTAINTY.kpu:
+        uncertainty_analyse_kpu(itername, resource, input_param)
 
-def uncertainty_analyse_kpu(itername:str, resource : Resource, param_input: InputParam):
-    mkpu = ModelKPU(itername, resource, param_input)
+def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: InputParam):
+    mkpu = ModelKPU(itername, resource, input_param)
     # 1. make kpu work dirs
     mkpu.make_kpu_work()
     # 2. do kpu job
@@ -115,14 +114,22 @@ def init_bulk():
     machine_info = json.load(open(sys.argv[3]))
     resource = Resource(machine_info, job_type=AL_WORK.init_bulk)
     input_param = InitBulkParam(system_info)
-    cwd = os.getcwd()
     os.chdir(input_param.root_dir)
     
     print("The work dir change to {}".format(os.getcwd()))
     init_bulk_run(resource, input_param)
     print("Init Bulk Work Done!")
-    
+
+def print_init_json_template():
+    pass
+
 def init_surface():
+    pass
+
+def print_run_json_template():
+    pass
+
+def print_cmd():
     pass
 
 def main():
@@ -134,7 +141,15 @@ def main():
 
     elif "run".upper() in sys.argv[1].upper():
         run_iter()
-    # test()
+
+    elif "init_json".upper() in sys.argv[1].upper():
+        print_init_json_template()
+
+    elif "run_json".upper() in sys.argv[1].upper():
+        print_run_json_template()
+    
+    elif "-h".upper() in sys.argv[1].upper() or "help".upper() in sys.argv[1].upper():
+        print_cmd()
 
 if __name__ == "__main__":
     main()

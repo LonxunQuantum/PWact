@@ -21,17 +21,16 @@ from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CHEC
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, MdDetail
-from utils.constant import AL_STRUCTURE, EXPLORE_FILE_STRUCTURE,FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT, TRAIN_FILE_STRUCTUR, EXPLORE_FILE_STRUCTURE
+from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
+        FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT
+
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, make_temp_press_name, make_temp_name, make_train_name
-from utils.file_operation import save_json_file, write_to_file, copy_file, get_file_extension, link_file, read_data
+from utils.file_operation import write_to_file, get_file_extension, link_file, read_data
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
 
 import os
-import json
-import sys
-import time
 import pandas as pd
 """
 md_dir:
@@ -53,7 +52,7 @@ class Explore(object):
         self.sys_paths = self.input_param.explore.sys_configs
         self.md_job = self.input_param.explore.md_job_list[self.iter]
         # md work dir
-        self.explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
+        self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
         
@@ -228,7 +227,6 @@ class Explore(object):
                     self.resource.explore_resource.queue_name)
             mpirun_cmd_template = "mpirun -np {} lmp_mpi -in {}\n"\
                 .format(self.resource.explore_resource.gpu_per_node,\
-                        self.resource.explore_resource.gpu_per_node,\
                         LAMMPSFILE.input_lammps)
                             
         script += set_slurm_comm_basis(self.resource.explore_resource.custom_flags, \

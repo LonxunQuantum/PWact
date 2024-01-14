@@ -18,8 +18,7 @@
             md.000.sys.001-mvm: image_nums, atom_type
             ...
 """
-import os, sys
-import numpy as np
+import os
 import pandas as pd
 from math import ceil
 
@@ -27,11 +26,12 @@ from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import InputParam, SCFParam
 from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
 
-from utils.constant import AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT
+from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE,\
+    LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, PWMAT
 from utils.slurm_script import CONDA_ENV, CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
 from utils.file_operation import write_to_file, copy_file, link_file, merge_files_to_one
-from utils.app_lib.pwmat import make_pwmat_input_dict, set_etot_input_by_file, get_atom_type_from_atom_config
+from utils.app_lib.pwmat import set_etot_input_by_file, get_atom_type_from_atom_config
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
@@ -42,11 +42,11 @@ class Labeling(object):
         
         self.md_job = self.input_param.explore.md_job_list[self.iter]
         # md work dir
-        self.explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
+        self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
         # labed work dir
-        self.label_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.labeling) 
+        self.label_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.labeling) 
         self.scf_dir = os.path.join(self.label_dir, LABEL_FILE_STRUCTURE.scf)
         self.result_dir = os.path.join(self.label_dir, LABEL_FILE_STRUCTURE.result)
 

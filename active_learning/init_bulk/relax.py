@@ -85,7 +85,7 @@ class Relax(object):
                 
     def make_relax_file(self, relax_path, init_conifg:Stage):
         #1. link config file
-        target_atom_config = os.path.join(relax_path, PWMAT.atom_config)
+        target_atom_config = os.path.join(relax_path, os.path.basename(init_conifg.config))
         link_file(init_conifg.config, target_atom_config)
         #2. make relax etot.input file
         # from atom.config get atom type
@@ -97,9 +97,9 @@ class Relax(object):
             link_file(pseudo_atom_path, os.path.join(relax_path, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(init_conifg.relax_etot_file, target_atom_config, \
-            [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node],\
-                init_conifg.relax_etot_file)
+        etot_script = set_etot_input_by_file(
+            init_conifg.relax_etot_file, init_conifg.relax_kspacing, init_conifg.relax_flag_symm,\
+                target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         etot_input_file = os.path.join(relax_path, PWMAT.etot_input)
         write_to_file(etot_input_file, etot_script, "w")
         # if self.input_param.scf.etot_input_file is not None:

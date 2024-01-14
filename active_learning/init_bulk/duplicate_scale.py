@@ -85,11 +85,13 @@ def do_pertub(resource: Resource, input_param:InitBulkParam):
         print(pert_config_list)
         for index, config in enumerate(pert_config_list):
             if config_type == INIT_BULK.scale: 
-                config_type = os.path.basename(os.path.basename(config).replace(PWMAT.config_postfix, ""))
-            work_dir = os.path.join(pertub_dir, init_config_name, config_type)
+                tmp_config_dir = os.path.basename(os.path.basename(config).replace(PWMAT.config_postfix, ""))
+            else:
+                tmp_config_dir = config_type
+            work_dir = os.path.join(pertub_dir, init_config_name, tmp_config_dir)
             if not os.path.exists(work_dir):
                 os.makedirs(work_dir)
-            target_config = os.path.join(work_dir, PWMAT.atom_config)
+            target_config = os.path.join(work_dir, os.path.basename(config))
             link_file(config, target_config)
             BatchPerturbStructure.batch_perturb(
                 work_dir=work_dir,

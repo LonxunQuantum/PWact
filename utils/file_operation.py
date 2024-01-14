@@ -116,6 +116,11 @@ author: wuxingxing
 def copy_file(source_file:str, target_file:str):
     shutil.copyfile(source_file, target_file)
 
+def copy_dir(source_dir:str, target_dir:str):
+    if os.path.exists(target_dir):
+        shutil.rmtree(target_dir)
+    shutil.copytree(source_dir, target_dir)
+    
 '''
 description: 
  link source file to target file, if target file is exist, replace it.
@@ -142,10 +147,10 @@ def del_file(path_dir):
     if os.path.exists(path_dir) is False:
         return
 
-    if os.path.isfile(path_dir):
+    if os.path.isfile(path_dir) or os.path.islink(path_dir):
         os.remove(path_dir)
         return
-        
+
     for i in os.listdir(path_dir) :
         file_path = os.path.join(path_dir, i)
         if os.path.isfile(file_path) is True:#os.path.isfile判断是否为文件,如果是文件,就删除.如果是文件夹.递归给del_file.

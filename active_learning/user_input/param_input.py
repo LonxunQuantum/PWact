@@ -23,7 +23,7 @@ class InputParam(object):
         self.train = TrainParam(json_dict["train"], self.root_dir, init_mvm_files)
         self.strategy = StrategyParam(json_dict["strategy"])
         self.explore = ExploreParam(json_dict["explore"])
-        self.scf = SCFParam(json_dict=json_dict["scf"], is_scf=True, root_dir = self.root_dir)
+        self.scf = SCFParam(json_dict=json_dict, is_scf=True, root_dir = self.root_dir)
 
     def to_dict(self):
         res = {}
@@ -186,7 +186,6 @@ class MdDetail(object):
     '''    
     def get_md_combination(self):
         md_list = []
-        md_traj_id = 0
         for t, temp in enumerate(self.temp_list):
             for p, press in enumerate(self.press_list):
                md_list.append(t, p) 
@@ -194,7 +193,7 @@ class MdDetail(object):
 class SCFParam(object):
     def __init__(self, json_dict, is_relax:bool=False, is_aimd:bool=False, is_scf:bool=False, root_dir:str=None) -> None:
         if is_scf:
-            json_relax = get_required_parameter("relax_etot_input", json_dict)
+            json_relax = get_required_parameter("scf_etot_input", json_dict)
             self.scf_etot_input_list:list[EtotInput] = self.set_etot_input(json_relax, root_dir, flag_symm=0)
         
         if is_aimd:
@@ -241,8 +240,6 @@ class SCFParam(object):
                     raise Exception("Error! The etot.input file {} does not exist!".format(etot_input))
                 flag_symm = get_parameter("flag_symm", etot_json_detail, flag_symm)
                 kspacing = get_parameter("kspacing", etot_json_detail, None)
-                # if flag_symm_input != 0 and flag_symm_input != 3:
-                #     flag_symm = flag_symm_input
                 etot_input_list.append(EtotInput(etot_input, flag_symm, kspacing))
         return etot_input_list
                 

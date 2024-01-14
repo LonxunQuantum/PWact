@@ -19,7 +19,7 @@ import os
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.param_input import SCFParam
-from active_learning.user_input.init_bulk_input import InitBulkParam
+from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 from active_learning.init_bulk.duplicate_scale import get_config_files_with_order
 
 from utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE
@@ -48,13 +48,20 @@ class AIMD(object):
             init_config_name = "init_config_{}".format(init_config.config_index)
             config_list, config_type = get_config_files_with_order(self.super_cell_scale_dir, self.relax_dir, init_config_name, init_config.config, self.pertub_dir)
             for index, config in enumerate(config_list):
-                if config_type == INIT_BULK.scale: 
-                    config_type = os.path.basename(os.path.basename(config).replace(PWMAT.config_postfix, ""))
-                aimd_dir = os.path.join(self.aimd_dir, init_config_name, config_type, "{}_{}".format(index, INIT_BULK.aimd))
-                
+                if config_type == INIT_BULK.pertub:
+                    tmp_config_dir = os.path.basename(os.path.basename(os.path.dirname(config)))
+                elif config_type == INIT_BULK.super_cell or config_type == INIT_BULK.scale:
+                    tmp_config_dir = os.path.basename(config).replace(PWMAT.config_postfix, "")
+                elif config_type == INIT_BULK.relax:
+                    tmp_config_dir = INIT_BULK.relax
+                else:
+                    tmp_config_dir = INIT_BULK.init
+                aimd_dir = os.path.join(self.aimd_dir, init_config_name, tmp_config_dir, "{}_{}".format(index, INIT_BULK.aimd))
                 if not os.path.exists(aimd_dir):
                     os.makedirs(aimd_dir)
-                self.make_aimd_file(aimd_dir, config_file=config, aimd_etot_input=init_config.aimd_etot_file)
+                self.make_aimd_file(aimd_dir, config_file=config, \
+                    etot_input=init_config.aimd_etot_file, kspacing=init_config.aimd_kspacing, flag_symm=init_config.aimd_flag_symm,\
+                        resource_node=[self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
                 aimd_paths.append(aimd_dir)
         # make slurm script and slurm job
         self.make_aimd_slurm_job_files(aimd_paths)
@@ -91,10 +98,11 @@ class AIMD(object):
                 mission.check_running_job()
                 mission.all_job_finished()
                 # mission.move_slurm_log_to_slurm_work_dir()
-                
-    def make_aimd_file(self, aimd_dir:str, config_file:str, aimd_etot_input:str):
+
+    def make_aimd_file(self, aimd_dir:str, config_file:str, \
+                etot_input:str, kspacing:float=None, flag_symm:int=None, resource_node:list[int]=None):
         #1. link config file
-        target_atom_config = os.path.join(aimd_dir, PWMAT.atom_config)
+        target_atom_config = os.path.join(aimd_dir, os.path.basename(config_file))
         link_file(config_file, target_atom_config)
         #2. make aimd etot.input file
         # from atom.config get atom type
@@ -106,7 +114,10 @@ class AIMD(object):
             link_file(pseudo_atom_path, os.path.join(aimd_dir, pseduo_name))
             pseudo_list.append(pseduo_name)
         #3. make etot.input file
-        etot_script = set_etot_input_by_file(aimd_etot_input, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
+        etot_script = set_etot_input_by_file(
+            etot_input, kspacing, flag_symm,\
+                target_atom_config, resource_node)
+
         etot_input_file = os.path.join(aimd_dir, PWMAT.etot_input)
         write_to_file(etot_input_file, etot_script, "w")
         # if self.input_param.scf.etot_input_file is not None:

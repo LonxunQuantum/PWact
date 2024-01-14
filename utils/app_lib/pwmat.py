@@ -251,16 +251,19 @@ param {str} atom_config
 return {*}
 author: wuxingxing
 '''
-def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:list[int], kspacing:float=None, flag_symm:int=None):
+def set_etot_input_by_file(etot_input_file:str, kspacing:float=None, flag_symm:int=None, atom_config:str=None, resource_node:list[int]=None):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file, atom_config)
     # check node1 and node2 are right
     index = 0
     while index < len(etot_lines):
         if len(etot_lines[index].strip().split()) == 2:
             node1, node2 = [int(_) for _ in etot_lines[index].strip().split()]
-            if node1 != resource_node[0] or node2 != resource_node[1]:
+            if node1 <= resource_node[0] and node2 <= resource_node[1]:
+                pass
+            else:
                 raise Exception("the node1 node2 '{}' in {} file is not consistent with resource json file '{}', please check!".format(node1, node2, resource_node))
-            break
+        if "in.atom".upper() in etot_lines[index].upper(): # change the in.atom
+            etot_lines[index] = "in.atom = {}\n".format(os.path.basename(atom_config))
         index += 1
     key_list = list(key_values)
     # set OUT.MLMD
@@ -282,6 +285,10 @@ def set_etot_input_by_file(etot_input_file:str, atom_config:str, resource_node:l
         else:
             MP_N123 += str(flag_symm)
         etot_lines.append("MP_N123 = {}\n".format(MP_N123))
+    
+    if "in.atom".upper() not in key_list:   # if the in.atom not setted in etot.input file then add
+        etot_lines[-1] = "in.atom = {}\n".format(os.path.basename(atom_config))
+
     etot_lines.append("\n")
 
     return "".join(etot_lines)

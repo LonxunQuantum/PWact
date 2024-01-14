@@ -8,7 +8,7 @@ from active_learning.user_input.init_bulk_input import InitBulkParam
 from active_learning.user_input.resource import Resource
 
 from utils.constant import INIT_BULK, TEMP_STRUCTURE, PWMAT
-from utils.file_operation import mv_file, copy_file, search_files, merge_files_to_one
+from utils.file_operation import merge_files_to_one, copy_file, copy_dir, search_files, file_shell_op, del_file
 
 def init_bulk_run(resource: Resource, input_param:InitBulkParam):
     #1. do relax
@@ -35,24 +35,22 @@ def init_bulk_run(resource: Resource, input_param:InitBulkParam):
         aimd.do_aimd_jobs()
         aimd.do_post_process()
     # do collection
-    do_collection(resource, input_param, relax, aimd)
-    # delete no use files
-    
-    
-def do_collection(resource: Resource, input_param:InitBulkParam, relax:Relax, aimd:AIMD):
+    do_collection(resource, input_param)
+       
+def do_collection(resource: Resource, input_param:InitBulkParam):
     init_configs = input_param.sys_config
     
     relax_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax)
-    real_relax_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax)
-
     duplicate_scale_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.super_cell_scale) 
-    real_duplicate_scale_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.super_cell_scale) 
-
-    pertub_dir = os.path.join(input_param.root_dir,TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.pertub)
-    real_pertub_dir = os.path.join(input_param.root_dir,INIT_BULK.pertub)
-
-    collection_dir = os.path.join(input_param.root_dir,TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.collection)
-    real_collection_dir = os.path.join(input_param.root_dir,INIT_BULK.collection)
+    pertub_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.pertub)
+    aimd_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.aimd)
+    collection_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.collection)
+    
+    real_collection_dir = os.path.join(input_param.root_dir, INIT_BULK.collection)
+    real_relax_dir = os.path.join(input_param.root_dir, INIT_BULK.relax)
+    real_duplicate_scale_dir = os.path.join(input_param.root_dir, INIT_BULK.super_cell_scale) 
+    real_pertub_dir = os.path.join(input_param.root_dir, INIT_BULK.pertub)
+    real_aimd_dir = os.path.join(input_param.root_dir, INIT_BULK.aimd)
     
     for init_config in init_configs:
         init_config_name = "init_config_{}".format(init_config.config_index)
@@ -66,28 +64,45 @@ def do_collection(resource: Resource, input_param:InitBulkParam, relax:Relax, ai
             target_config = os.path.join(collection_work_dir, INIT_BULK.realx_config)
             copy_file(source_config, target_config)
         
-            source_relax_mvm = search_files(os.path.join(relax_dir, init_config_name), PWMAT.MOVEMENT)
-            target_mvm_file = os.path.join(collection_work_dir, "mvm_relax_{}".format(init_config_name))
-            copy_file(source_relax_mvm[0], target_mvm_file)
+            # source_relax_mvm = search_files(os.path.join(relax_dir, init_config_name), PWMAT.MOVEMENT)
+            # target_mvm_file = os.path.join(collection_work_dir, "mvm_{}".format(INIT_BULK.relax))
+            # copy_file(source_relax_mvm[0], target_mvm_file)
                             
         #2. copy atom.configs after duplicate and scale
-        if init_config.perturb is not None:
-            source_file_list = search_files(os.path.join(duplicate_scale_dir, init_config_name), "*{}".format(PWMAT.config_postfix))
-            for file in source_file_list:
-                target_file = os.path.join(collection_dir, init_config_name, os.path.basename(file))
-                copy_file(file, target_file)
+        # if init_config.perturb is None:
+        #     config_template = "*{}".format(PWMAT.config_postfix)
+        # else:
+        #     "*scale{}".format(PWMAT.config_postfix)
+        config_template = "*{}".format(PWMAT.config_postfix)
+        source_file_list = search_files(os.path.join(duplicate_scale_dir, init_config_name), config_template)
+        for file in source_file_list:
+            target_file = os.path.join(collection_dir, init_config_name, os.path.basename(file))
+            copy_file(file, target_file)
                     
         #3. copy perturb structure
         if init_config.perturb is not None:
-            source_structure_dir = os.path.join(pertub_dir, init_config_name)
-            target_dir = os.path.join(collection_dir, init_config_name)
-            if not os.path.exists(target_dir):
-                mv_file(source_structure_dir, target_dir)
+            source_dir = search_files(os.path.join(pertub_dir, init_config_name), "*")
+            for source in source_dir:
+                # copy .../path/pertub/init_config_0/0.95_scale to .../path/collection/init_config_0/0.95_scale
+                target_dir = os.path.join(collection_dir, init_config_name, "{}_{}".format(os.path.basename(source),INIT_BULK.pertub))
+                copy_dir(source, target_dir)
             
         #4. copy aimd result to movements
-        source_aimd = search_files(os.path.join(aimd.aimd_dir, init_config_name), "*-{}/{}".format(INIT_BULK.aimd, PWMAT.MOVEMENT))
-        for source_mvm in source_aimd:
-            target_mvm_file = os.path.join(collection_dir, init_config_name, "mvm_{}".format(init_config_name))
-            merge_files_to_one(source_mvm, target_mvm_file)
+        if init_config.aimd is True:
+            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, PWMAT.MOVEMENT))
+            source_aimd = sorted(source_aimd)
+            target_mvm = os.path.join(collection_dir, init_config_name, "{}_{}".format(PWMAT.MOVEMENT, INIT_BULK.aimd.upper()))
+            merge_files_to_one(source_aimd, target_mvm)
         
-        #5. copy relaxed movement 
+    # delete link files
+    del_file(real_relax_dir)
+    del_file(real_duplicate_scale_dir)
+    del_file(real_pertub_dir)
+    del_file(real_aimd_dir)
+
+    # delete no use files
+    if not input_param.reserve_work:
+        # mv collection to real dir
+        file_shell_op("mv {} {}".format(collection_dir, real_collection_dir))
+        temp_work_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir)
+        file_shell_op("rm {} -rf".format(temp_work_dir))

@@ -60,6 +60,7 @@ class SlurmJob(object):
         if (ret.returncode != 0) :
             if str("Invalid job id specified") in str(stderr, encoding='ascii') :
                 if os.path.exists (self.job_finish_tag) :
+                    print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
                     return JobStatus.finished
                 else :
                     return JobStatus.terminated
@@ -76,6 +77,7 @@ class SlurmJob(object):
             return JobStatus.running
         elif    status_word in ["C","E","K","BF","CA","CD","F","NF","PR","SE","ST","TO"] :
             if os.path.exists (self.job_finish_tag) :
+                print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
                 return JobStatus.finished
             else :
                 return JobStatus.terminated
@@ -177,7 +179,8 @@ class Mission(object):
     def check_running_job(self):
         while True:
             for job in self.job_list:
-                if job.status == JobStatus.resubmit_failed: # For job resubmitted more than 3 times, do not check again
+                print(job.status, job.job_id)
+                if job.status == JobStatus.resubmit_failed or job.status == JobStatus.finished: # For job resubmitted more than 3 times, do not check again
                     continue
                 status = job.check_status()
                 self.update_job_state(job.job_id, status)
