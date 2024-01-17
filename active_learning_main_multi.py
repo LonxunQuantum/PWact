@@ -149,6 +149,16 @@ author: wuxingxing
 def print_cmd():
     pass
 
+'''
+description: 
+    增加一些小工具
+        1. 整理出所有的movement到一个目录？
+return {*}
+author: wuxingxing
+'''
+def common_tool():
+    pass
+
 def main():
     if "init_bulk".upper() in sys.argv[1].upper():
         init_bulk()

@@ -9,7 +9,7 @@ from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name
-from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE
+from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT
 
 from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, file_shell_op, link_file
 
@@ -108,7 +108,7 @@ class ModelTrian(object):
         mvm_files = []
         train_feature_path = []
         if is_mvm:
-            mvm_files = search_files(self.input_param.root_dir, "iter.*/{}/mvm-*-".format(LABEL_FILE_STRUCTURE.result))
+            mvm_files = search_files(self.input_param.root_dir, "iter.*/{}/{}/*/{}".format(AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result, PWMAT.MOVEMENT))
             for init_mvm in self.input_param.init_mvm_files:
                 if os.path.exists(init_mvm):
                     mvm_files.append(init_mvm)
