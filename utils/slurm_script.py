@@ -33,38 +33,13 @@ CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'sh
        'fi\n' \
        'unset __conda_setup\n' \
        '# <<< conda initialize <<<\n' \
-       'conda activate torch2\n\n'
+       'conda activate torch2_feat\n\n'
 
 class CHECK_TYPE:
     pwmat = "PWMAT"
     lammps = "LAMMPS"
     train = "PWMLFF"
     
-'''
-description: 
-    Set the basic app for Slurm job dependency
-param {list} custom_flags
-param {list} source_list
-param {list} module_list
-return {*}
-author: wuxingxing
-'''
-def set_slurm_comm_basis(custom_flags:list[str]=[], source_list:list[str]=[], module_list:list[str]=[]):
-    script = ""
-    # set custom_flags
-    for custom_flag in custom_flags:
-        script += custom_flag + "\n"
-    script += "\n"
-    # set source_list
-    for source in source_list:
-        script += source + "\n"
-    script += "\n"        
-    # set module_list
-    for module in module_list:
-        script += "module load " + module + "\n"
-    script += "\n"
-    return script
-
 '''
 Description: 
 Obtain the execution status of the slurm jobs under the dir:
@@ -143,7 +118,7 @@ make slurm job content
 return {*}
 author: wuxingxing
 '''
-def set_slurm_script_content(gpu_per_node, 
+def set_slurm_script_content(gpu_per_node, #None
                              number_node, 
                              cpu_per_node,
                              queue_name,
@@ -164,16 +139,26 @@ def set_slurm_script_content(gpu_per_node,
         if gpu_per_node is None:
             script += CPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, queue_name)
         else:
-            script += GPU_SCRIPT_HEAD.format(job_name, number_node, gpu_per_node, gpu_per_node, 1, queue_name)
+            script += GPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, gpu_per_node, 1, queue_name)
         
-        script += set_slurm_comm_basis(custom_flags, source_list, module_list)
-        
+        for custom_flag in custom_flags:
+            script += custom_flag + "\n"
+                
         # set conda env
         script += "\n"
         script += CONDA_ENV
         script += "\n"        
         script += "start=$(date +%s)\n"
 
+        # set source_list
+        for source in source_list:
+            script += source + "\n"
+        script += "\n"        
+        # set module_list
+        for module in module_list:
+            script += "module load " + module + "\n"
+        script += "\n"
+        
         job_cmd = ""
         job_id = 0
         job_tag_list = []
@@ -228,8 +213,9 @@ def pwmat_check_success(task_tag:str, task_tag_faild:str):
 
 def common_check_success(task_tag:str, task_tag_failed:str):
     script = ""
-    script += "    if test $? eq 0; then\n"
+    script += "    if test $? == 0; then\n"
     script += "        touch {}\n".format(task_tag)
     script += "    else\n"
     script += "        touch {}\n".format(task_tag_failed)
     script += "    fi\n"
+    return script

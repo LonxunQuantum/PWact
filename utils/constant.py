@@ -64,6 +64,7 @@ class TRAIN_FILE_STRUCTUR:
     train_json = "train.json"
     train_job = "train.job"
     train_tag = "tag.train.success"
+    train_tag_failed = "tag.train.failed"
     
     kpu_json = "kpu.json"
     kpu_tag = "tag.kpu.success"
@@ -99,9 +100,9 @@ class EXPLORE_FILE_STRUCTURE:
     tarj ="traj"
     
     # for committee method 
-    model_devi = "model_deviation.out"
-    model_devi_force = 2 # the model deviation foce data row in model_deviation.out file
-    model_devi_energy = 1
+    model_devi = "model_devi.out"
+    model_devi_force = 1 # the model deviation foce data row in model_deviation.out file
+    model_devi_energy = 2
     model_devi_step = 0
     
 
@@ -119,7 +120,11 @@ class MODEL_CMD:
     script = "script"
     compress = "compress"
     kpu = "kpu"
-    
+
+class LAMMPS_CMD:
+    lmp_mpi = "lmp_mpi"
+    lmp_mpi_gpu = "lmp_mpi_gpu"
+      
 class SCF_FILE_STRUCTUR:
     NCPP = "NCPP-SG15-PBE"
 
@@ -139,13 +144,17 @@ class TRAIN_INPUT_PARAM:
     atom_type = "atom_type"
     model_load_file = "model_load_file"
     test_dir_name = "test_dir_name"
+    work_dir = "work_dir"
 
 class LAMMPSFILE:
     input_lammps="in.lammps"
     poscar = "POSCAR"
     lammps_sys_config = "lmp.config"
+    traj_postfix = ".lammpstrj"
+    log_lammps = "log.lammps"
 
 class PWMAT:
+    pwmat_out = "PWMAT.out"
     config_postfix = ".config"
     atom_config = "atom.config"
     etot_input = "etot.input"
@@ -156,6 +165,8 @@ class PWMAT:
     md = "MD"
     MOVEMENT="MOVEMENT"
     kspacing_default = 0.5
+    scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", "*.config"]
+    final_config = "final.config"
     
 class FORCEFILED:
     fortran_lmps = 1 #

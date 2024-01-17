@@ -22,7 +22,8 @@
 import shutil
 import subprocess
 import yaml
-import os,sys
+import os
+import sys
 import json
 import copy
 import glob
@@ -30,16 +31,16 @@ import numpy as np
 import pandas as pd
 import random
 
-from active_learning.slurm import SlurmJob, JobStatus, Mission, get_slurm_sbatch_cmd
+from active_learning.slurm import SlurmJob, JobStatus, Mission
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.param_input import InputParam
+from active_learning.user_input.iter_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, get_sub_md_sys_template_name
 from utils.constant import AL_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, UNCERTAINTY, \
     EXPLORE_FILE_STRUCTURE, LABEL_FILE_STRUCTURE
 
 from utils.file_operation import save_json_file, write_to_file, mv_file, del_dir, link_file, search_files
-from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, set_slurm_comm_basis, split_job_for_group
+from utils.slurm_script import CPU_SCRIPT_HEAD, GPU_SCRIPT_HEAD, CONDA_ENV, get_slurm_job_run_info, split_job_for_group
 from utils.app_lib.pwmat import convert_config_to_mvm
 
 from utils.format_input_output import make_iter_name
@@ -234,12 +235,11 @@ class ModelKPU(object):
                 print("Doing these KPU Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
-                    slurm_cmd = get_slurm_sbatch_cmd(os.path.dirname(script_path), os.path.basename(script_path))
                     slurm_job = SlurmJob()
                     tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), TRAIN_FILE_STRUCTUR.kpu_tag)
                     tag = os.path.join(os.path.dirname(script_path),tag_name)
                     slurm_job.set_tag(tag)
-                    slurm_job.set_cmd(slurm_cmd, os.path.dirname(script_path))
+                    slurm_job.set_cmd(script_path)
                     mission.add_job(slurm_job)
 
             if len(mission.job_list) > 0:

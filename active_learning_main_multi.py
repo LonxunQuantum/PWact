@@ -5,9 +5,9 @@ import json
 from utils.constant import UNCERTAINTY, AL_WORK
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
-
+from utils.json_operation import convert_keys_to_lowercase
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.param_input import InputParam
+from active_learning.user_input.iter_input import InputParam
 from active_learning.user_input.init_bulk_input import InitBulkParam
 
 from active_learning.train.train_model import ModelTrian
@@ -16,9 +16,11 @@ from active_learning.explore.run_model_md import Explore
 from active_learning.label.labeling import Labeling
 
 from active_learning.init_bulk.init_bulk_run import init_bulk_run
+
 def run_iter():
-    system_info = json.load(open(sys.argv[2]))
-    machine_info = json.load(open(sys.argv[3]))
+    system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
+    machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
+    
     resource = Resource(machine_info)
     input_param = InputParam(system_info)
     os.chdir(input_param.root_dir)
@@ -60,20 +62,21 @@ def run_iter():
 
 def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)
-    #!. make scf work
-    lab.make_scf_work()
-    #2. do scf work
-    lab.do_labeling()
-    #3. post process, collect movement
-    lab.post_process_scf()
-    
+    if not lab.check_state():
+        #!. make scf work
+        lab.make_scf_work()
+        #2. do scf work
+        lab.do_scf_jobs()
+        #3. post process, collect movement
+    lab.collect_movements()
+    lab.do_post_labeling()
     
 def do_training_work(itername:str, resource : Resource, input_param: InputParam):
     mtrain = ModelTrian(itername, resource, input_param)
     # 1. generate feature
-    mtrain.generate_feature()
+    # mtrain.generate_feature()
     # 2. do gen_feat job
-    mtrain.do_gen_feature_work()
+    # mtrain.do_gen_feature_work()
     # 3. create train work dirs
     mtrain.make_train_work()
     # 4. run training job
@@ -84,21 +87,23 @@ def do_training_work(itername:str, resource : Resource, input_param: InputParam)
 
 def do_exploring_work(itername:str, resource : Resource, input_param: InputParam):
     md = Explore(itername, resource, input_param)
-    # 1. make md work files
-    md.make_md_work()
-    
-    # 2. do md job
-    md.do_md_jobs()
-    
-    # 3. do post process after lammps md running
-    md.post_process_md()
-    
+    if not md.check_state():
+        # 1. make md work files
+        md.make_md_work()
+        # 2. do md job
+        md.do_md_jobs()
+        # 3. do post process after lammps md running
+        md.post_process_md()
+        print("lammps md done!")
     # 4. select images
-    if input_param.strategy.uncertainty == UNCERTAINTY.committee:
-        md.select_image_by_committee()
+    if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
+        summary = md.select_image_by_committee()
         # committee: read model deviation file under md file
-    elif input_param.strategy.uncertainty == UNCERTAINTY.kpu:
-        uncertainty_analyse_kpu(itername, resource, input_param)
+    elif input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper():
+        summary = uncertainty_analyse_kpu(itername, resource, input_param)
+    print(summary)
+    print("config selection done!")
+    return summary
 
 def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: InputParam):
     mkpu = ModelKPU(itername, resource, input_param)
@@ -126,9 +131,21 @@ def print_init_json_template():
 def init_surface():
     pass
 
+'''
+description: 
+输出主动学习流程的模板json文件
+return {*}
+author: wuxingxing
+'''
 def print_run_json_template():
     pass
 
+'''
+description: 
+    输出大的命令选项
+return {*}
+author: wuxingxing
+'''
 def print_cmd():
     pass
 

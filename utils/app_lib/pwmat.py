@@ -3,6 +3,24 @@ import numpy as np
 import subprocess
 from utils.app_lib.poscar2lammps import p2l
 from utils.constant import LAMMPSFILE, ELEMENTTABLE_2, PWMAT
+from dpdata import System as dp_system
+from utils.file_operation import del_file
+'''
+description: 
+    lammps dump file to poscar format
+param {str} dump_file
+param {str} save_file
+param {list} type_map
+param {bool} unwrap
+return {*}
+author: wuxingxing
+'''
+def lammps_dump_to_atom_config(dump_file:str, save_file:str, type_map:list[str], unwrap:bool=False):
+    system = dp_system(dump_file, type_map=type_map, begin=0, step=1, unwrap=False, fmt = 'lammps/dump')
+    tmp_poscar = os.path.join(os.path.dirname(save_file), "tmp_psocar")
+    system.to_poscar(tmp_poscar, frame_idx=0)
+    poscar_to_atom_config(poscar_dir=os.path.dirname(save_file),input_name="tmp_psocar", save_name=os.path.basename(save_file))
+    del_file(tmp_poscar)
 
 def poscar_to_atom_config(poscar_dir:str, input_name:str="POSCAR", save_name:str="poscar_to_atom.config"):
     cwd = os.getcwd()
@@ -24,7 +42,7 @@ def atom_config_to_poscar(atom_config_dir:str, input_name:str="atom.config", sav
 def atom_config_to_lammps_in(atom_config_dir:str, atom_config_name:str="atom.config"):
     cwd = os.getcwd()
     os.chdir(atom_config_dir)
-    subprocess.run(["config2poscar.x {} > /dev/null".format(atom_config_name)], shell = True)
+    subprocess.run(["config2poscar.x {}".format(atom_config_name)], shell = True)
     p2l(output_name = LAMMPSFILE.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
@@ -295,9 +313,9 @@ def set_etot_input_by_file(etot_input_file:str, kspacing:float=None, flag_symm:i
 
 '''
 description: 
-get atom type list in the atom.config file
+get atom type list in the atom.config file, the order is same as atom.config
 param {str} atom_config
-return {*}
+return {*} atomic type name list, atomic number list
 author: wuxingxing
 '''
 def get_atom_type_from_atom_config(atom_config:str):
@@ -310,11 +328,26 @@ def get_atom_type_from_atom_config(atom_config:str):
             break
         index += 1
     atom_type_list = []
+    atomic_number_list = []
     for atom_line in lines[index+1:index+atom_num+1]:
-       atom_name = ELEMENTTABLE_2[int(atom_line.strip().split()[0].strip())]
-       if atom_name not in atom_type_list:
-           atom_type_list.append(atom_name)
-    return atom_type_list
+        atomic_number = int(atom_line.strip().split()[0].strip())
+        if atomic_number not in atomic_number_list:
+            atom_type_list.append(ELEMENTTABLE_2[atomic_number])
+            atomic_number_list.append(atomic_number)
+    return atom_type_list, atomic_number_list
+
+def is_alive_atomic_energy(movement_list:list):
+    if len(movement_list) < 1:
+        return False
+    # Declare is_real_Ep as a global variable
+    command = 'grep Atomic-Energy ' + movement_list[0] + ' | head -n 1'
+    print('running-shell-command: ' + command)
+    result = subprocess.run(command, stdout=subprocess.PIPE, encoding='utf-8', shell=True)
+    if 'Atomic-Energy' in result.stdout:
+        alive_atomic_energy = True
+    else:
+        alive_atomic_energy = False
+    return alive_atomic_energy
     
 '''
 Author: WuXing wuxingxing

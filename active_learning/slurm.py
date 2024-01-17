@@ -30,10 +30,12 @@ class SlurmJob(object):
         self.nodelist = nodelist
         self.submit_num = 0
         
-    def set_cmd(self, submit_cmd, slurm_job_run_dir):
+    def set_cmd(self, script_path:str):
         #such as "sbatch main_MD_test.sh"
-        self.slurm_job_run_dir = slurm_job_run_dir
-        self.submit_cmd = submit_cmd
+        self.slurm_job_run_dir = os.path.dirname(script_path)
+        self.slurm_job_name = os.path.basename(script_path)
+        slurm_cmd = get_slurm_sbatch_cmd(self.slurm_job_run_dir, self.slurm_job_name)
+        self.submit_cmd = slurm_cmd
     
     def set_tag(self, tag):
         self.job_finish_tag = tag
@@ -97,6 +99,17 @@ class SlurmJob(object):
         assert(status == JobStatus.finished)
         return status
 
+    def get_slurm_works_dir(self):
+        with open(os.path.join(self.slurm_job_run_dir, self.slurm_job_name), 'r') as rf:
+            lines = rf.readlines()
+        work_dir_list = []
+        for line in lines:
+            if 'cd ' in line:
+                work_dir = line.split()[-1].strip()
+                work_dir_list.append(work_dir)
+        return work_dir_list
+
+
 class Mission(object):
     def __init__(self, mission_id=None) -> None:
         self.mission_id = mission_id
@@ -147,14 +160,21 @@ class Mission(object):
                 job_list.append(job)
         return job_list
     
-    def all_job_finished(self):
+    def all_job_finished(self, error_type:str=None):
         error_jobs = self.get_error_jobs()
         if len(error_jobs) >= 1:
             error_log_content = ""
             for error_job in error_jobs:
                 error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
-                error_log_content += "ERRIR! The cmd '{}' failed! Please check the slurm log file for more information: {}!\n\n".format(\
+                error_log_content += "ERRIR! The cmd '{}' failed! The slurm job file is {}!\n".format(\
                     error_job.submit_cmd, error_log_path)
+                if error_type is not None:
+                    work_dirs = error_job.get_slurm_works_dir()
+                    tmp_error = ""
+                    for _ in work_dirs:
+                        tmp_error += "{}/{}".format(_, error_type)
+                    error_log_content += "For more details on errors, please refer to the following documents:\n"
+                    error_log_content += tmp_error
             raise Exception(error_log_content)
         return True
     
@@ -179,7 +199,7 @@ class Mission(object):
     def check_running_job(self):
         while True:
             for job in self.job_list:
-                print(job.status, job.job_id)
+                # print(job.status, job.job_id)
                 if job.status == JobStatus.resubmit_failed or job.status == JobStatus.finished: # For job resubmitted more than 3 times, do not check again
                     continue
                 status = job.check_status()
@@ -202,11 +222,7 @@ class Mission(object):
                     print("resubmit job: {}, the time is {}\n".format(job.submit_cmd, job.submit_num))
                     job.submit()
                 else:
-                    job.status = JobStatus.resubmit_failed
-                    slurm_name = "slurm-{}.out".format(job.job_id)
-                    print("Error! The job '{}' has been resubmitted more than {} times but still fialed, please check {} file for more information!".\
-                        format(job.submit_cmd, JobStatus.submit_limit.value, slurm_name))
-                     
+                    job.status = JobStatus.resubmit_failed                    
                 
     '''
     Description: 

@@ -1,4 +1,4 @@
-from utils.file_operation import get_required_parameter, get_parameter
+from utils.json_operation import get_parameter, get_required_parameter
 from utils.constant import AL_WORK
 class Resource(object):
     # _instance = None
@@ -6,12 +6,29 @@ class Resource(object):
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter) -> None:
         if job_type == AL_WORK.run_iter:
             self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
+            if self.train_resource.number_node > 1:
+                self.train_resource.number_node = 1
+            if self.train_resource.gpu_per_node > 1:
+                self.train_resource.gpu_per_node = 1
+            if self.train_resource.cpu_per_node > 1:
+                self.train_resource.cpu_per_node = 1
+            print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
+
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
             # check explore resource
             if self.explore_resource.cpu_per_node < self.explore_resource.gpu_per_node:
                 raise Exception("Error! The number of CPUs need be greater than or equal to GPUs in explore resource! ")
+            # check if the gpus in node more than limit
+            # check the node to set to 1
+            if self.explore_resource.number_node > 1:
+                self.explore_resource.number_node = 1
+                print("Warining: the resouce of node in explore automatically adjust to 1")
+
         self.scf_resource = self.get_resource(get_required_parameter("scf", json_dict))
-        self.pwmat_run_num = get_parameter("pwmat_run_num", json_dict["scf"], 3)
+        if self.scf_resource.number_node > 1:
+            self.scf_resource.number_node = 1
+            print("Warining: the resouce of node in scf automatically adjust to 1")
+        self.pwmat_run_num = get_parameter("pwmat_run_num", json_dict["scf"], 1)
         
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):

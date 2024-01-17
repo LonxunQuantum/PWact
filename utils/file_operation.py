@@ -71,8 +71,8 @@ param {*} skiprows
 return {*}
 author: wuxingxing
 '''
-def read_data(file_path:str, skiprows=1):
-    datas = np.loadtxt(file_path,skiprows=1)
+def read_data(file_path:str, skiprows=0):
+    datas = np.loadtxt(file_path,skiprows=skiprows)
     return datas
     
 '''
@@ -158,6 +158,13 @@ def del_file(path_dir):
         else:
             del_file(file_path)
 
+def del_file_list(path_list:str):
+    for _path in path_list:
+        del_file(_path)
+        if os.path.isdir(_path):
+            shutil.rmtree(_path)
+        
+
 '''
 description: 
     mv files under target_dir to source_dir
@@ -167,6 +174,8 @@ return {*}
 author: wuxingxing
 '''
 def mv_file(source_file:str, target_file:str):
+    if not os.path.exists(source_file):
+        return
     if os.path.islink(target_file):
         os.remove(target_file)
     if os.path.exists(target_file):
@@ -211,46 +220,6 @@ author: wuxingxing
 def search_files(search_root_dir:str, template:str):
     file_list = glob.glob(os.path.join(search_root_dir, template))
     return file_list
-           
-'''
-description: 
-    get value of param in json_input which is required parameters which need input by user
-        if the parameter is not specified in json_input, raise error and print error log to user.
-param {str} param
-param {dict} json_input
-param {str} info 
-return {*}
-author: wuxingxing
-'''
-def get_required_parameter(param:str, json_input:dict, detail_infos:str=None):
-    if param not in json_input.keys():
-        error_info = "Input error! : The {} parameter is missing and must be specified in input json file!".format(param)
-        if detail_infos is not None:
-            error_info += "\n{}\n".format(detail_infos)
-        raise Exception(error_info)
-    return json_input[param]
-
-'''
-description: 
-    get value of param in json_input,
-        if the parameter is not specified in json_input, return the default parameter value 'default_value'
-param {str} param
-param {dict} json_input
-param {*} default_value
-return {*}
-author: wuxingxing
-'''
-def get_parameter(param:str, json_input:dict, default_value, format_type:str=None):
-    res = None
-    if param not in json_input.keys():
-        res = default_value
-    else:
-        res = json_input[param]
-    
-    if format_type is not None:
-        if format_type.upper() == "upper".upper():
-            res = res.upper()
-    return res
 
 def str_list_format(input_value):
     input_list = []

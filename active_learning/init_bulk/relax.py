@@ -17,10 +17,10 @@
 """
 import os
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.param_input import SCFParam
+from active_learning.user_input.iter_input import SCFParam
 from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 
-from active_learning.slurm import SlurmJob, Mission, get_slurm_sbatch_cmd
+from active_learning.slurm import SlurmJob, Mission
 from utils.slurm_script import CHECK_TYPE,\
     get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
@@ -69,12 +69,11 @@ class Relax(object):
                 print("Doing these relax Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
-                    slurm_cmd = get_slurm_sbatch_cmd(os.path.dirname(script_path), os.path.basename(script_path))
                     slurm_job = SlurmJob()
                     tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), INIT_BULK.relax_tag)
                     tag = os.path.join(os.path.dirname(script_path),tag_name)
                     slurm_job.set_tag(tag)
-                    slurm_job.set_cmd(slurm_cmd, os.path.dirname(script_path))
+                    slurm_job.set_cmd(script_path)
                     mission.add_job(slurm_job)
 
             if len(mission.job_list) > 0:
@@ -89,7 +88,7 @@ class Relax(object):
         link_file(init_conifg.config, target_atom_config)
         #2. make relax etot.input file
         # from atom.config get atom type
-        atom_type_list = get_atom_type_from_atom_config(init_conifg.config)
+        atom_type_list, _ = get_atom_type_from_atom_config(init_conifg.config)
         pseudo_list = []
         for atom in atom_type_list:
             pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.etot_input.pseudo, atom)

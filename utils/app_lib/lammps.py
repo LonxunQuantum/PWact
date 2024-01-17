@@ -15,19 +15,20 @@ def _sample_sphere():
             continue
         return vv / vn
 
-def make_pair_style(md_type, forcefiled):
+def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str):
     pair_style = ""
     
     if md_type == FORCEFILED.fortran_lmps:
+        raise Exception("the fortran in.lammps not relized!")
         pass
     
     elif md_type == FORCEFILED.libtorch_lmps:
         pair_names = ""
         for fi in forcefiled:
             pair_names += "{} ".format(os.path.basename(fi))
-        pair_style = "pair_style       {} {}\n".format(len(forcefiled), pair_names)
-    
-    pair_style += "pair_coeff       * *\n"
+        pair_style = "pair_style   pwmlff   {} {} {}\n".format(len(forcefiled), pair_names, dump_info)
+    atom_names = " ".join(map(str, atom_type))
+    pair_style += "pair_coeff       * * {}\n".format(atom_names)
     return pair_style
 
 def make_mass(mass):
@@ -49,6 +50,7 @@ def make_lammps_input(
     md_file,
     md_type,
     forcefiled,
+    atom_type,
     ensemble,
     nsteps,
     dt,
@@ -61,18 +63,22 @@ def make_lammps_input(
     tau_p,    
     boundary, #true is 'p p p', false is 'f f f', default is true
     merge_traj,
-    max_seed=100000
+    max_seed=100000,
+    restart=0,
+    model_deviation_file = "model_deviation.out"
 ):
     md_script = ""
     md_script += "variable        NSTEPS          equal %d\n" % nsteps
     md_script += "variable        THERMO_FREQ     equal %d\n" % trj_freq
     md_script += "variable        DUMP_FREQ       equal %d\n" % trj_freq
+    md_script += "variable        restart         equal %d\n" % restart
+
     md_script += "variable        TEMP            equal %f\n" % temp
     # if ele_temp_f is not None:
     #     md_script += "variable    ELE_TEMP        equal %f\n" % ele_temp_f
     # if ele_temp_a is not None:
     #     md_script += "variable    ELE_TEMP        equal %f\n" % ele_temp_a
-    md_script += "variable        PRESS            equal %f\n" % press
+    md_script += "variable        PRESS           equal %f\n" % press
     md_script += "variable        TAU_T           equal %f\n" % tau_t
     md_script += "variable        TAU_P           equal %f\n" % tau_p
     md_script += "\n"
@@ -99,8 +105,9 @@ def make_lammps_input(
     md_script += "change_box       all triclinic\n"
     
     md_script += make_mass(mass)
-    
-    md_script += make_pair_style(md_type, forcefiled)
+    dump_info = "out_freq ${{DUMP_FREQ}} out_file {} ".format(model_deviation_file)
+    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info)
+    #put_freq ${freq} out_file error
     
     md_script += "\n"
     md_script += "thermo_style    custom step temp pe ke etotal press vol lx ly lz xy xz yz\n"
