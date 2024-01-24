@@ -7,12 +7,14 @@ from active_learning.user_input.train_param.optimizer_param import OptimizerPara
 from active_learning.user_input.train_param.work_file_param import WorkFileStructure
 
 from active_learning.user_input.train_param.nep_param import NepParam
+
 '''
 description: 
     covert the input json file to class
 return {*}
 author: wuxingxing
 '''
+
 class TrainParam(object):
     '''
     description: 
@@ -149,12 +151,13 @@ class TrainParam(object):
     '''    
     def set_feature_params(self, json_input:dict):
         # set feature related params
-        self.valid_shuffle = get_parameter("valid_shuffle", json_input, False)
+        self.valid_shuffle = get_parameter("valid_shuffle", json_input, True)
         self.data_shuffle = get_parameter("data_shuffle", json_input, True)
         self.train_valid_ratio = get_parameter("train_valid_ratio", json_input, 0.8)
         self.seed = get_parameter("seed", json_input, 2023)
         self.precision = get_parameter("precision", json_input, "float64")
         self.chunk_size = get_parameter("chunk_size", json_input, 10)
+        self.format = get_parameter("format", json_input, "movement")
 
     '''
     description: 
@@ -170,8 +173,7 @@ class TrainParam(object):
                             work_dir=os.path.abspath(get_parameter("work_dir", json_input, "work_dir")), 
                             reserve_work_dir=get_parameter("reserve_work_dir", json_input, False), 
                             reserve_feature = get_parameter("reserve_feature", json_input, False), 
-                            model_type=self.model_type, 
-                            cmd=self.cmd)
+                            model_type=self.model_type)
 
     '''
     description: 
@@ -242,8 +244,8 @@ class TrainParam(object):
         # params_dict["Rmin"] = self.Rmin
         # params_dict["M2"] = self.descriptor.M2
         # params_dict["data_shuffle"] = self.data_shuffle
-        if self.cmd == "train".upper():
-            params_dict["train_valid_ratio"] = self.train_valid_ratio
+        # if self.cmd == "train".upper():
+        #     params_dict["train_valid_ratio"] = self.train_valid_ratio
         
         # params_dict["precision"] = self.precision
 

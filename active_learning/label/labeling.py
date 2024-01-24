@@ -151,34 +151,6 @@ class Labeling(object):
                     [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
         etot_input_file = os.path.join(scf_dir, PWMAT.etot_input)
         write_to_file(etot_input_file, etot_script, "w")
-        # if self.input_param.scf.etot_input_file is not None:
-        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
-        # else:
-        #     etot_script = make_pwmat_input_dict(
-        #     node1 = scfparam.node1,
-        #     node2 = scfparam.node2,
-        #     job_type = PWMAT.scf,
-        #     pseudo_list = pseudo_list,
-        #     atom_config = target_atom_config,
-        #     ecut = scfparam.ecut,
-        #     ecut2 = scfparam.ecut2,
-        #     e_error = scfparam.e_error,
-        #     rho_error = scfparam.rho_error,
-        #     out_force = scfparam.out_force,
-        #     energy_decomp = scfparam.energy_decomp,
-        #     out_stress = scfparam.out_stress,
-        #     icmix = scfparam.icmix,
-        #     smearing = scfparam.smearing,
-        #     sigma = scfparam.sigma,
-        #     kspacing = scfparam.kspacing,
-        #     flag_symm = scfparam.flag_symm,
-        #     out_wg = scfparam.out_wg,
-        #     out_rho = scfparam.out_rho,
-        #     out_mlmd = scfparam.out_mlmd,
-        #     vdw=scfparam.vdw,
-        #     relax_detail=scfparam.relax_detail
-        #     )        
-
 
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
         group_list = split_job_for_group(self.resource.scf_resource.group_size, scf_sub_list, self.resource.scf_resource.parallel_num)
@@ -231,14 +203,14 @@ class Labeling(object):
                 out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, PWMAT.out_mlmd))
                 # do a sorted?
                 md_sys_mlmd.extend(out_mlmd_list)
-
-            mvm_save_dir = os.path.join(self.result_dir, os.path.basename(md_sys_dir))
-            if not os.path.exists(mvm_save_dir):
-                os.makedirs(mvm_save_dir)
-            mvm_save_file = os.path.join(mvm_save_dir, PWMAT.MOVEMENT)
+            mvm_save_file = os.path.join(md_sys_dir, PWMAT.MOVEMENT)
             merge_files_to_one(out_mlmd_list, mvm_save_file)
             mvm_list.append(mvm_save_file)
+        return mvm_list
 
+    def get_movement_list(self):
+        mvm_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), PWMAT.MOVEMENT))
+        return sorted(mvm_list)
     '''
     description: 
 
@@ -249,7 +221,7 @@ class Labeling(object):
     def do_post_labeling(self):
         # for training
         del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.work_dir)))
-        del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.train_tag)))
+        # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.train_tag)))
         del_file_list(search_files(self.train_dir, "*/slurm*.out"))
         mv_file(self.train_dir, self.real_train_dir)
 
@@ -263,11 +235,11 @@ class Labeling(object):
                 pass
             del_file(os.path.join(md_dir, LAMMPSFILE.log_lammps))
             del_file(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.md_tag))
-        # delete tags and slurm logs
+        # delete slurm logs
         md_slurms = search_files(self.explore_dir, "{}/slurm-*".format(EXPLORE_FILE_STRUCTURE.md))
         del_file_list(md_slurms)
-        md_tags = search_files(self.explore_dir, "{}/*-tag*".format(EXPLORE_FILE_STRUCTURE.md))
-        del_file_list(md_tags)      
+        # md_tags = search_files(self.explore_dir, "{}/*-tag*".format(EXPLORE_FILE_STRUCTURE.md))
+        # del_file_list(md_tags)
         mv_file(self.explore_dir, self.real_explore_dir)
 
         # for label dir
@@ -286,9 +258,11 @@ class Labeling(object):
             # delete tag and logs
             scf_slurms = search_files(self.scf_dir, "slurm-*")
             del_file_list(scf_slurms)
-            scf_tags = search_files(self.scf_dir, "*-tag*")
-            del_file_list(scf_tags)
+            # scf_tags = search_files(self.scf_dir, "*-tag*")
+            # del_file_list(scf_tags)
             mv_file(self.explore_dir, self.real_explore_dir)
+        # delete label/result/ format change nouse files
+        # 
         # move label dir to main dir
         mv_file(self.label_dir, self.real_label_dir)
-        del_file(os.path.dirname(self.label_dir))
+        del_file_list([os.path.dirname(self.label_dir)])

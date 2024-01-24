@@ -10,6 +10,7 @@ class AL_STRUCTURE:
     pertub = "pertub"
     aimd = "aimd"
     collection = "collection"
+    init_data = "init_data_npy"
 
 class AL_WORK:
     init_bulk = "init_bulk"
@@ -42,6 +43,8 @@ class INIT_BULK:
     aimd_tag_failed ="tag.aimd.failed"
     
     collection = "collection"
+    npy_format_save_dir = "PWdata"
+    npy_format_name = "PWdata"
     
     @staticmethod
     def get_work_type(work_type:str):
@@ -120,6 +123,7 @@ class MODEL_CMD:
     script = "script"
     compress = "compress"
     kpu = "kpu"
+    pwdata =  "pwdata"
 
 class LAMMPS_CMD:
     lmp_mpi = "lmp_mpi"
@@ -129,8 +133,8 @@ class SCF_FILE_STRUCTUR:
     NCPP = "NCPP-SG15-PBE"
 
 class TRAIN_INPUT_PARAM:
-    train_mvm_files = "train_movement_file"
-    train_feature_path = "train_feature_path"
+    raw_files = "raw_files"
+    datasets_path = "datasets_path"
     test_mvm_files = "test_movement_file"
     reserve_feature = "reserve_feature" #False
     reserve_work_dir = "reserve_work_dir" #False
@@ -164,6 +168,7 @@ class PWMAT:
     scf = "SCF"
     md = "MD"
     MOVEMENT="MOVEMENT"
+    MOVEMENT_low = "movement"
     kspacing_default = 0.5
     scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", "*.config"]
     final_config = "final.config"

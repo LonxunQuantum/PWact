@@ -10,6 +10,9 @@ class InitBulkParam(object):
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
         
+        self.data_shuffle = get_parameter("data_shuffle", json_dict, True)
+        self.train_valid_ratio = get_parameter("train_valid_ratio", json_dict, 0.8)
+
         # self.reserve_pwmat_files = get_parameter("reserve_pwmat_files", json_dict, False)
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
         # read init configs

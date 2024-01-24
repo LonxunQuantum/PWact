@@ -11,8 +11,8 @@ from active_learning.user_input.iter_input import InputParam
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT
 
-from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, file_shell_op, link_file
-
+from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file
+from utils.gen_format.pwdata import Save_Data
 '''
 description: model training method:
 1. go to train data path
@@ -34,6 +34,34 @@ class ModelTrian(object):
         self.train_dir = os.path.join(self.input_param.root_dir, self.itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
         self.real_train_dir = os.path.join(self.input_param.root_dir, self.itername, AL_STRUCTURE.train)
     
+    '''
+    description: 
+        if the slurm jobs done before and the real_train_dir is dir type, 
+        it means this iter done before, need back up train files in iter*/train directory 
+
+        if the slurm jobs done before and the real_train_dir is link type, 
+        it means the train work done before but this iter dose not done, need back up train files in iter*/temp_work/train directory
+
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''    
+    def check_state(self):
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.real_train_dir, \
+            job_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_job), \
+            tag_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        if slurm_done and os.path.isdir(self.real_train_dir):
+            # bk and do new job
+            target_bk_file = add_postfix_dir(self.real_train_dir, postfix_str="bk")
+            mv_file(self.real_train_dir, target_bk_file)
+            return False
+        elif slurm_done and os.path.islink(self.real_train_dir):
+            target_bk_file = add_postfix_dir(self.train_dir, postfix_str="bk")
+            mv_file(self.train_dir, target_bk_file)
+            return False
+        return slurm_done
+
     def make_train_work(self):
         for model_index in range(0, self.input_param.strategy.model_num):
             # make model_i work dir
@@ -43,7 +71,7 @@ class ModelTrian(object):
                 os.makedirs(model_i_dir)
             
             # make train.json file
-            train_dict = self.set_train_input_dict(is_mvm=True, work_dir=model_i_dir)
+            train_dict = self.set_train_input_dict(work_dir=model_i_dir)
             train_json_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_json)
             save_json_file(train_dict, train_json_file_path)
 
@@ -67,7 +95,7 @@ class ModelTrian(object):
                 task_tag = TRAIN_FILE_STRUCTUR.train_tag, 
                 task_tag_faild = TRAIN_FILE_STRUCTUR.train_tag_failed,
                 parallel_num=1,
-                check_type=CHECK_TYPE.train
+                check_type=CHECK_TYPE.pwmlff
                 )
             slurm_job_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_job)
             write_to_file(slurm_job_file_path, train_slurm_script, "w")
@@ -99,36 +127,27 @@ class ModelTrian(object):
 
     '''
     description: 
+        if the init format exists movement files, convert them to npy format and save to root_dir/init_data dir
+        then in each iter, the init_data is from the root_dir
         make train json dict content
     param {*} self
     return {*}
     author: wuxingxing
     '''
     def set_train_input_dict(self, is_mvm:bool=True, work_dir:str=None):
-        mvm_files = []
         train_feature_path = []
-        if is_mvm:
-            mvm_files = search_files(self.input_param.root_dir, "iter.*/{}/{}/*/{}".format(AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result, PWMAT.MOVEMENT))
-            for init_mvm in self.input_param.init_mvm_files:
-                if os.path.exists(init_mvm):
-                    mvm_files.append(init_mvm)
-        else:
-            train_feature_path = [os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)]
+        for _data in self.input_param.init_data:
+            train_feature_path.append(_data)
         
         train_json = self.input_param.train.to_dict()
-        # reset seed and work_dir
-        train_json[TRAIN_INPUT_PARAM.work_dir] = os.path.join(work_dir, "work_dir")
+        # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
-        if is_mvm > 0:
-            train_json[TRAIN_INPUT_PARAM.train_mvm_files] = mvm_files
-            train_json[TRAIN_INPUT_PARAM.train_feature_path] = []
-        else:
-            train_json[TRAIN_INPUT_PARAM.train_mvm_files] = []
-            train_json[TRAIN_INPUT_PARAM.train_feature_path] = train_feature_path
+        train_json[TRAIN_INPUT_PARAM.raw_files] = []
+        train_json[TRAIN_INPUT_PARAM.datasets_path] = train_feature_path
         # if TRAIN_INPUT_PARAM.reserve_feature not in train_json.keys():
-        train_json[TRAIN_INPUT_PARAM.reserve_feature] = True
+        # train_json[TRAIN_INPUT_PARAM.reserve_feature] = True
         # if TRAIN_INPUT_PARAM.reserve_work_dir not in train_json.keys():
-        train_json[TRAIN_INPUT_PARAM.reserve_work_dir] = True
+        # train_json[TRAIN_INPUT_PARAM.reserve_work_dir] = True
         return train_json
 
     def do_train_job(self):

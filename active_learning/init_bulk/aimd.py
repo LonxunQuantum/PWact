@@ -119,35 +119,6 @@ class AIMD(object):
 
         etot_input_file = os.path.join(aimd_dir, PWMAT.etot_input)
         write_to_file(etot_input_file, etot_script, "w")
-        # if self.input_param.scf.etot_input_file is not None:
-        #     etot_script = set_etot_input_by_file(self.input_param.scf.etot_input_file, target_atom_config, [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
-        # else:
-        #     scfparam = self.input_param.scf
-        #     etot_script = make_pwmat_input_dict(
-        #     node1 = scfparam.node1,
-        #     node2 = scfparam.node2,
-        #     job_type = PWMAT.relax,
-        #     pseudo_list=pseudo_list,
-        #     atom_config = target_atom_config,
-        #     ecut = scfparam.ecut,
-        #     ecut2 = scfparam.ecut2,
-        #     e_error = scfparam.e_error,
-        #     rho_error = scfparam.rho_error,
-        #     out_force = scfparam.out_force,
-        #     energy_decomp = scfparam.energy_decomp,
-        #     out_stress = scfparam.out_stress,
-        #     icmix = scfparam.icmix,
-        #     smearing = scfparam.smearing,
-        #     sigma = scfparam.sigma,
-        #     kspacing = scfparam.kspacing,
-        #     flag_symm = scfparam.flag_symm,
-        #     out_wg = scfparam.out_wg,
-        #     out_rho = scfparam.out_rho,
-        #     out_mlmd = scfparam.out_mlmd,
-        #     vdw=scfparam.vdw,
-        #     relax_detail=scfparam.relax_detail
-        #     )
-
 
     def make_aimd_slurm_job_files(self, aimd_dir_list:list[str]):
         group_list = split_job_for_group(self.resource.scf_resource.group_size, aimd_dir_list, self.resource.scf_resource.parallel_num)
@@ -185,13 +156,3 @@ class AIMD(object):
     def do_post_process(self):
         if not os.path.exists(self.real_aimd_dir):
             link_file(self.aimd_dir, self.real_aimd_dir)
-    
-    # def delete_nouse_files(self):
-    #     #1. mv init_config_* to real_dir
-    #     mv_file(self.aimd_dir, self.real_aimd_dir)
-    #     #2. delete tag and slurm files
-    #     tag_list  = search_files(self.real_aimd_dir,  template="*-tag-*")
-    #     slurm_log = search_files(self.real_aimd_dir,  template="*slurm-*.out")
-    #     del_file(tag_list)
-    #     del_file(slurm_log)
-        

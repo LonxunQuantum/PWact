@@ -184,6 +184,27 @@ def mv_file(source_file:str, target_file:str):
 
 def file_shell_op(shell_cmd: str):
     subprocess.call(shell_cmd, shell=True)
+
+'''
+description: 
+    add postfix to dir, example:
+        for .../path/train:
+            after add is:
+            ../path/train-1-bk, ../path/train-2-bk, ...
+param {str} source_dir
+param {str} postfix_str
+return {*}
+author: wuxingxing
+'''
+def add_postfix_dir(source_dir:str, postfix_str:str):
+    index = 1
+    while True:
+        target_dir = os.path.join(os.path.dirname(source_dir), "{}-{}-{}".format(os.path.basename(source_dir), index, postfix_str))
+        if os.path.exists(target_dir):
+            index += 1
+    return target_dir
+
+
 # '''
 # description: 
 # param {str} source_file

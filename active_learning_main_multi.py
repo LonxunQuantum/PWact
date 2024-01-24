@@ -2,20 +2,22 @@ import os
 import sys
 import json
 # import argparse
-from utils.constant import UNCERTAINTY, AL_WORK
+from utils.constant import UNCERTAINTY, AL_WORK, PWMAT
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
 from utils.json_operation import convert_keys_to_lowercase
+from utils.gen_format.pwdata import Save_Data
+
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 from active_learning.user_input.init_bulk_input import InitBulkParam
-
 from active_learning.train.train_model import ModelTrian
 from active_learning.train.dp_kpu import ModelKPU
 from active_learning.explore.run_model_md import Explore
 from active_learning.label.labeling import Labeling
 
 from active_learning.init_bulk.init_bulk_run import init_bulk_run
+from active_learning.environment import check_envs
 
 def run_iter():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
@@ -67,22 +69,32 @@ def run_fp(itername:str, resource : Resource, input_param: InputParam):
         lab.make_scf_work()
         #2. do scf work
         lab.do_scf_jobs()
-        #3. post process, collect movement
-    lab.collect_movements()
+        #3. collect movement
+        lab.collect_movements()
+    # 4. change the movement format to pwdata format
+    mvm_list = lab.get_movement_list()
+    if len(mvm_list) > 0:
+        for mvm in mvm_list:
+            save_name = os.path.basename(os.path.dirname(mvm))
+            Save_Data(data_path=mvm, 
+                datasets_path=lab.result_dir, 
+                save_name=save_name,
+                train_ratio = input_param.train.train_valid_ratio, 
+                random = input_param.train.data_shuffle, 
+                format=PWMAT.MOVEMENT_low)
+    # 5. collect the files of this iteration to label/result dir
     lab.do_post_labeling()
     
 def do_training_work(itername:str, resource : Resource, input_param: InputParam):
     mtrain = ModelTrian(itername, resource, input_param)
-    # 1. generate feature
-    # mtrain.generate_feature()
-    # 2. do gen_feat job
-    # mtrain.do_gen_feature_work()
-    # 3. create train work dirs
-    mtrain.make_train_work()
-    # 4. run training job
-    mtrain.do_train_job()
-    # 5. do post process after training
-    mtrain.post_process_train()
+    # the job done && the iter*/train path is directory not a link file, means this iter is done before
+    if not mtrain.check_state():
+        # 1. create train work dirs
+        mtrain.make_train_work()
+        # 2. run training job
+        mtrain.do_train_job()
+        # 3. do post process after training
+        mtrain.post_process_train()
     print("{} done !".format("train_model"))
 
 def do_exploring_work(itername:str, resource : Resource, input_param: InputParam):
@@ -159,7 +171,12 @@ author: wuxingxing
 def common_tool():
     pass
 
+def environment_check():
+    check_envs()
+
 def main():
+    environment_check()
+
     if "init_bulk".upper() in sys.argv[1].upper():
         init_bulk()
 

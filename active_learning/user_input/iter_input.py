@@ -20,8 +20,8 @@ class InputParam(object):
         self.reserve_md_traj = get_parameter("reserve_md_traj", json_dict, False)
         self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False)
 
-        init_mvm_files = get_parameter("init_mvm_files", json_dict, [])
-        self.init_mvm_files = self.get_init_mvm_files(init_mvm_files)
+        init_data = get_parameter("init_data", json_dict, [])
+        self.init_data = self.get_init_data(init_data)
         
         self.train = TrainParam(json_input=json_dict["train"], cmd=MODEL_CMD.train)
         self.strategy = StrategyParam(json_dict["strategy"])
@@ -42,15 +42,15 @@ class InputParam(object):
 
         return res
 
-    def get_init_mvm_files(self, init_mvm_files:list[str]):
-        init_file_path = []
-        for mvm in init_mvm_files:
-            mvm_path = mvm if os.path.isabs(mvm) else os.path.join(self.root_dir, mvm)
-            if not os.path.exists(mvm_path):
-                print("Warning! the init_mvm_file {} does not exist!".format(mvm))
+    def get_init_data(self, init_data:list[str]):
+        init_data_path = []
+        for _data in init_data:
+            _data_path = _data if os.path.isabs(_data) else os.path.join(self.root_dir, _data)
+            if not os.path.exists(_data_path):
+                print("Warning! the init data {} does not exist!".format(_data_path))
                 continue
-            init_file_path.append(mvm_path)
-        return init_file_path
+            init_data_path.append(_data_path)
+        return init_data_path
         
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):

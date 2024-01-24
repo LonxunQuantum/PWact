@@ -161,7 +161,7 @@ class ModelKPU(object):
     def set_kpu_input_dict(self, mvms:list[str], model_path:str, sample_nums:int=None):
         train_json = self.input_param.train.get_train_input_dict()
         train_json[TRAIN_INPUT_PARAM.test_mvm_files] = mvms
-        train_json[TRAIN_INPUT_PARAM.train_feature_path] = []       
+        train_json[TRAIN_INPUT_PARAM.datasets_path] = []       
         train_json[TRAIN_INPUT_PARAM.model_load_file] = model_path
         if sample_nums is not None:
             train_json[TRAIN_INPUT_PARAM.sample_nums] = sample_nums

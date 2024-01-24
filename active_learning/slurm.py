@@ -50,7 +50,7 @@ class SlurmJob(object):
         self.job_id = job_id
         self.submit_num += 1
         status = self.update_status()
-        print ("# job {} submitted, status is {}".format(self.job_id, status))
+        print ("# job {} submitted!".format(self.job_id))
 
     def update_status(self):
         self.status = self.check_status()

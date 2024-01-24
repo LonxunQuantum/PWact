@@ -52,10 +52,12 @@ class Explore(object):
         self.input_param = input_param
         self.sys_paths = self.input_param.explore.sys_configs
         self.md_job = self.input_param.explore.md_job_list[self.iter]
+        # train work dir
+        self.train_dir = os.path.join(self.input_param.root_dir, self.itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
+        self.real_train_dir = os.path.join(self.input_param.root_dir, self.itername, AL_STRUCTURE.train)
         # md work dir
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
-        
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
 
@@ -264,7 +266,7 @@ class Explore(object):
 
         for model_index in range(self.input_param.strategy.model_num):
             model_name_i = "{}/{}".format(make_train_name(model_index), model_name)
-            source_model_path = os.path.join(self.input_param.root_dir, self.itername, AL_STRUCTURE.train, model_name_i)
+            source_model_path = os.path.join(self.real_train_dir, model_name_i)
             target_model_path = os.path.join(md_dir, "{}_{}".format(model_index, os.path.basename(source_model_path)))
             link_file(source_model_path, target_model_path)
             md_model_paths.append(target_model_path)

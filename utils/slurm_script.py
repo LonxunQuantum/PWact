@@ -38,7 +38,7 @@ CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'sh
 class CHECK_TYPE:
     pwmat = "PWMAT"
     lammps = "LAMMPS"
-    train = "PWMLFF"
+    pwmlff = "PWMLFF"
     
 '''
 Description: 
