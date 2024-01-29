@@ -118,6 +118,8 @@ def copy_file(source_file:str, target_file:str):
 
 def copy_dir(source_dir:str, target_dir:str):
     if os.path.exists(target_dir):
+        if os.path.islink(target_dir) or os.path.isfile(target_dir):
+            os.remove(target_dir)
         shutil.rmtree(target_dir)
     shutil.copytree(source_dir, target_dir)
     

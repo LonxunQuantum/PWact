@@ -391,9 +391,9 @@ class POSCAR(object):
 class Save_Data(object):
     def __init__(self, data_path, datasets_path = "./PWdata", save_name=None, train_data_path = "train", valid_data_path = "valid", 
                  train_ratio = None, random = True, seed = 2024, format = None, retain_raw = False) -> None:
-        if format == "config":
+        if format.lower() == "config".lower():
             self.image_data = CONFIG(data_path)
-        elif format == "poscar":
+        elif format.lower() == "poscar".lower():
             self.image_data = POSCAR(data_path)
         elif format == "dump":
             pass
@@ -407,9 +407,9 @@ class Save_Data(object):
             if len(glob.glob(os.path.join(self.labels_path, train_data_path, "*.npy"))) > 0:
                 print("Data %s has been processed!" % self.data_name)
                 return
-            if format == "movement":
+            if format.lower() == "movement".lower() or format.lower() == "pwmat".lower():
                 self.image_data = MOVEMENT(data_path)
-            elif format == "outcar":
+            elif format == "outcar" or format.lower() == "vasp".lower():
                 self.image_data = OUTCAR(data_path)
             elif format == "xml":
                 pass

@@ -5,7 +5,7 @@ import subprocess as sp
 import scipy.constants as pc
 from packaging.version import Version
 
-from utils.constant import ENSEMBLE, FORCEFILED, LAMMPSFILE
+from utils.constant import ENSEMBLE, FORCEFILED, LAMMPS
 
 def _sample_sphere():
     while True:

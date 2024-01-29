@@ -1,8 +1,14 @@
-class TEMP_STRUCTURE:
-    tmp_init_bulk_dir = "temp_init_bulk_work"
-    tmp_run_iter_dir = "temp_run_iter_work"
-    tmp_prefix = "temp"
-    
+'''
+description: 
+    Active learning of top-level directory structure
+return {*}
+author: wuxingxing
+'''
+class AL_WORK:
+    init_bulk = "init_bulk"
+    init_surface = "init_surface"
+    run_iter = "run"
+
 class AL_STRUCTURE:
     train = "train"
     explore = "explore"
@@ -12,19 +18,110 @@ class AL_STRUCTURE:
     collection = "collection"
     init_data = "init_data_npy"
 
-class AL_WORK:
-    init_bulk = "init_bulk"
-    init_surface = "init_surface"
-    run_iter = "run"
+'''
+description: 
+    slurm job log file name
+return {*}
+author: wuxingxing
+'''
+class SLURM_OUT:
+    dft_out = "dft.log"
+    train_out = "train.log"
+    md_out = "md.log"
 
+'''
+description: 
+    training commands
+return {*}
+author: wuxingxing
+'''
+class MODEL_CMD:
+    train = "train"
+    gen_feat = "gen_feat"
+    test = "test"
+    script = "script"
+    compress = "compress"
+    kpu = "kpu"
+    pwdata =  "pwdata"
+
+'''
+description: 
+    model training parametors
+return {*}
+author: wuxingxing
+'''
+class TRAIN_INPUT_PARAM:
+    raw_files = "raw_files"
+    datasets_path = "datasets_path"
+    test_mvm_files = "test_movement_file"
+    reserve_feature = "reserve_feature" #False
+    reserve_work_dir = "reserve_work_dir" #False
+    valid_shuffle = "valid_shuffle" #True
+    train_valid_ratio = "train_valid_ratio" #0.8
+    sample_nums ="sample_nums" # for kpu or test nums
+    seed = "seed" #2023
+    recover_train = "recover_train" #true
+    type_embedding = "type_embedding"
+    model_type = "model_type"
+    atom_type = "atom_type"
+    model_load_file = "model_load_file"
+    test_dir_name = "test_dir_name"
+    work_dir = "work_dir"
+
+'''
+description: 
+    lammps md commands
+return {*}
+author: wuxingxing
+'''
+class LAMMPS_CMD:
+    lmp_mpi = "lmp_mpi"
+    lmp_mpi_gpu = "lmp_mpi_gpu"
+
+'''
+description: 
+    force filed types
+return {*}
+author: wuxingxing
+'''
+class FORCEFILED:
+    fortran_lmps = 1 #
+    libtorch_lmps = 2 # default
+    main_md = 3 #
+
+'''
+description: 
+    DFT apps command
+return {*}
+author: wuxingxing
+'''
+class DFT_STYLE:
+    vasp = "vasp"
+    pwmat = "pwmat"
+    cp2k = "cp2k"
+    lammps = "lammps"
+
+class DFT_TYPE:
+    relax = "relax"
+    aimd = "aimd"
+    scf = "scf"
+
+'''
+description: 
+    temp files name
+return {*}
+author: wuxingxing
+'''
+class TEMP_STRUCTURE:
+    tmp_init_bulk_dir = "temp_init_bulk_work"
+    tmp_run_iter_dir = "temp_run_iter_work"
+    tmp_prefix = "temp"
+    
 class INIT_BULK:
     relax = "relax"
     relax_job ="relax.job"
     relax_tag = "tag.relax.success"
     relax_tag_failed = "tag.relax.failed"
-    final_config = "final.config"
-    final = "final"
-    realx_config = "relaxed_atom.config"
     
     init_config = "init_config"
     init = "init"
@@ -32,8 +129,7 @@ class INIT_BULK:
     tag_super_cell = "tag.success.super_cell_scale"
     super_cell = "super_cell"
     scale = "scale"
-    super_cell_config = "super_cell.config"
-    scale_config = "scale.config"
+    
     pertub = "pertub"
     tag_pertub = "tag.success.pertub"
     
@@ -45,18 +141,80 @@ class INIT_BULK:
     collection = "collection"
     npy_format_save_dir = "PWdata"
     npy_format_name = "PWdata"
+
+    @staticmethod
+    def get_scf_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.out_mlmd
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.outcar
+
+    @staticmethod
+    def get_aimd_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.MOVEMENT
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.outcar
+
+    @staticmethod
+    def get_pertub_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "pertub.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "pertub.poscar"
+
+    @staticmethod
+    def get_super_cell_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "super_cell.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "super_cell.poscar"
     
     @staticmethod
-    def get_work_type(work_type:str):
-        if INIT_BULK.final.upper() in work_type.upper():
-            return INIT_BULK.relax
-        elif INIT_BULK.super_cell.upper() in work_type.upper():
-            return INIT_BULK.super_cell
-        elif INIT_BULK.scale.upper() in work_type.upper():
-            return INIT_BULK.scale
-        else:
-            return INIT_BULK.init_config
+    def get_scale_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "scale.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "scale.poscar"
+    
+    @staticmethod
+    def get_postfix(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return ".config"
+        elif dft_style == DFT_STYLE.vasp:
+            return ".poscar"
 
+    @staticmethod
+    def get_format_by_postfix(file_name:str):
+        if "config" in file_name.lower()\
+            or "pwmat" in file_name.lower():
+            return DFT_STYLE.pwmat
+        elif "poscar" in file_name.lower() or\
+            "contcor" in file_name.lower() or\
+                "vasp" in file_name.lower():
+            return DFT_STYLE.vasp
+
+    '''
+    description: 
+        for pwmat is final.config
+        for vasp is  CONTCAR
+    return {*}
+    author: wuxingxing
+    '''    
+    @staticmethod
+    def get_relaxed_original_name(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.final_config
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.final_config
+
+    @staticmethod
+    def get_relaxed_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "relaxed.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "relaxed.poscar"
+    
 class TRAIN_FILE_STRUCTUR:
     work_dir = "work_dir"
     feature_dir = "feature"
@@ -107,7 +265,6 @@ class EXPLORE_FILE_STRUCTURE:
     model_devi_force = 1 # the model deviation foce data row in model_deviation.out file
     model_devi_energy = 2
     model_devi_step = 0
-    
 
 class LABEL_FILE_STRUCTURE:
     scf = "scf"
@@ -116,41 +273,10 @@ class LABEL_FILE_STRUCTURE:
     scf_tag_failed = "tag.scf.failed"
     scf_job = "scf.job"
        
-class MODEL_CMD:
-    train = "train"
-    gen_feat = "gen_feat"
-    test = "test"
-    script = "script"
-    compress = "compress"
-    kpu = "kpu"
-    pwdata =  "pwdata"
-
-class LAMMPS_CMD:
-    lmp_mpi = "lmp_mpi"
-    lmp_mpi_gpu = "lmp_mpi_gpu"
-      
 class SCF_FILE_STRUCTUR:
     NCPP = "NCPP-SG15-PBE"
 
-class TRAIN_INPUT_PARAM:
-    raw_files = "raw_files"
-    datasets_path = "datasets_path"
-    test_mvm_files = "test_movement_file"
-    reserve_feature = "reserve_feature" #False
-    reserve_work_dir = "reserve_work_dir" #False
-    valid_shuffle = "valid_shuffle" #True
-    train_valid_ratio = "train_valid_ratio" #0.8
-    sample_nums ="sample_nums" # for kpu or test nums
-    seed = "seed" #2023
-    recover_train = "recover_train" #true
-    type_embedding = "type_embedding"
-    model_type = "model_type"
-    atom_type = "atom_type"
-    model_load_file = "model_load_file"
-    test_dir_name = "test_dir_name"
-    work_dir = "work_dir"
-
-class LAMMPSFILE:
+class LAMMPS:
     input_lammps="in.lammps"
     poscar = "POSCAR"
     lammps_sys_config = "lmp.config"
@@ -171,12 +297,14 @@ class PWMAT:
     MOVEMENT_low = "movement"
     kspacing_default = 0.5
     scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", "*.config"]
-    final_config = "final.config"
-    
-class FORCEFILED:
-    fortran_lmps = 1 #
-    libtorch_lmps = 2 # default
-    main_md = 3 #
+    final_config = "final.config"#relaxed result
+
+class VASP:
+    potcar = "POTCAR"
+    incar = "INCAR"
+    poscar = "POSCAR"
+    final_config = "CONTCAR"#relaxed result
+    outcar = "OUTCAR"
 
 class ENSEMBLE:
     npt_tri = "npt_tri",

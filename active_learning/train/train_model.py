@@ -3,12 +3,11 @@
 import os
 
 from active_learning.slurm import SlurmJob, Mission
-from utils.slurm_script import CHECK_TYPE, \
-    get_slurm_job_run_info, set_slurm_script_content
+from utils.slurm_script import get_slurm_job_run_info, set_slurm_script_content
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 
-from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name
+from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT
 
 from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file
@@ -95,7 +94,7 @@ class ModelTrian(object):
                 task_tag = TRAIN_FILE_STRUCTUR.train_tag, 
                 task_tag_faild = TRAIN_FILE_STRUCTUR.train_tag_failed,
                 parallel_num=1,
-                check_type=CHECK_TYPE.pwmlff
+                check_type=None
                 )
             slurm_job_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_job)
             write_to_file(slurm_job_file_path, train_slurm_script, "w")
@@ -117,14 +116,6 @@ class ModelTrian(object):
                 script += "    PWMLFF {} {}\n\n".format(MODEL_CMD.script, cmp_model_path)
         return script
 
-    def get_train_sub_dir(self):
-        train_sub_dir = []
-        for model_index in self.input_param.strategy.model_num:
-            model_i = make_train_name(model_index)
-            model_i_dir = os.path.join(self.train_dir, model_i)
-            train_sub_dir.append(model_i_dir)
-        return train_sub_dir
-
     '''
     description: 
         if the init format exists movement files, convert them to npy format and save to root_dir/init_data dir
@@ -134,20 +125,23 @@ class ModelTrian(object):
     return {*}
     author: wuxingxing
     '''
-    def set_train_input_dict(self, is_mvm:bool=True, work_dir:str=None):
+    def set_train_input_dict(self, work_dir:str=None):
         train_feature_path = []
         for _data in self.input_param.init_data:
             train_feature_path.append(_data)
-        
+        # search train_feature_path in iter*/label/result/*/PWdata/*
+        iter_index = get_iter_from_iter_name(self.itername)
+        start_iter = 0
+        while start_iter < iter_index:
+            iter_pwdata = search_files(self.input_param.root_dir, 
+                                    "{}/{}/{}/*".format(make_iter_name(start_iter), AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result))
+            if len(iter_pwdata) > 0:
+                train_feature_path.extend(iter_pwdata)
         train_json = self.input_param.train.to_dict()
         # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
         train_json[TRAIN_INPUT_PARAM.raw_files] = []
         train_json[TRAIN_INPUT_PARAM.datasets_path] = train_feature_path
-        # if TRAIN_INPUT_PARAM.reserve_feature not in train_json.keys():
-        # train_json[TRAIN_INPUT_PARAM.reserve_feature] = True
-        # if TRAIN_INPUT_PARAM.reserve_work_dir not in train_json.keys():
-        # train_json[TRAIN_INPUT_PARAM.reserve_work_dir] = True
         return train_json
 
     def do_train_job(self):
@@ -174,13 +168,10 @@ class ModelTrian(object):
                 mission.all_job_finished()
 
     def post_process_train(self):
-        temp_work_dirs = search_files(self.train_dir, "*/{}".format("work_dir"))
-        if self.input_param.reserve_work is True:
-            pass
-        else:
-            for temp in temp_work_dirs:
-                del_dir(temp)
-            # if self.input_param.reserve_feature is False:
-            #     feature_path = os.path.join(self.train_dir, TRAIN_FILE_STRUCTUR.feature_dir)
-            #     del_dir(feature_path)
+        # temp_work_dirs = search_files(self.train_dir, "*/{}".format("work_dir"))
+        # if self.input_param.reserve_work is True:
+        #     pass
+        # else:
+        #     for temp in temp_work_dirs:
+        #         del_dir(temp)
         link_file(self.train_dir, self.real_train_dir)

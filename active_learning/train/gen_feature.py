@@ -3,7 +3,7 @@
 import os
 
 from active_learning.slurm import SlurmJob, Mission
-from utils.slurm_script import CHECK_TYPE, get_slurm_job_run_info, set_slurm_script_content
+from utils.slurm_script import get_slurm_job_run_info, set_slurm_script_content
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
@@ -66,7 +66,7 @@ class GenFormatNpy(object):
             task_tag = TRAIN_FILE_STRUCTUR.feature_tag, 
             task_tag_faild = TRAIN_FILE_STRUCTUR.feature_tag_failed,
             parallel_num=1,
-            check_type=CHECK_TYPE.pwmlff
+            check_type=None
             )
         slurm_job_file_path = os.path.join(self.work_dir, TRAIN_FILE_STRUCTUR.feature_job)
         write_to_file(slurm_job_file_path, train_slurm_script, "w")

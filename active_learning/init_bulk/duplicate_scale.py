@@ -17,32 +17,47 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
                  
     for init_config in init_configs:
         # print(init_config.super_cell)
+        config_format = init_config.format#
+        config_file = init_config.config
         init_config_name = "init_config_{}".format(init_config.config_index)
         if init_config.relax:
-            config = os.path.join(relax_dir, init_config_name, INIT_BULK.final_config)
+            config_file = os.path.join(relax_dir, init_config_name, init_config.relaxed_file)
+            config_format = resource.dft_style
         else:
-            config = init_config.config
+            config_file = init_config.config
         super_cell_scale_dir = os.path.join(duplicate_scale_dir, init_config_name)
         super_cell_config = None
         if init_config.super_cell is not None:
             if not os.path.exists(super_cell_scale_dir):
                 os.makedirs(super_cell_scale_dir)
             # super_content, lattic_index = super_cell(init_config.super_cell, config, super_cell_config)
-            super_cell_config = os.path.join(super_cell_scale_dir, INIT_BULK.super_cell_config)
+            super_cell_config = os.path.join(super_cell_scale_dir, init_config.suepr_cell_file)
             if not os.path.exists(super_cell_config):
-                super_cell_ase(init_config.super_cell, config, super_cell_config)
+                super_cell_ase(
+                    super_cell=init_config.super_cell,
+                    source_config=config_file, 
+                    save_config=super_cell_config, 
+                    dft_stype=resource.dft_style, 
+                    source_config_format=config_format)
+            config_format = resource.dft_style
             
         if init_config.scale is not None:
             for s_index, scale in enumerate(init_config.scale):
-                save_scale_config = os.path.join(super_cell_scale_dir, "{}_{}".format(scale, INIT_BULK.scale_config))
+                
+                save_scale_config = os.path.join(super_cell_scale_dir, "{}_{}".format(scale, init_config.scale_file))
                 if not os.path.exists(super_cell_scale_dir):
                     os.makedirs(super_cell_scale_dir)
                 if super_cell_config is not None:
-                    input_scale_config = super_cell_config
+                    input_scale_config = super_cell_config # config from super cell
                 else:
-                    input_scale_config = init_config.config
+                    input_scale_config = config_file # config from relax or init config
                 if not os.path.exists(save_scale_config):
-                    scale_config(input_scale_config, scale, save_scale_config)
+                    scale_config(
+                        input_scale_config=input_scale_config,
+                         scale=scale, 
+                         save_scale_config=save_scale_config, 
+                         dft_style=resource.dft_style, 
+                         source_config_format=config_format)
 
 def do_post_duplicate_scale(resource: Resource, input_param:InitBulkParam):
     duplicate_scale_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.super_cell_scale) 
@@ -81,11 +96,18 @@ def do_pertub(resource: Resource, input_param:InitBulkParam):
         if init_config.perturb is None:
             continue
         init_config_name = "init_config_{}".format(init_config.config_index)
-        pert_config_list, config_type = get_config_files_with_order(duplicate_scale_dir, relax_dir, init_config_name, init_config.config)
+        pert_config_list, config_type = get_config_files_with_order(
+            super_cell_scale_dir=duplicate_scale_dir,
+            relax_dir=relax_dir,
+            init_config_dirname=init_config_name, 
+            init_config_path=init_config.config, 
+            pertub_dir=None,
+            dft_style=init_config.dft_style
+            )
         print(pert_config_list)
         for index, config in enumerate(pert_config_list):
             if config_type == INIT_BULK.scale: 
-                tmp_config_dir = os.path.basename(os.path.basename(config).replace(PWMAT.config_postfix, ""))
+                tmp_config_dir = os.path.basename(os.path.basename(config).replace(INIT_BULK.get_postfix(init_config.dft_style), "")) # 0.8_scale.poscar or 0.8_scale.config -> 0.8_scale
             else:
                 tmp_config_dir = config_type
             work_dir = os.path.join(pertub_dir, init_config_name, tmp_config_dir)
@@ -95,7 +117,10 @@ def do_pertub(resource: Resource, input_param:InitBulkParam):
             link_file(config, target_config)
             BatchPerturbStructure.batch_perturb(
                 work_dir=work_dir,
-                atom_config = target_config,
+                source_config = target_config,
+                source_format = INIT_BULK.get_format_by_postfix(os.path.basename(target_config)),
+                target_format = init_config.dft_style,
+                save_post_name=INIT_BULK.get_pertub_config(dft_style=init_config.dft_style), #for vasp is pertub.poscar, for pwmat is pertub.config
                 pert_num=init_config.perturb,
                 cell_pert_fraction=init_config.cell_pert_fraction,
                 atom_pert_distance=init_config.atom_pert_distance
@@ -125,24 +150,24 @@ param {str} init_config_path: the init config file path
 return {*}
 author: wuxingxing
 '''
-def get_config_files_with_order(super_cell_scale_dir:str, relax_dir:str, init_config_dirname:str, init_config_path:str, pertub_dir:str=None):
+def get_config_files_with_order(super_cell_scale_dir:str, relax_dir:str, init_config_dirname:str, init_config_path:str, pertub_dir:str=None, dft_style:str=None):
     config_list = []
     config_type = INIT_BULK.init
     if pertub_dir is not None:
-        config_list = search_files(pertub_dir, "{}/*/*{}".format(init_config_dirname, PWMAT.config_postfix))
+        config_list = search_files(pertub_dir, "{}/*/*{}".format(init_config_dirname, INIT_BULK.get_pertub_config(dft_style)))
         config_type = INIT_BULK.pertub
     if len(config_list) == 0:
     # find scaled configs under super_cell_scale dir
-        config_list = search_files(super_cell_scale_dir, "{}/*{}".format(init_config_dirname, INIT_BULK.scale_config))
+        config_list = search_files(super_cell_scale_dir, "{}/*{}".format(init_config_dirname, INIT_BULK.get_scale_config(dft_style)))
         config_type = INIT_BULK.scale
     if len(config_list) == 0:
     # find super cell config under super_cell_scale dir
-        config_list = search_files(super_cell_scale_dir, "{}/{}".format(init_config_dirname, INIT_BULK.super_cell_config))
+        config_list = search_files(super_cell_scale_dir, "{}/{}".format(init_config_dirname, INIT_BULK.get_super_cell_config(dft_style)))
         config_type = INIT_BULK.super_cell
 
     if len(config_list) == 0:
     # find relax config from relax dir
-        config_list = search_files(relax_dir, "{}/{}".format(init_config_dirname, INIT_BULK.final_config))
+        config_list = search_files(relax_dir, "{}/{}".format(init_config_dirname, INIT_BULK.get_relaxed_config))
         config_type = INIT_BULK.relax
 
     if len(config_list) == 0:

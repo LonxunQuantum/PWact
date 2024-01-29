@@ -106,17 +106,18 @@ class PerturbStructure(object):
         # atoms.cart_coords = np.matmul(atoms.cart_coords, rot)
         return new_system
 
-
-
 class BatchPerturbStructure(object):
     @staticmethod
     def batch_perturb(
             work_dir:str,
-            atom_config:str,
+            source_config:str,
+            source_format:str,
+            target_format:str,
+            save_post_name:str, #for vasp is pertub.poscar, for pwmat is pertub.config
             pert_num:int,
             cell_pert_fraction:float,
             atom_pert_distance:float):
-        tmp_structure = DStructure.from_file(atom_config, "pwmat")
+        tmp_structure = DStructure.from_file(source_config, source_format)
         perturbed_obj = PerturbStructure(tmp_structure)
         perturbed_structs = perturbed_obj.perturb(
                                 pert_num=pert_num, 
@@ -124,8 +125,8 @@ class BatchPerturbStructure(object):
                                 atom_pert_distance=atom_pert_distance)
         for tmp_perturbed_idx, tmp_pertubed_struct in enumerate(perturbed_structs):
             tmp_pertubed_struct.to(
-                        file_path=os.path.join(work_dir, "{0}_pertub.config".format(tmp_perturbed_idx)),
-                        file_format="pwmat")
+                        file_path=os.path.join(work_dir, "{}_{}".format(tmp_perturbed_idx, save_post_name)),
+                        file_format=target_format)
 
 
 '''

@@ -2,12 +2,12 @@ import os
 import numpy as np
 import subprocess
 from utils.app_lib.poscar2lammps import p2l
-from utils.constant import LAMMPSFILE, ELEMENTTABLE_2, PWMAT
+from utils.constant import LAMMPS, ELEMENTTABLE_2, PWMAT, VASP, DFT_STYLE
 from dpdata import System as dp_system
-from utils.file_operation import del_file
+from utils.file_operation import del_file, copy_file, mv_file
 '''
 description: 
-    lammps dump file to poscar format
+    lammps dump file to poscar format or pwmat format
 param {str} dump_file
 param {str} save_file
 param {list} type_map
@@ -15,44 +15,97 @@ param {bool} unwrap
 return {*}
 author: wuxingxing
 '''
-def lammps_dump_to_atom_config(dump_file:str, save_file:str, type_map:list[str], unwrap:bool=False):
+def lammps_dump_to_config(dump_file:str, save_file:str, type_map:list[str], unwrap:bool=False, dft_style:str=None):
     system = dp_system(dump_file, type_map=type_map, begin=0, step=1, unwrap=False, fmt = 'lammps/dump')
     tmp_poscar = os.path.join(os.path.dirname(save_file), "tmp_psocar")
     system.to_poscar(tmp_poscar, frame_idx=0)
-    poscar_to_atom_config(poscar_dir=os.path.dirname(save_file),input_name="tmp_psocar", save_name=os.path.basename(save_file))
+    if dft_style == DFT_STYLE.pwmat:
+        target_file = poscar_to_atom_config(
+            poscar=tmp_poscar, 
+            save_dir=os.path.dirname(save_file), 
+            save_name=os.path.basename(save_file)
+            )
+        del_file(tmp_poscar)
+    elif dft_style == DFT_STYLE.vasp:
+        target_file = os.path.join(os.path.dirname(save_file), VASP.poscar)
+        copy_file(tmp_poscar, target_file)
+        del_file(tmp_poscar)
+    return target_file
+        
+
+
+'''
+description: 
+    1. copy the source poscar to save_dir/tmp_poscar
+    2. convert the tmp_poscar to atom.config
+    3. change the atom.config file name to save_name
+    4. delete the tmp_poscar file
+param {str} poscar
+param {str} save_dir
+param {str} save_name
+return {*}
+author: wuxingxing
+'''
+def poscar_to_atom_config(poscar:str, save_dir:str, save_name:str=None):
+    tmp_poscar = os.path.join(save_dir, "tmp_poscar")
+    copy_file(poscar, tmp_poscar)
+    cwd = os.getcwd()
+    os.chdir(save_dir)
+    subprocess.run(["poscar2config.x {} > /dev/null".format(os.path.basename(tmp_poscar))], shell = True)
+    if save_name is not None:
+        subprocess.run(["mv {} {} > /dev/null".format(PWMAT.atom_config, save_name)], shell = True)
+        target_file = os.path.join(save_dir, save_name)
+    else:
+        target_file = os.path.join(save_dir, PWMAT.atom_config)
+    os.chdir(cwd)
     del_file(tmp_poscar)
+    return target_file
 
-def poscar_to_atom_config(poscar_dir:str, input_name:str="POSCAR", save_name:str="poscar_to_atom.config"):
+'''
+description:
+    1. copy the source atom.config to save_dir/tmp_atom.config
+    2. convert the tmp_atom.config to POSCAR
+    3. change the POSCAR file name to save_name
+    4. delete the tmp_atom.config file
+param {str} atom_config
+param {str} save_dir
+param {str} save_name
+return {*}
+author: wuxingxing
+'''
+def atom_config_to_poscar(atom_config:str, save_dir:str, save_name:str=None):
+    tmp_atom_config = os.path.join(save_dir, "tmp_atom.config")
+    copy_file(atom_config, tmp_atom_config)
     cwd = os.getcwd()
-    os.chdir(poscar_dir)
-    subprocess.run(["poscar2config.x {} > /dev/null".format(input_name)], shell = True)
-    subprocess.run(["mv {} {} > /dev/null".format(PWMAT.atom_config, save_name)], shell = True)
-    os.chdir(cwd)
-
-def atom_config_to_poscar(atom_config_dir:str, input_name:str="atom.config", save_name:str="atom_to_POSCAR"):
-    cwd = os.getcwd()
-    os.chdir(atom_config_dir)
-    subprocess.run(["config2poscar.x {} > /dev/null".format(input_name)], shell = True)
+    os.chdir(save_dir)
+    subprocess.run(["config2poscar.x {} > /dev/null".format(os.path.basename(tmp_atom_config))], shell = True)
     # remove the black space in ' Selective Dynamics' line in POSCAR file
-    subprocess.run(["sed -i '/^ *Selective Dynamics/s/^ *//' {} > /dev/null".format(LAMMPSFILE.poscar)], shell = True)
+    subprocess.run(["sed -i '/^ *Selective Dynamics/s/^ *//' {} > /dev/null".format(VASP.poscar)], shell = True)
     # remame the poscar file
-    subprocess.run(["mv {} {} > /dev/null".format(LAMMPSFILE.poscar, save_name)], shell = True)
+    if save_name is not None:
+        subprocess.run(["mv {} {} > /dev/null".format(VASP.poscar, save_name)], shell = True)
+        target_file = os.path.join(save_dir, save_name)
+    else:
+        target_file = os.path.join(save_dir, VASP.poscar)
     os.chdir(cwd)
-     
+    del_file(tmp_atom_config)# delete temp file
+    return target_file
+
 def atom_config_to_lammps_in(atom_config_dir:str, atom_config_name:str="atom.config"):
     cwd = os.getcwd()
     os.chdir(atom_config_dir)
     subprocess.run(["config2poscar.x {}".format(atom_config_name)], shell = True)
-    p2l(output_name = LAMMPSFILE.lammps_sys_config)
+    p2l(output_name = LAMMPS.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
     
 def poscar_to_lammps_in(poscar_dir:str):
     cwd = os.getcwd()
     os.chdir(poscar_dir)
-    p2l(output_name = LAMMPSFILE.lammps_sys_config)
+    p2l(output_name = LAMMPS.lammps_sys_config)
     subprocess.run(["rm","atom.config","POSCAR"])
     os.chdir(cwd)
+    return os.path.join(poscar_dir, LAMMPS.lammps_sys_config)
 
 def traj_to_atom_config(tarj_file:str, atom_save_file:str):
     # read traj_file
@@ -269,7 +322,12 @@ param {str} atom_config
 return {*}
 author: wuxingxing
 '''
-def set_etot_input_by_file(etot_input_file:str, kspacing:float=None, flag_symm:int=None, atom_config:str=None, resource_node:list[int]=None):
+def set_etot_input_by_file(
+    etot_input_file:str, 
+    kspacing:float=None, 
+    flag_symm:int=None, 
+    atom_config:str=None, 
+    resource_node:list[int]=None):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file, atom_config)
     # check node1 and node2 are right
     index = 0
@@ -310,31 +368,6 @@ def set_etot_input_by_file(etot_input_file:str, kspacing:float=None, flag_symm:i
     etot_lines.append("\n")
 
     return "".join(etot_lines)
-
-'''
-description: 
-get atom type list in the atom.config file, the order is same as atom.config
-param {str} atom_config
-return {*} atomic type name list, atomic number list
-author: wuxingxing
-'''
-def get_atom_type_from_atom_config(atom_config:str):
-    with open(atom_config, "r") as rf:
-        lines = rf.readlines()
-    atom_num = int(lines[0].strip().split()[0].strip())
-    index = 0
-    while index < len(lines):
-        if "POSITION" in lines[index].upper():
-            break
-        index += 1
-    atom_type_list = []
-    atomic_number_list = []
-    for atom_line in lines[index+1:index+atom_num+1]:
-        atomic_number = int(atom_line.strip().split()[0].strip())
-        if atomic_number not in atomic_number_list:
-            atom_type_list.append(ELEMENTTABLE_2[atomic_number])
-            atomic_number_list.append(atomic_number)
-    return atom_type_list, atomic_number_list
 
 def is_alive_atomic_energy(movement_list:list):
     if len(movement_list) < 1:

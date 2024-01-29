@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-# import argparse
+import argparse
 from utils.constant import UNCERTAINTY, AL_WORK, PWMAT
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file
@@ -69,19 +69,19 @@ def run_fp(itername:str, resource : Resource, input_param: InputParam):
         lab.make_scf_work()
         #2. do scf work
         lab.do_scf_jobs()
-        #3. collect movement
-        lab.collect_movements()
+        #3. collect scf configs outcar or movement
+        lab.collect_scf_configs()
     # 4. change the movement format to pwdata format
-    mvm_list = lab.get_movement_list()
-    if len(mvm_list) > 0:
-        for mvm in mvm_list:
-            save_name = os.path.basename(os.path.dirname(mvm))
-            Save_Data(data_path=mvm, 
+    aimd_list = lab.get_aimd_list()
+    if len(aimd_list) > 0:
+        for aimd_file in aimd_list:
+            save_name = os.path.basename(os.path.dirname(aimd_file))
+            Save_Data(data_path=aimd_file, 
                 datasets_path=lab.result_dir, 
                 save_name=save_name,
                 train_ratio = input_param.train.train_valid_ratio, 
                 random = input_param.train.data_shuffle, 
-                format=PWMAT.MOVEMENT_low)
+                format=resource.dft_style)
     # 5. collect the files of this iteration to label/result dir
     lab.do_post_labeling()
     
@@ -94,7 +94,7 @@ def do_training_work(itername:str, resource : Resource, input_param: InputParam)
         # 2. run training job
         mtrain.do_train_job()
         # 3. do post process after training
-        mtrain.post_process_train()
+    mtrain.post_process_train()
     print("{} done !".format("train_model"))
 
 def do_exploring_work(itername:str, resource : Resource, input_param: InputParam):
@@ -105,8 +105,8 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
         # 2. do md job
         md.do_md_jobs()
         # 3. do post process after lammps md running
-        md.post_process_md()
-        print("lammps md done!")
+    md.post_process_md()
+    print("lammps md done!")
     # 4. select images
     if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
         summary = md.select_image_by_committee()
@@ -127,15 +127,35 @@ def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: Inpu
     mkpu.post_process_kpu()
 
 def init_bulk():
-    system_info = json.load(open(sys.argv[2]))
-    machine_info = json.load(open(sys.argv[3]))
-    resource = Resource(machine_info, job_type=AL_WORK.init_bulk)
+    system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
+    machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
     input_param = InitBulkParam(system_info)
+    resource = Resource(machine_info, job_type=AL_WORK.init_bulk, dft_style=input_param.dft_style)
+
     os.chdir(input_param.root_dir)
     
     print("The work dir change to {}".format(os.getcwd()))
     init_bulk_run(resource, input_param)
     print("Init Bulk Work Done!")
+
+def to_pwdata(input_cmds:list):
+    from utils.gen_format.pwdata import Save_Data
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
+    parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat", type=str, default="pwmat")
+    parser.add_argument('-s', '--savepath', help='specify stored directory', type=str, default='PWdata')
+    parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory', type=float, default=0.8)
+    parser.add_argument('-r', '--data_shuffle', help='specify stored directory', type=bool, default=True)
+    parser.add_argument('-w', '--work_dir', help='specify work dir', type=str, default='./')
+    
+    args = parser.parse_args(input_cmds)
+    os.chdir(args.work_dir)
+    for config in args.input:
+        Save_Data(data_path=config, 
+        datasets_path=args.savepath,
+        train_ratio = args.train_valid_ratio, 
+        random = args.data_shuffle, 
+        format= args.format)
 
 def print_init_json_template():
     pass
@@ -192,6 +212,8 @@ def main():
     elif "run_json".upper() in sys.argv[1].upper():
         print_run_json_template()
     
+    elif "pwdata".upper() in sys.argv[1].upper():
+        to_pwdata(sys.argv[2:])
     elif "-h".upper() in sys.argv[1].upper() or "help".upper() in sys.argv[1].upper():
         print_cmd()
 

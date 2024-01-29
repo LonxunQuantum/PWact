@@ -36,7 +36,7 @@ class SlurmJob(object):
         self.slurm_job_name = os.path.basename(script_path)
         slurm_cmd = get_slurm_sbatch_cmd(self.slurm_job_run_dir, self.slurm_job_name)
         self.submit_cmd = slurm_cmd
-    
+        
     def set_tag(self, tag):
         self.job_finish_tag = tag
 
@@ -166,15 +166,19 @@ class Mission(object):
             error_log_content = ""
             for error_job in error_jobs:
                 error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
-                error_log_content += "ERRIR! The cmd '{}' failed! The slurm job file is {}!\n".format(\
-                    error_job.submit_cmd, error_log_path)
+                error_log_content += "ERRIR! The cmd '{}' failed!\nThe slurm job file is {}\n"\
+                    .format(error_job.submit_cmd, 
+                    os.path.join(error_job.slurm_job_run_dir, error_job.slurm_job_name))
+                tmp_error = None
                 if error_type is not None:
                     work_dirs = error_job.get_slurm_works_dir()
                     tmp_error = ""
                     for _ in work_dirs:
                         tmp_error += "{}/{}".format(_, error_type)
-                    error_log_content += "For more details on errors, please refer to the following documents:\n"
-                    error_log_content += tmp_error
+
+                error_log_content += "For more details on errors, please refer to the following documents:\n"
+                error_log_content += tmp_error if tmp_error is not None else error_log_path
+                error_log_content += "\n\n"
             raise Exception(error_log_content)
         return True
     

@@ -1,6 +1,7 @@
 import glob
 import os
 from math import ceil
+from utils.constant import DFT_STYLE
 GPU_SCRIPT_HEAD = \
 "#!/bin/sh\n\
 #SBATCH --job-name={}\n\
@@ -35,11 +36,6 @@ CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'sh
        '# <<< conda initialize <<<\n' \
        'conda activate torch2_feat\n\n'
 
-class CHECK_TYPE:
-    pwmat = "PWMAT"
-    lammps = "LAMMPS"
-    pwmlff = "PWMLFF"
-    
 '''
 Description: 
 Obtain the execution status of the slurm jobs under the dir:
@@ -118,25 +114,26 @@ make slurm job content
 return {*}
 author: wuxingxing
 '''
-def set_slurm_script_content(gpu_per_node, #None
-                             number_node, 
-                             cpu_per_node,
-                             queue_name,
-                             custom_flags,
-                             source_list,
-                             module_list,
-                             job_name,
-                             run_cmd_template,
-                             group:list[str],
-                             job_tag:str,
-                             task_tag:str,
-                             task_tag_faild:str,
-                             parallel_num:int=1,
-                             check_type:str=CHECK_TYPE.pwmat
-                             ):
+def set_slurm_script_content(
+                            number_node, 
+                            gpu_per_node, #None
+                            cpu_per_node,
+                            queue_name,
+                            custom_flags,
+                            source_list,
+                            module_list,
+                            job_name,
+                            run_cmd_template,
+                            group:list[str],
+                            job_tag:str,
+                            task_tag:str,
+                            task_tag_faild:str,
+                            parallel_num:int=1,
+                            check_type:str=None
+                            ):
         # set head
         script = ""
-        if gpu_per_node is None:
+        if gpu_per_node is None or gpu_per_node == 0:
             script += CPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, queue_name)
         else:
             script += GPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, gpu_per_node, 1, queue_name)
@@ -163,7 +160,7 @@ def set_slurm_script_content(gpu_per_node, #None
         job_id = 0
         job_tag_list = []
         
-        if check_type == CHECK_TYPE.pwmat:
+        if check_type == DFT_STYLE.pwmat:
             check_info = pwmat_check_success(task_tag, task_tag_faild)
         else:
             check_info = common_check_success(task_tag, task_tag_faild)

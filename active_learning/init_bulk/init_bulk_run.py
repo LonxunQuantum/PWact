@@ -60,19 +60,19 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         collection_work_dir = os.path.join(collection_dir, init_config_name)
         if not os.path.exists(collection_work_dir):
             os.makedirs(collection_work_dir)
-        #1. copy relax atom.config
+        #1. copy relax config file
         if init_config.relax:
-            source_config = os.path.join(relax_dir, init_config_name, INIT_BULK.final_config)
-            target_config = os.path.join(collection_work_dir, INIT_BULK.realx_config)
+            source_config = os.path.join(relax_dir, init_config_name, INIT_BULK.get_relaxed_config(init_config.dft_style))
+            target_config = os.path.join(collection_work_dir, INIT_BULK.get_relaxed_config(init_config.dft_style))
             copy_file(source_config, target_config)
-        
-        config_template = "*{}".format(PWMAT.config_postfix)
+        #2. copy super cell and scaled config file
+        config_template = "*{}".format(INIT_BULK.get_postfix(init_config.dft_style))
         source_file_list = search_files(os.path.join(duplicate_scale_dir, init_config_name), config_template)
         for file in source_file_list:
             target_file = os.path.join(collection_dir, init_config_name, os.path.basename(file))
             copy_file(file, target_file)
                     
-        #2. copy perturb structure
+        #3. copy perturb structure
         if init_config.perturb is not None:
             source_dir = search_files(os.path.join(pertub_dir, init_config_name), "*")
             for source in source_dir:
@@ -80,23 +80,23 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                 target_dir = os.path.join(collection_dir, init_config_name, "{}_{}".format(os.path.basename(source),INIT_BULK.pertub))
                 copy_dir(source, target_dir)
             
-        #3. copy aimd result to movements
-        target_mvm = ""
+        #4. copy aimd result
+        target_aimd_config = ""
         if init_config.aimd is True:
-            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, PWMAT.MOVEMENT))
+            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, INIT_BULK.get_aimd_config(init_config.dft_style)))
             source_aimd = sorted(source_aimd)
-            mvm_save_dir = os.path.join(collection_dir, init_config_name)
-            target_mvm = os.path.join(mvm_save_dir, "{}_{}".format(PWMAT.MOVEMENT, INIT_BULK.aimd.upper()))
-            merge_files_to_one(source_aimd, target_mvm)
+            aimd_save_dir = os.path.join(collection_dir, init_config_name)
+            target_aimd_config = os.path.join(aimd_save_dir, "{}".format(INIT_BULK.get_aimd_config(init_config.dft_style)))
+            merge_files_to_one(source_aimd, target_aimd_config)
             
-        #4. convert the mvm files to npy format
-        if os.path.exists(target_mvm):
-            Save_Data(data_path=target_mvm, 
-                datasets_path=os.path.join(mvm_save_dir, INIT_BULK.npy_format_save_dir), 
+        #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
+        if os.path.exists(target_aimd_config):
+            Save_Data(data_path=target_aimd_config, 
+                datasets_path=os.path.join(aimd_save_dir, INIT_BULK.npy_format_save_dir), 
                 train_ratio = input_param.train_valid_ratio, 
                 random = input_param.data_shuffle, 
-                format=PWMAT.MOVEMENT_low)
-            pwdata_list.append(os.path.join(mvm_save_dir, INIT_BULK.npy_format_save_dir, os.path.basename(target_mvm)))
+                format= os.path.basename(target_aimd_config).lower())
+            pwdata_list.append(os.path.join(aimd_save_dir, INIT_BULK.npy_format_save_dir, os.path.basename(target_aimd_config)))
     # delete link files
     del_file(real_relax_dir)
     del_file(real_duplicate_scale_dir)
@@ -109,9 +109,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         file_shell_op("mv {} {}".format(collection_dir, real_collection_dir))
         temp_work_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir)
         file_shell_op("rm {} -rf".format(temp_work_dir))
-    
+    else:
+        # copy collection to real dir
+        file_shell_op("cp {} {} -r".format(collection_dir, real_collection_dir))
     # print the dir of pwdatas
-    pwdatas = search_files(real_collection_dir, "*/{}/{}_*".format(INIT_BULK.npy_format_save_dir, PWMAT.MOVEMENT))
+    pwdatas = search_files(real_collection_dir, "*/{}/*".format(INIT_BULK.npy_format_save_dir))
     pwdatas = sorted(pwdatas)
     result_lines = ["\"{}\",".format(_) for _ in pwdatas]
     result_lines = "\n".join(result_lines)

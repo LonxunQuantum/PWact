@@ -1,10 +1,8 @@
-import json
 import os
-
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY
-from utils.app_lib.pwmat import read_and_check_etot_input
+from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWMAT, DFT_STYLE
 from active_learning.user_input.train_param.train_param import TrainParam
+from active_learning.user_input.scf_param import SCFParam
 
 class InputParam(object):
     # _instance = None
@@ -16,7 +14,7 @@ class InputParam(object):
         print("Warning! record_file not provided, automatically set to {}! ".format(self.record_file))
         
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
-        self.reserve_feature = get_parameter("reserve_feature", json_dict, False)
+        # self.reserve_feature = get_parameter("reserve_feature", json_dict, False)
         self.reserve_md_traj = get_parameter("reserve_md_traj", json_dict, False)
         self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False)
 
@@ -26,7 +24,8 @@ class InputParam(object):
         self.train = TrainParam(json_input=json_dict["train"], cmd=MODEL_CMD.train)
         self.strategy = StrategyParam(json_dict["strategy"])
         self.explore = ExploreParam(json_dict["explore"])
-        self.scf = SCFParam(json_dict=json_dict["dft"], is_scf=True, root_dir = self.root_dir)
+        dft_style = get_required_parameter("dft_style", json_dict["dft"])
+        self.scf = SCFParam(json_dict=json_dict["dft"], dft_style=dft_style, is_scf=True, root_dir = self.root_dir)
 
     def to_dict(self):
         res = {}
@@ -52,51 +51,6 @@ class InputParam(object):
             init_data_path.append(_data_path)
         return init_data_path
         
-    # @classmethod
-    # def get_instance(cls, json_dict:dict = None):
-    #     if not cls._instance:
-    #         cls._instance = cls(json_dict)
-    #     return cls._instance
-
-# class TrainParam(object):
-#     def __init__(self, json_dict:dict, root_dir:str, init_mvm_files:list[str]) -> None:
-#         self.root_dir = root_dir
-#         self.data_retrain = get_parameter("data_retrain", json_dict, 20)
-#         self.init_mvm_files = self.get_init_mvm_files(init_mvm_files)
-#         self.train_input_file = get_required_parameter("train_input_file", json_dict)
-#         if not os.path.isabs(self.train_input_file):
-#             self.train_input_file = os.path.join(self.root_dir, self.train_input_file)
-#         if not os.path.exists(self.train_input_file):
-#             raise Exception("Error! The {} file not exists!".format(self.train_input_file))
-#         self.train_input_dict:dict = json.load(open(self.train_input_file))
-#         # is type_embedding
-#         if TRAIN_INPUT_PARAM.type_embedding in self.train_input_dict.keys() or \
-#             "model" in self.train_input_dict.keys() and TRAIN_INPUT_PARAM.type_embedding in self.train_input_dict["model"].keys:
-#                 self.type_embedding = True
-#         else:
-#             self.type_embedding = False
-#         # model_type
-#         self.model_type = self.train_input_dict[TRAIN_INPUT_PARAM.model_type]
-#         # atom_type
-#         self.atom_type = self.train_input_dict[TRAIN_INPUT_PARAM.atom_type]
-        
-#     def get_init_mvm_files(self, init_mvm_files:list[str]):
-#         init_file_path = []
-#         for mvm in init_mvm_files:
-#             mvm_path = mvm if os.path.isabs(mvm) else os.path.join(self.root_dir, mvm)
-#             if not os.path.exists(mvm_path):
-#                 print("Warning! the init_mvm_file {} does not exist!".format(mvm))
-#                 continue
-#             init_file_path.append(mvm_path)
-#         return init_file_path
-
-#     def get_train_input_dict(self):
-#         train_input_dict = self.train_input_dict.copy()
-#         return train_input_dict
-
-#     def to_dict(self):
-#         return self.train_input_dict
-
 class StrategyParam(object):
     def __init__(self, json_dict) -> None:
         self.md_type = get_parameter("md_type", json_dict, FORCEFILED.libtorch_lmps)
@@ -130,19 +84,29 @@ class StrategyParam(object):
         res["max_select"] = self.max_select
         res["uncertainty"] = self.uncertainty
         res["model_num"] = self.model_num
-        
+
+class SysConfig(object):
+    def __init__(self, sys_config:str, format:str) -> None:
+        self.sys_config = sys_config
+        self.format = format
+
 class ExploreParam(object):
     def __init__(self, json_dict) -> None:
         sys_config_prefix = get_parameter("sys_config_prefix", json_dict, None)
         sys_configs = get_required_parameter("sys_configs", json_dict)
-        if isinstance(sys_configs, str):
+        if isinstance(sys_configs, str) or isinstance(sys_configs, dict):
             sys_configs = [sys_configs]
-        self.sys_configs = []
+        self.sys_configs:list[SysConfig]=[]
         for sys_config in sys_configs:
-            config = os.path.join(sys_config_prefix, sys_config) if sys_config_prefix is not None else sys_config
+            if isinstance(sys_config, str):
+                config = os.path.join(sys_config_prefix, sys_config) if sys_config_prefix is not None else sys_config
+                config_format = DFT_STYLE.pwmat
+            elif isinstance(sys_config, dict):
+                config = os.path.join(sys_config_prefix, sys_config["config"]) if sys_config_prefix is not None else sys_config["config"]
+                config_format = get_parameter("format", sys_config, DFT_STYLE.pwmat)  
             if not os.path.exists:
                 raise Exception("ERROR! The sys_config {} file does not exist!".format(config))
-            self.sys_configs.append(config)
+            self.sys_configs.append(SysConfig(config, config_format))
         
         # set md deatils
         self.md_job_list = self.set_md_details(json_dict["md_jobs"])
@@ -203,125 +167,3 @@ class MdDetail(object):
             for p, press in enumerate(self.press_list):
                md_list.append(t, p) 
         
-class SCFParam(object):
-    def __init__(self, json_dict:dict, is_relax:bool=False, is_aimd:bool=False, is_scf:bool=False, root_dir:str=None) -> None:
-        if is_scf:
-            scf_etot_input = get_required_parameter("scf_etot_input", json_dict)
-            if not os.path.isabs(scf_etot_input):
-                scf_etot_input = os.path.join(root_dir, scf_etot_input)
-            flag_symm = get_parameter("flag_symm", json_dict, 0)
-            kspacing = get_parameter("kspacing", json_dict, None)            
-            self.scf_etot_input_list:list[EtotInput] = [EtotInput(scf_etot_input, flag_symm, kspacing)]
-        
-        if is_aimd:
-            json_aimd = get_required_parameter("aimd_etot_input", json_dict)
-            self.aimd_etot_input_list:list[EtotInput] = self.set_etot_input(json_aimd, root_dir, flag_symm=3)
-    
-        if is_relax:
-            json_relax = get_required_parameter("relax_etot_input", json_dict)
-            self.relax_etot_input_list:list[EtotInput] = self.set_etot_input(json_relax, root_dir, flag_symm=0)
-                    
-        pseudo = get_required_parameter("pseudo", json_dict)
-        if isinstance(pseudo, str):
-            pseudo = list(pseudo)
-        self.pseudo = []
-        for pf in pseudo:
-           if not os.path.exists(pf):
-               raise Exception("Error! pseduo file {} does not exist!".format(pf))
-           self.pseudo.append(pf)
-        
-    @staticmethod
-    def get_pseudo_by_atom_name(pseduo_list:list[str], atom_name):
-        for pseduo in pseduo_list:
-            if atom_name in pseduo:
-                return pseduo
-        return None
-    
-    def set_etot_input(self, json_etot, root_dir, flag_symm:int):
-        etot_input_list:list[EtotInput] = []
-        if isinstance(json_etot, dict):
-            etot_input = get_required_parameter("etot_input", json_etot)
-            if not os.path.isabs(etot_input):
-                etot_input = os.path.join(root_dir, etot_input)
-            if not os.path.exists(etot_input):
-                raise Exception("Error! The etot.input file {} does not exist!".format(etot_input))
-            flag_symm = get_parameter("flag_symm", json_etot, flag_symm)
-            kspacing = get_parameter("kspacing", json_etot, None)
-            etot_input_list = [EtotInput(etot_input, flag_symm, kspacing)]
-        else:
-            for etot_json_detail in json_etot:
-                etot_input = get_required_parameter("etot_input", etot_json_detail)
-                if not os.path.isabs(etot_input):
-                    etot_input = os.path.join(root_dir, etot_input)
-                if not os.path.exists(etot_input):
-                    raise Exception("Error! The etot.input file {} does not exist!".format(etot_input))
-                flag_symm = get_parameter("flag_symm", etot_json_detail, flag_symm)
-                kspacing = get_parameter("kspacing", etot_json_detail, None)
-                etot_input_list.append(EtotInput(etot_input, flag_symm, kspacing))
-        return etot_input_list
-                
-class EtotInput(object):
-    def __init__(self, etot_input, flag_symm:int, kspacing:int) -> None:
-        self.etot_input = etot_input
-        self.kspacing = kspacing
-        self.flag_symm = flag_symm
-        if self.kspacing is None:
-            self.kspacing_default = 0.5
-        # check etot input file
-        read_and_check_etot_input(self.etot_input)
-    
-    def get_etot_input_content(self):
-        return read_and_check_etot_input(self.etot_input)
-    
-    # def __init_variable(self):
-    #     self.node1 = None
-    #     self.node2 = None
-    #     self.e_error = None
-    #     self.rho_error = None
-    #     self.ecut = None
-    #     self.ecut2 = None
-    #     self.kspacing = None
-    #     self.out_wg = None
-    #     self.out_rho = None
-    #     self.out = None
-    #     self.out_force = None
-    #     self.out_stress = None
-    #     self.out_mlmd = None
-    #     self.MP_N123 = None
-    #     self.SCF_ITER0_1 = None
-    #     self.SCF_ITER0_2 = None
-    #     self.energy_decomp = None
-    #     self.energy_decomp_special2 = None
-    #     self.flag_symm = None
-    #     self.icmix = None
-    #     self.smearing = None
-    #     self.sigma = None
-
-    # def set_etot_input_detail(self, json_dict):
-        # self.node1 = get_required_parameter("node1", json_dict, 1)
-        # self.node2 = get_required_parameter("node2", json_dict, 4)
-        
-        # self.e_error = get_parameter("e_error", json_dict,  1.0e-6)
-        # self.rho_error = get_parameter("rho_error", json_dict,  1.0e-4)
-        # self.ecut = get_required_parameter("ecut", json_dict)
-        # self.ecut2 = get_parameter("ecut2", json_dict,  self.ecut*4)
-        
-        # self.kspacing = get_parameter("kspacing", json_dict, 0.5)
-        
-        # self.out_wg = get_parameter("out_wg", json_dict, "F")
-        # self.out_rho = get_parameter("out_rho", json_dict, "F")
-        # self.out = get_parameter("out.vr", json_dict, "F")
-        # self.out_force = get_parameter("out_force", json_dict, "T")
-        # self.out_stress = get_parameter("out_stress", json_dict, "T")
-        # self.out_mlmd = get_parameter("out_mlmd", json_dict, "F")
-        # self.MP_N123 = get_parameter("MP_N123", json_dict, None) #MP_N123 is None then using 'kespacing' generates it
-        # self.SCF_ITER0_1 = get_parameter("SCF_ITER0_1", json_dict,  None)
-        # self.SCF_ITER0_2 = get_parameter("SCF_ITER0_2", json_dict,  None)
-        # self.energy_decomp = get_parameter("energy_decomp", json_dict,  "T")
-        # self.energy_decomp_special2 = get_parameter("energy_decomp_special2", json_dict,  "2, 0.05, 1.5")
-        # self.flag_symm = get_parameter("flag_symm", json_dict,None)
-        # self.icmix = get_parameter("icmix", json_dict, None)
-        # self.smearing = get_parameter("smearing", json_dict, None)
-        # self.sigma = get_parameter("sigma", json_dict, None)
-        # self.relax_detail = get_parameter("relax_detail", json_dict, None)
-        # self.vdw = get_parameter("vdw", json_dict, None)

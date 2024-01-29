@@ -27,13 +27,13 @@ from active_learning.slurm import SlurmJob, Mission
 
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE,\
     LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR,\
-        PWMAT, LAMMPSFILE
+        PWMAT, LAMMPS, SLURM_OUT, INIT_BULK
     
-from utils.slurm_script import CHECK_TYPE, get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
+from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, merge_files_to_one, search_files, mv_file, file_shell_op, del_file, del_file_list
-from utils.app_lib.pwmat import lammps_dump_to_atom_config, set_etot_input_by_file, get_atom_type_from_atom_config
-
+from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files_to_one, search_files, mv_file, file_shell_op, del_file, del_file_list
+from utils.app_lib.pwmat import lammps_dump_to_config, set_etot_input_by_file
+from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, link_structure, set_input_script
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
@@ -89,14 +89,14 @@ class Labeling(object):
             scf_sub_md_sys_path = os.path.join(self.scf_dir, md_sys_name, sub_md_sys_name, "{}-{}".format(config_index, LABEL_FILE_STRUCTURE.scf))
             if not os.path.exists(scf_sub_md_sys_path):
                 os.makedirs(scf_sub_md_sys_path)
-            tarj_lmp = os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.tarj, "{}{}".format(config_index, LAMMPSFILE.traj_postfix))
-            traj_atom_config = os.path.join(scf_sub_md_sys_path, "{}{}".format(config_index, PWMAT.config_postfix))
+            tarj_lmp = os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.tarj, "{}{}".format(config_index, LAMMPS.traj_postfix))
+            traj_target_config = os.path.join(scf_sub_md_sys_path, "{}{}".format(config_index, INIT_BULK.get_postfix(self.resource.dft_style)))
             # lmps traj to atom.config
             sys_index = int(md_sys_name.split(".")[-1])
             sys_atom_config = self.input_param.explore.sys_configs[sys_index]
-            atom_type_list, atomic_number_list = get_atom_type_from_atom_config(sys_atom_config)
-            lammps_dump_to_atom_config(tarj_lmp, traj_atom_config, type_map=atom_type_list)
-            self.make_scf_file(scf_sub_md_sys_path, traj_atom_config)
+            atom_type_list, atomic_number_list = get_atom_type(sys_atom_config.sys_config, sys_atom_config.format)
+            target_file = lammps_dump_to_config(dump_file=tarj_lmp, save_file = traj_target_config, type_map=atom_type_list, dft_style=self.resource.dft_style)
+            self.make_scf_file(scf_sub_md_sys_path, target_file, atom_type_list=atom_type_list)
             scf_dir_list.append(scf_sub_md_sys_path)
             
         self.make_scf_slurm_job_files(scf_dir_list)
@@ -130,30 +130,30 @@ class Labeling(object):
             if len(mission.job_list) > 0:
                 mission.commit_jobs()
                 mission.check_running_job()
-                mission.all_job_finished(error_type=PWMAT.pwmat_out)
+                mission.all_job_finished(error_type=SLURM_OUT.dft_out)
                     
-    def make_scf_file(self, scf_dir:str, source_config:str):
-        #1. copy pseudo potential file
-        # from atom.config get atom type
-        atom_type_list, _ = get_atom_type_from_atom_config(source_config)
-        pseudo_list = []
-        for atom in atom_type_list:
-            pseudo_atom_path = SCFParam.get_pseudo_by_atom_name(self.input_param.scf.pseudo, atom)
-            pseduo_name = os.path.basename(pseudo_atom_path)
-            copy_file(pseudo_atom_path, os.path.join(scf_dir, pseduo_name))
-            pseudo_list.append(pseduo_name)
+    def make_scf_file(self, scf_dir:str, source_config:str, atom_type_list:list):
+        # target_config = link_structure(source_config = source_config, 
+        #                                 config_format= self.resource.dft_style,
+        #                                 target_dir   = scf_dir,
+        #                                 dft_style    = self.resource.dft_style)
+        # atom_type_list, _ = get_atom_type(target_config, self.resource.dft_style)
+
+        #1. set pseudo files
+        link_pseudo_by_atom(self.input_param.scf.pseudo, scf_dir, atom_type_list, self.resource.dft_style)
         #2. make etot.input file
-        etot_script = set_etot_input_by_file(
-            self.input_param.scf.scf_etot_input_list[0].etot_input, \
-            self.input_param.scf.scf_etot_input_list[0].kspacing, \
-            self.input_param.scf.scf_etot_input_list[0].flag_symm,\
-                source_config, \
-                    [self.resource.scf_resource.number_node, self.resource.scf_resource.gpu_per_node])
-        etot_input_file = os.path.join(scf_dir, PWMAT.etot_input)
-        write_to_file(etot_input_file, etot_script, "w")
+        set_input_script(
+            input_file=self.input_param.scf.scf_input_list[0].input_file,
+            config=source_config,
+            kspacing=self.input_param.scf.scf_input_list[0].kspacing, 
+            flag_symm=self.input_param.scf.scf_input_list[0].flag_symm, 
+            resource_node=[self.resource.dft_resource.number_node, self.resource.dft_resource.gpu_per_node],
+            dft_style=self.resource.dft_style,
+            save_dir = scf_dir
+        )
 
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
-        group_list = split_job_for_group(self.resource.scf_resource.group_size, scf_sub_list, self.resource.scf_resource.parallel_num)
+        group_list = split_job_for_group(self.resource.dft_resource.group_size, scf_sub_list, self.resource.dft_resource.parallel_num)
         
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
@@ -162,25 +162,26 @@ class Labeling(object):
             jobname = "scf{}".format(group_index)
             tag_name = "{}-{}".format(group_index, LABEL_FILE_STRUCTURE.scf_tag)
             tag = os.path.join(self.scf_dir, tag_name)
-            if self.resource.scf_resource.gpu_per_node > 0:
-                run_cmd = "mpirun -np {} PWmat > {}".format(self.resource.scf_resource.gpu_per_node, PWMAT.pwmat_out)
-            else:
-                raise Exception("ERROR! the cpu version of pwmat not support yet!")
-            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.scf_resource.gpu_per_node, 
-                number_node = self.resource.scf_resource.number_node, 
-                cpu_per_node = self.resource.scf_resource.cpu_per_node,
-                queue_name = self.resource.scf_resource.queue_name,
-                custom_flags = self.resource.scf_resource.custom_flags,
-                source_list = self.resource.scf_resource.source_list,
-                module_list = self.resource.scf_resource.module_list,
+            run_cmd = self.resource.dft_resource.command
+            # if self.resource.dft_resource.gpu_per_node > 0:
+            #     run_cmd = "mpirun -np {} PWmat > {}".format(self.resource.dft_resource.gpu_per_node, SLURM_OUT.md_out)
+            # else:
+            #     raise Exception("ERROR! the cpu version of pwmat not support yet!")
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.dft_resource.gpu_per_node, 
+                number_node = self.resource.dft_resource.number_node, 
+                cpu_per_node = self.resource.dft_resource.cpu_per_node,
+                queue_name = self.resource.dft_resource.queue_name,
+                custom_flags = self.resource.dft_resource.custom_flags,
+                source_list = self.resource.dft_resource.source_list,
+                module_list = self.resource.dft_resource.module_list,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
                 job_tag = tag,
                 task_tag = LABEL_FILE_STRUCTURE.scf_tag, 
                 task_tag_faild = LABEL_FILE_STRUCTURE.scf_tag_failed,
-                parallel_num=self.resource.scf_resource.parallel_num,
-                check_type=CHECK_TYPE.pwmat
+                parallel_num=self.resource.dft_resource.parallel_num,
+                check_type=self.resource.dft_style
                 )
             slurm_script_name = "{}-{}".format(group_index, LABEL_FILE_STRUCTURE.scf_job)
             slurm_job_file = os.path.join(self.scf_dir, slurm_script_name)
@@ -193,37 +194,42 @@ class Labeling(object):
     return {*}
     author: wuxingxing
     '''         
-    def collect_movements(self):
-        mvm_list = []
+    def collect_scf_configs(self):
+        aimd_list = []
         md_sys_dir_list = search_files(self.scf_dir, get_md_sys_template_name())
         for md_sys_dir in md_sys_dir_list:
             md_sys_mlmd = []
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
-                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, PWMAT.out_mlmd))
+                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, INIT_BULK.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
                 md_sys_mlmd.extend(out_mlmd_list)
-            mvm_save_file = os.path.join(md_sys_dir, PWMAT.MOVEMENT)
-            merge_files_to_one(out_mlmd_list, mvm_save_file)
-            mvm_list.append(mvm_save_file)
-        return mvm_list
+            save_file = os.path.join(md_sys_dir, INIT_BULK.get_aimd_config(self.resource.dft_style))
+            merge_files_to_one(out_mlmd_list, save_file)
+            aimd_list.append(save_file)
+        return aimd_list
 
-    def get_movement_list(self):
-        mvm_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), PWMAT.MOVEMENT))
-        return sorted(mvm_list)
+    def get_aimd_list(self):
+        aimd_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), INIT_BULK.get_aimd_config(self.resource.dft_style)))
+        return sorted(aimd_list)
+    
     '''
     description: 
-
+        需要修改逻辑，不能删除，先复制，然后整体删除
+        if reserve_work is True, reserve all temp work dir, copy the result to iter dir
+        else:
+            if reserve_md_traj is True, copy the trajs
+            if reserve_scf_files is True, copy scf files
     param {*} self
     return {*}
     author: wuxingxing
     '''    
     def do_post_labeling(self):
         # for training
-        del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.work_dir)))
+        # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.work_dir)))
         # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.train_tag)))
         del_file_list(search_files(self.train_dir, "*/slurm*.out"))
-        mv_file(self.train_dir, self.real_train_dir)
+        copy_dir(self.train_dir, self.real_train_dir)
 
         #for explore dir
         # delete md traj
@@ -233,7 +239,7 @@ class Labeling(object):
                 del_file_list([os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.tarj)])
             else:
                 pass
-            del_file(os.path.join(md_dir, LAMMPSFILE.log_lammps))
+            del_file(os.path.join(md_dir, LAMMPS.log_lammps))
             del_file(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.md_tag))
         # delete slurm logs
         md_slurms = search_files(self.explore_dir, "{}/slurm-*".format(EXPLORE_FILE_STRUCTURE.md))
@@ -252,7 +258,7 @@ class Labeling(object):
                     if os.path.basename(scf_file) in PWMAT.scf_reserve_list:
                         continue
                     # is *.config but not final.config
-                    if PWMAT.config_postfix in os.path.basename(scf_file) and PWMAT.final_config != os.path.basename(scf_file):
+                    if PWMAT.config_postfix in os.path.basename(scf_file) and PWMAT.relaxed_config != os.path.basename(scf_file):
                         continue
                     del_file(os.path.join(scf_dir, scf_file))
             # delete tag and logs

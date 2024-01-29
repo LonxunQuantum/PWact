@@ -16,19 +16,19 @@
             ...
 """
 from active_learning.slurm import Mission, SlurmJob
-from utils.slurm_script import CHECK_TYPE, \
-    get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
+from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.iter_input import InputParam, MdDetail
+from active_learning.user_input.iter_input import InputParam, MdDetail, SysConfig
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPSFILE, PWMAT, LAMMPS_CMD, UNCERTAINTY
+        FORCEFILED, ENSEMBLE, LAMMPS, PWMAT, LAMMPS_CMD, UNCERTAINTY, VASP, DFT_STYLE
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import write_to_file, get_file_extension, link_file, read_data, search_files
 from utils.app_lib.lammps import make_lammps_input
-from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in, get_atom_type_from_atom_config
+from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
+from utils.app_lib.common import get_atom_type, link_structure
 
 import os
 import pandas as pd
@@ -114,14 +114,14 @@ class Explore(object):
                 if self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
                     gpu_per_node = 1
                     cpu_per_node = 1
-                    run_cmd = "mpirun -np {} {} -in {}".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPSFILE.input_lammps)
+                    run_cmd = "mpirun -np {} {} -in {}".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps)
                 else:
                     cpu_per_node = self.resource.explore_resource.gpu_per_node
                     gpu_per_node = self.resource.explore_resource.gpu_per_node
-                    run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPSFILE.input_lammps)
+                    run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps)
             else:
                 cpu_per_node = self.resource.explore_resource.cpu_per_node
-                run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPSFILE.input_lammps)
+                run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPS.input_lammps)
                 
             group_slurm_script = set_slurm_script_content(
                             gpu_per_node=gpu_per_node, 
@@ -138,7 +138,7 @@ class Explore(object):
                             task_tag = EXPLORE_FILE_STRUCTURE.md_tag,
                             task_tag_faild = EXPLORE_FILE_STRUCTURE.md_tag_faild,
                             parallel_num=self.resource.explore_resource.parallel_num,
-                            check_type=CHECK_TYPE.lammps
+                            check_type=None
                             )
             slurm_script_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_job)
             slurm_job_file = os.path.join(self.md_dir, slurm_script_name)
@@ -179,20 +179,23 @@ class Explore(object):
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
         #1. set sys.config file
-        self.set_lmp_config(md_dir, self.sys_paths[sys_index])
-        
+        link_structure(
+            source_config=self.sys_paths[sys_index].sys_config, 
+            config_format=self.sys_paths[sys_index].format, 
+            target_dir=md_dir, 
+            dft_style=DFT_STYLE.lammps)
         #2. set forcefiled file
         md_model_paths = self.set_forcefiled_file(md_dir)
         
         #3. set lammps input file
-        input_lammps_file = os.path.join(md_dir, LAMMPSFILE.input_lammps)
+        input_lammps_file = os.path.join(md_dir, LAMMPS.input_lammps)
         press=md_detail.press_list[press_index] if press_index is not None else None
         # get atom type
-        atom_type_list, atomic_number_list = get_atom_type_from_atom_config(self.sys_paths[sys_index])
+        atom_type_list, atomic_number_list = get_atom_type(self.sys_paths[sys_index].sys_config, self.sys_paths[sys_index].format)
         restart_file = search_files(md_dir, "lmps.restart.*")
         restart = 1 if len(restart_file) > 0 else 0 
         lmp_input_content = make_lammps_input(
-                        md_file=LAMMPSFILE.lammps_sys_config, #save_file
+                        md_file=LAMMPS.lammps_sys_config, #save_file
                         md_type = self.input_param.strategy.md_type,
                         forcefiled = md_model_paths,
                         atom_type = atomic_number_list,
@@ -219,34 +222,6 @@ class Explore(object):
         
     '''
     description: 
-        copy sys.config to md dir, then,
-        if the sys.config is atom.config or poscar format, convert to lammps.in format
-    param {*} self
-    param {str} md_dir
-    param {str} sys_file
-    return {*}
-    author: wuxingxing
-    '''
-    def set_lmp_config(self, md_dir:str, sys_file:str):
-        # copy sys.config to md_dir
-        sys_config_name = os.path.basename(sys_file)
-        # convert atom.config to lammps.init file
-        if get_file_extension(sys_config_name).upper() in PWMAT.atom_config.upper():
-            target_sys_config = os.path.join(md_dir, PWMAT.atom_config)
-            link_file(sys_file, target_sys_config)
-            atom_config_to_lammps_in(md_dir)
-        # convert poscar to lammps.init file
-        elif get_file_extension(sys_config_name).upper() in LAMMPSFILE.poscar.upper():
-            target_sys_config = os.path.join(md_dir, LAMMPSFILE.poscar)
-            link_file(sys_file, target_sys_config)
-            poscar_to_lammps_in(md_dir)
-        else:
-            print("The lammps input file type {} is lammps format.".format(sys_config_name))
-        return target_sys_config
-    
-    '''
-    description: 
-
     param {*} self
     param {str} md_dir
     param {list} forcefile

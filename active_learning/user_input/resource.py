@@ -1,5 +1,5 @@
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import AL_WORK
+from utils.constant import AL_WORK, LAMMPS_CMD, PWMAT, VASP, DFT_STYLE, SLURM_OUT
 class Resource(object):
     # _instance = None
 
@@ -13,23 +13,42 @@ class Resource(object):
             if self.train_resource.cpu_per_node > 1:
                 self.train_resource.cpu_per_node = 1
             print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
-
+            
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+            self.explore_resource.command = "{} > {}".format(self.explore_resource.command, SLURM_OUT.md_out)
+
             # check explore resource
-            if self.explore_resource.cpu_per_node < self.explore_resource.gpu_per_node:
-                raise Exception("Error! The number of CPUs need be greater than or equal to GPUs in explore resource! ")
+            # cmd_type = self.explore_resource.command.split()[3]
+            # cal_num = int(self.explore_resource.command.split()[2])
+            # if cmd_type == LAMMPS_CMD.lmp_mpi_gpu:
+            #     if self.explore_resource.gpu_per_node < cal_num:
+            #         error_log = "Error! the gpus in commond {} is {}, exceeds the 'gpu_per_node' {} in explore"\
+            #             .format(self.explore_resource.command, cal_num, self.explore_resource.gpu_per_node)
+            #         raise Exception(error_log)
             # check if the gpus in node more than limit
             # check the node to set to 1
-            if self.explore_resource.number_node > 1:
-                self.explore_resource.number_node = 1
-                print("Warining: the resouce of node in explore automatically adjust to 1")
+            # if self.explore_resource.number_node > 1:
+            #     self.explore_resource.number_node = 1
+            #     print("Warining: the resouce of node in explore automatically adjust to 1")
 
-        self.scf_resource = self.get_resource(get_required_parameter("scf", json_dict))
-        if self.scf_resource.number_node > 1:
-            self.scf_resource.number_node = 1
-            print("Warining: the resouce of node in scf automatically adjust to 1")
-        self.pwmat_run_num = get_parameter("pwmat_run_num", json_dict["scf"], 1)
-        
+        # check dft resource
+        self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
+        self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
+        if DFT_STYLE.vasp.lower() in self.dft_resource.command.lower():
+            self.dft_style = DFT_STYLE.vasp
+        elif DFT_STYLE.pwmat.lower() in self.dft_resource.command.lower():
+            self.dft_style = DFT_STYLE.pwmat
+
+                # if self.dft_resource.number_node > 1:
+        #     self.dft_resource.number_node = 1
+        #     print("Warining: the resouce of node in dft automatically adjust to 1")
+        # check gpu nums
+        # run_gpu = int(self.dft_resource.command.split()[2])
+        # if self.dft_resource.gpu_per_node < run_gpu:
+        #     erro_log = "Error! the gpus in commond {} is {}, exceeds the 'gpu_per_node' in DFT, automatically adjust to {}"\
+        #         .format(self.dft_resource.command, run_gpu, self.dft_resource.gpu_per_node)
+        #     raise Exception(erro_log)
+
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):
     #     if not cls._instance:
@@ -37,6 +56,7 @@ class Resource(object):
     #     return cls._instance
     
     def get_resource(self, json_dict:dict):
+        command = get_required_parameter("command", json_dict)
         group_size = get_parameter("group_size", json_dict, 1)
         parallel_num = get_parameter("parallel_num", json_dict, 1)
         number_node = get_required_parameter("number_node", json_dict)
@@ -46,12 +66,13 @@ class Resource(object):
         custom_flags = get_parameter("custom_flags", json_dict, [])
         source_list = get_parameter("source_list", json_dict, [])
         module_list = get_parameter("module_list", json_dict, [])
-        resource = ResourceDetail(group_size, parallel_num, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list)
+        resource = ResourceDetail(command, group_size, parallel_num, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list)
         return resource
 
 class ResourceDetail(object):
-    def __init__(self, group_size:int , parallel_num:int, number_node:int , gpu_per_node:int , cpu_per_node:int ,\
+    def __init__(self, command:str, group_size:int , parallel_num:int, number_node:int , gpu_per_node:int , cpu_per_node:int ,\
                   queue_name:str, custom_flags:list[str], source_list:list[str], module_list:list[str]) -> None:
+        self.command = command
         self.group_size = group_size
         self.parallel_num = parallel_num
         self.number_node = number_node
@@ -64,11 +85,3 @@ class ResourceDetail(object):
 
         if self.gpu_per_node is None and self.cpu_per_node is None:
             raise Exception("ERROR! Both CPU and GPU resources are not specified!")
-        
-# class ResourceExplore(ResourceTrain):
-#     def __init__(self, group_size, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list) -> None:
-#         super.__init__(group_size, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list)
-
-# class ResourceSCF(ResourceTrain):
-#     def __init__(self, group_size, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list) -> None:
-#         super.__init__(group_size, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list)

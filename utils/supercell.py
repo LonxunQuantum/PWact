@@ -1,10 +1,11 @@
 import os
 import argparse
 from utils.app_lib.pwmat import poscar_to_atom_config, atom_config_to_poscar
-from utils.constant import PWMAT
+from utils.constant import PWMAT, DFT_STYLE
 from utils.file_operation import copy_file, del_file
 from ase.io.vasp import read_vasp, write_vasp
 from ase.build import make_supercell
+from ase import Atoms
 
 def check_dimension(d1:int, d2:int, d3:int):
     if d1 == 0 or d2 == 0 or d3 == 0:
@@ -86,8 +87,88 @@ def super_cell(dims:list[int], filename:str, savepath:str=None):
             wf.writelines(super_cell_content)
     return super_cell_content, lattic_index
 
-def scale_config(fileinput:str, scale:float, savepath:str=None):
-    with open(fileinput, 'r') as rf:
+def read_config_by_ase(source_config:str, source_config_format:str, save_dir:str):
+    if source_config_format == DFT_STYLE.pwmat:
+        # convert to poscar
+        tmp_poscar_path = atom_config_to_poscar(source_config, save_dir, save_name="temp_poscar")
+        structure = read_vasp(tmp_poscar_path)
+        del_file(tmp_poscar_path)
+
+    elif source_config_format == DFT_STYLE.vasp:
+        structure = read_vasp(source_config)
+    else:
+        pass
+    return structure
+
+def write_config_by_ase(structure, save_config:str, save_format:str):
+    if save_format == DFT_STYLE.pwmat:
+        temp_poscar = os.path.join(os.path.basename(save_config), "temp_save_poscar")
+        write_vasp(temp_poscar, structure, direct=True, sort=True)
+        poscar_to_atom_config(temp_poscar, os.path.dirname(save_config), os.path.basename(save_config))
+        #delete tmp file
+        del_file(temp_poscar)
+    elif save_format == DFT_STYLE.vasp:
+        write_vasp(save_config, structure, direct=True, sort=True)
+
+'''
+description: 
+    use ase do super cell for atom.config file
+    1. convert atom.config to poscar
+    2. do super cell
+    3. resort by atom type
+param {str} atom_config
+return {*}
+author: wuxingxing
+'''
+def super_cell_ase(super_cell:list, source_config:str, save_config:str, dft_stype:str, source_config_format:str):
+    structure = read_config_by_ase(source_config, source_config_format, os.path.dirname(save_config))
+    supercell = make_supercell(structure, super_cell)
+    write_config_by_ase(supercell, save_config, dft_stype)
+    return save_config
+
+'''
+description: 
+    functions may move to vasp and pwmat module
+param {str} input_scale_config
+param {float} scale
+param {str} save_scale_config
+param {str} dft_style
+return {*}
+author: wuxingxing
+'''
+def scale_config(input_scale_config:str, scale:float, save_scale_config:str=None, dft_style:str=None, source_config_format:str=None):
+    structure = read_config_by_ase(input_scale_config, source_config_format, os.path.dirname(save_scale_config))
+    #do scale
+    atomic_positions = structure.get_positions()
+    lattice_parameters = structure.get_cell()
+    scaled_atomic_positions = atomic_positions * scale
+    scaled_lattice_parameters = lattice_parameters * scale
+    new_structure = Atoms(structure.get_chemical_symbols(), scaled_atomic_positions, cell=scaled_lattice_parameters)
+    # svae
+    write_config_by_ase(new_structure, save_scale_config, dft_style)
+
+'''
+description: 
+these 2 funcitons not used
+param {str} source_scale_config
+param {str} source_config_format
+param {str} dft_stype
+param {float} scale
+param {str} save_scale_config
+return {*}
+author: wuxingxing
+'''
+def scale_config_vasp(source_scale_config:str, source_config_format:str, dft_stype:str, scale:float, save_scale_config:str=None):
+    poscar = read_config_by_ase(source_scale_config, source_config_format)
+    atomic_positions = poscar.get_positions()
+    lattice_parameters = poscar.get_cell()
+    scaled_atomic_positions = atomic_positions * 0.99
+    scaled_lattice_parameters = lattice_parameters * 0.99
+    new_poscar = Atoms(poscar.get_chemical_symbols(), scaled_atomic_positions, cell=scaled_lattice_parameters)
+    write_config_by_ase(new_poscar, save_scale_config, dft_stype)
+
+def scale_config_pwmat(input_scale_config:str, scale:float, save_scale_config:str=None):
+    with open(input_scale_config, 'r') as rf:
         text = rf.readlines()
     lattic_index = 0
     while lattic_index < len(text):
@@ -106,35 +187,11 @@ def scale_config(fileinput:str, scale:float, savepath:str=None):
     text[lattic_index] = "\t{}\t{}\t{}\n".format(lat[0][0], lat[0][1], lat[0][2])
     text[lattic_index+1] = "\t{}\t{}\t{}\n".format(lat[1][0], lat[1][1], lat[1][2])
     text[lattic_index+2] = "\t{}\t{}\t{}\n".format(lat[2][0], lat[2][1], lat[2][2])
-    if savepath is not None:
-        with open(savepath, 'w') as wf:
+    if save_scale_config is not None:
+        with open(save_scale_config, 'w') as wf:
             wf.writelines(text)
     return text
 
-'''
-description: 
-    use ase do super cell for atom.config file
-    1. convert atom.config to poscar
-    2. do super cell
-    3. resort by atom type
-param {str} atom_config
-return {*}
-author: wuxingxing
-'''
-def super_cell_ase(super_cell:list, atom_config:str, save_config:str):
-    work_dir = os.path.dirname(save_config)
-    copy_file(atom_config, os.path.join(work_dir, PWMAT.atom_config))
-    poscar_name = "tmp_atom_to_POSCAR"
-    atom_config_to_poscar(work_dir, PWMAT.atom_config, poscar_name)
-    poscar_path = os.path.join(work_dir, poscar_name)
-    structure = read_vasp(poscar_path)
-    supercell = make_supercell(structure, super_cell)
-    write_vasp(os.path.join(work_dir, "supercell_POSCAR2"), supercell, direct=True, sort=True)
-    poscar_to_atom_config(work_dir, "supercell_POSCAR2", os.path.basename(save_config))
-    #delete tmp file
-    del_file(os.path.join(work_dir, "supercell_POSCAR2"))
-    del_file(poscar_path)
-    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--inputfile', help='input', type=str, default='atom.config')
