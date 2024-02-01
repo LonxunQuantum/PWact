@@ -2,9 +2,9 @@ import os
 import sys
 import json
 import argparse
-from utils.constant import UNCERTAINTY, AL_WORK, PWMAT
+from utils.constant import UNCERTAINTY, AL_WORK, PWMAT, LABEL_FILE_STRUCTURE
 from utils.format_input_output import make_iter_name
-from utils.file_operation import write_to_file
+from utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from utils.json_operation import convert_keys_to_lowercase
 from utils.gen_format.pwdata import Save_Data
 
@@ -64,14 +64,15 @@ def run_iter():
 
 def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)
-    if not lab.check_state():
-        #!. make scf work
-        lab.make_scf_work()
-        #2. do scf work
-        lab.do_scf_jobs()
-        #3. collect scf configs outcar or movement
-        lab.collect_scf_configs()
-    # 4. change the movement format to pwdata format
+    #1. if the label work done before, back up and do new work
+    lab.back_label()
+    #2. make scf work
+    lab.make_scf_work()
+    #3. do scf work
+    lab.do_scf_jobs()
+    #4. collect scf configs outcar or movement
+    lab.collect_scf_configs()
+    #5. change the movement format to pwdata format
     aimd_list = lab.get_aimd_list()
     if len(aimd_list) > 0:
         for aimd_file in aimd_list:
@@ -82,31 +83,29 @@ def run_fp(itername:str, resource : Resource, input_param: InputParam):
                 train_ratio = input_param.train.train_valid_ratio, 
                 random = input_param.train.data_shuffle, 
                 format=resource.dft_style)
-    # 5. collect the files of this iteration to label/result dir
+    #6. collect the files of this iteration to label/result dir
     lab.do_post_labeling()
     
 def do_training_work(itername:str, resource : Resource, input_param: InputParam):
     mtrain = ModelTrian(itername, resource, input_param)
-    # the job done && the iter*/train path is directory not a link file, means this iter is done before
-    if not mtrain.check_state():
-        # 1. create train work dirs
-        mtrain.make_train_work()
-        # 2. run training job
-        mtrain.do_train_job()
-        # 3. do post process after training
+    # 1. if the train work done before, backup the train dir and retrain
+    mtrain.back_train()
+    # 2. create train work dirs
+    mtrain.make_train_work()
+    # 3. run training job
+    mtrain.do_train_job()
+    # 4. do post process after training
     mtrain.post_process_train()
     print("{} done !".format("train_model"))
 
 def do_exploring_work(itername:str, resource : Resource, input_param: InputParam):
     md = Explore(itername, resource, input_param)
-    if not md.check_state():
-        # 1. make md work files
-        md.make_md_work()
-        # 2. do md job
-        md.do_md_jobs()
-        # 3. do post process after lammps md running
-    md.post_process_md()
-    print("lammps md done!")
+    # 1. if the explore work done before, back up explore dir do new explore work
+    md.back_explore()
+    # 2. make md work files
+    md.make_md_work()
+    # 3. do md job
+    md.do_md_jobs()
     # 4. select images
     if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
         summary = md.select_image_by_committee()
@@ -115,6 +114,9 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
         summary = uncertainty_analyse_kpu(itername, resource, input_param)
     print(summary)
     print("config selection done!")
+    # 5. do post process after lammps md running
+    md.post_process_md()
+    print("lammps md done!")
     return summary
 
 def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: InputParam):
@@ -130,7 +132,7 @@ def init_bulk():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
     machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
     input_param = InitBulkParam(system_info)
-    resource = Resource(machine_info, job_type=AL_WORK.init_bulk, dft_style=input_param.dft_style)
+    resource = Resource(machine_info, job_type=AL_WORK.init_bulk)
 
     os.chdir(input_param.root_dir)
     
@@ -139,7 +141,6 @@ def init_bulk():
     print("Init Bulk Work Done!")
 
 def to_pwdata(input_cmds:list):
-    from utils.gen_format.pwdata import Save_Data
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
     parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat", type=str, default="pwmat")
@@ -156,6 +157,22 @@ def to_pwdata(input_cmds:list):
         train_ratio = args.train_valid_ratio, 
         random = args.data_shuffle, 
         format= args.format)
+
+def extract_pwmata(input_cmds):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', help='specify input dir you want to extract pwdatas', type=str, default=None)
+    parser.add_argument('-s', '--save_dir', help="specify the dir to save the extract result", type=str, default="extract_result")
+    args = parser.parse_args(input_cmds)
+    if not os.path.exists(args.input):
+        raise Exception("Error! The input dir {} not exists!".format(args.input))
+    pwdata_lists = search_files(args.input, "iter*/{}".format(LABEL_FILE_STRUCTURE.result))
+    if os.path.exists(args.save_dir):
+       del_dir(args.save_dir)
+    os.makedirs(args.save_dir)
+    for pwdata in pwdata_lists:
+        iter_name = os.path.basename(os.path.dirname(pwdata))
+        target_dir = os.path.join(args.save_dir, iter_name)
+        copy_dir(pwdata, target_dir)
 
 def print_init_json_template():
     pass
@@ -179,7 +196,8 @@ return {*}
 author: wuxingxing
 '''
 def print_cmd():
-    pass
+    from active_learning.user_input.cmd_infos import cmd_infos
+    print(cmd_infos())
 
 '''
 description: 
@@ -196,8 +214,10 @@ def environment_check():
 
 def main():
     environment_check()
+    if len(sys.argv) == 1 or "-h".upper() in sys.argv[1].upper() or "help".upper() in sys.argv[1].upper():
+        print_cmd()
 
-    if "init_bulk".upper() in sys.argv[1].upper():
+    elif "init_bulk".upper() in sys.argv[1].upper():
         init_bulk()
 
     elif "int_surface".upper() in sys.argv[1].upper():
@@ -214,8 +234,10 @@ def main():
     
     elif "pwdata".upper() in sys.argv[1].upper():
         to_pwdata(sys.argv[2:])
-    elif "-h".upper() in sys.argv[1].upper() or "help".upper() in sys.argv[1].upper():
-        print_cmd()
+    
+    elif "extract_pwdata".upper() in sys.argv[1].upper():
+        extract_pwmata(sys.argv[2:])
+
 
 if __name__ == "__main__":
     main()

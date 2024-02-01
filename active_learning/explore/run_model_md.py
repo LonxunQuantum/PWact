@@ -24,11 +24,12 @@ from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE,
         FORCEFILED, ENSEMBLE, LAMMPS, PWMAT, LAMMPS_CMD, UNCERTAINTY, VASP, DFT_STYLE
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
-    make_md_sys_name, make_temp_press_name, make_temp_name, make_train_name
-from utils.file_operation import write_to_file, get_file_extension, link_file, read_data, search_files
+    make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
+from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, del_file, del_dir, del_file_list, mv_file
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
 from utils.app_lib.common import get_atom_type, link_structure
+from data_format.configop import save_config
 
 import os
 import pandas as pd
@@ -55,18 +56,28 @@ class Explore(object):
         # train work dir
         self.train_dir = os.path.join(self.input_param.root_dir, self.itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
         self.real_train_dir = os.path.join(self.input_param.root_dir, self.itername, AL_STRUCTURE.train)
+        
         # md work dir
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
-        self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
+       
+        self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
+        self.real_md_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.md)
+        self.real_select_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.select)
 
-    def check_state(self):
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.md_dir, \
+    def back_explore(self):
+        slurm_remain, slurm_done = get_slurm_job_run_info(self.real_md_dir, \
         job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
         tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        return slurm_done
+        if slurm_done:
+            # bk and do new job
+            target_bk_file = add_postfix_dir(self.real_explore_dir, postfix_str="bk")
+            mv_file(self.real_explore_dir, target_bk_file)
+            # if the temp_work_dir/explore exists, delete the train dir
+            if os.path.exists(self.explore_dir):
+                del_dir(self.explore_dir)
 
     def make_md_work(self):
         md_work_list = []
@@ -95,8 +106,6 @@ class Explore(object):
                                 os.makedirs(temp_press_dir)
                             self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md)
                             md_work_list.append(temp_press_dir)
-        
-
                            
         self.make_md_slurm_jobs(md_work_list)
              
@@ -154,10 +163,10 @@ class Explore(object):
     '''    
     def do_md_jobs(self):
         mission = Mission()
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.md_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.md_dir, \
             job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
             tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -179,11 +188,20 @@ class Explore(object):
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
         #1. set sys.config file
-        link_structure(
-            source_config=self.sys_paths[sys_index].sys_config, 
-            config_format=self.sys_paths[sys_index].format, 
-            target_dir=md_dir, 
-            dft_style=DFT_STYLE.lammps)
+        # link_structure(
+        #     source_config=self.sys_paths[sys_index].sys_config, 
+        #     config_format=self.sys_paths[sys_index].format, 
+        #     target_dir=md_dir, 
+        #     dft_style=DFT_STYLE.lammps)
+        target_config = save_config(config=self.sys_paths[sys_index].sys_config,
+                                    input_format=self.sys_paths[sys_index].format,
+                                    wrap = False, 
+                                    direct = True, 
+                                    sort = True, 
+                                    save_format=DFT_STYLE.lammps, 
+                                    save_path=md_dir, 
+                                    save_name=LAMMPS.lammps_sys_config)
+
         #2. set forcefiled file
         md_model_paths = self.set_forcefiled_file(md_dir)
         
@@ -247,8 +265,31 @@ class Explore(object):
             md_model_paths.append(target_model_path)
         return md_model_paths
         
+    '''
+    description: 
+        1. copy the explore/md and explore/select under temp_work_dir to iter*/explore
+        2. if reserve traj is false, delete the trajs under iter*/explore/md/*/traj dir
+        3. delte slurm*.out log files
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''    
     def post_process_md(self):
-        link_file(self.explore_dir, self.real_explore_dir)
+        md_sys_dir_list = search_files(self.md_dir, get_md_sys_template_name())
+        for md_sys_dir in md_sys_dir_list:
+            sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
+            for sub_md_sys in sub_md_sys_dir_list:
+                target_dir = sub_md_sys.replace(TEMP_STRUCTURE.tmp_run_iter_dir, "")
+                copy_dir(sub_md_sys, target_dir)# delete trajs
+                if self.input_param.reserve_md_traj and self.input_param.reserve_work:
+                    pass
+                else:
+                    del_file_list([os.path.join(target_dir, EXPLORE_FILE_STRUCTURE.tarj)])
+                if self.input_param.reserve_work is False:#delete lammps.log
+                    del_file(os.path.join(target_dir, LAMMPS.log_lammps))
+                md_slurms = search_files(self.real_md_dir, "slurm-*") #delete slurm log files
+                del_file_list(md_slurms)
+        copy_dir(self.select_dir, self.real_select_dir)
     
     '''
     description: 

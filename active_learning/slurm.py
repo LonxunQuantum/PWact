@@ -185,7 +185,7 @@ class Mission(object):
     def commit_jobs(self):
         for job in self.job_list:
             if job.status == JobStatus.unsubmitted:
-                    job.submit()
+                job.submit()
     
     '''
     description: 

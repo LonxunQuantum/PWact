@@ -26,8 +26,8 @@ from active_learning.slurm import SlurmJob, Mission
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
 from utils.file_operation import write_to_file, link_file
-from utils.app_lib.pwmat import set_etot_input_by_file
-from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, link_structure, set_input_script
+from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
+from data_format.configop import save_config
 class AIMD(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
         self.resource = resource
@@ -41,6 +41,7 @@ class AIMD(object):
         
     def make_aimd_work(self):
         aimd_paths = []
+        dftb_sign = []
         for init_config in self.init_configs:
             if init_config.aimd is False:
                 continue
@@ -50,7 +51,7 @@ class AIMD(object):
             super_cell_scale_dir=self.super_cell_scale_dir,
             relax_dir=self.relax_dir,
             init_config_dirname=init_config_name, 
-            init_config_path=init_config.config, 
+            init_config_path=init_config.config_file, 
             pertub_dir=self.pertub_dir,
             dft_style=init_config.dft_style
             )
@@ -59,7 +60,7 @@ class AIMD(object):
                 if config_type == INIT_BULK.pertub:
                     tmp_config_dir = os.path.basename(os.path.basename(os.path.dirname(config)))
                 elif config_type == INIT_BULK.super_cell or config_type == INIT_BULK.scale:
-                    tmp_config_dir = os.path.basename(config).replace(INIT_BULK.get_format_by_postfix(config), "")
+                    tmp_config_dir = os.path.basename(config).replace(DFT_STYLE.get_postfix(init_config.dft_style), "")
                 elif config_type == INIT_BULK.relax:
                     tmp_config_dir = INIT_BULK.relax
                 else:
@@ -67,33 +68,36 @@ class AIMD(object):
                 aimd_dir = os.path.join(self.aimd_dir, init_config_name, tmp_config_dir, "{}_{}".format(index, INIT_BULK.aimd))
                 if not os.path.exists(aimd_dir):
                     os.makedirs(aimd_dir)
-                    self.make_aimd_file(
-                        aimd_dir=aimd_dir, 
-                        config_file=config, 
-                        conifg_format=INIT_BULK.get_format_by_postfix(os.path.basename(config)), 
-                        target_format=init_config.dft_style,
-                        input_file=init_config.aimd_input_file, 
-                        kspacing=init_config.aimd_kspacing, 
-                        flag_symm=init_config.aimd_flag_symm,
-                        resource_node=[self.resource.dft_resource.number_node, self.resource.dft_resource.gpu_per_node])
+                self.make_aimd_file(
+                    aimd_dir=aimd_dir, 
+                    config_file=config, 
+                    conifg_format=DFT_STYLE.get_format_by_postfix(os.path.basename(config)), 
+                    target_format=self.resource.dft_style,
+                    input_file=init_config.aimd_input_file, 
+                    kspacing=init_config.aimd_kspacing, 
+                    flag_symm=init_config.aimd_flag_symm,
+                    is_dftb = init_config.use_dftb,
+                    in_skf=self.input_param.dft_input.in_skf)
 
                 aimd_paths.append(aimd_dir)
+                dftb_sign.append(init_config.use_dftb)
         # make slurm script and slurm job
-        self.make_aimd_slurm_job_files(aimd_paths)
+        use_dftb = True if len(dftb_sign) > 0 else False
+        self.make_aimd_slurm_job_files(aimd_paths, use_dftb)
     
     def check_work_done(self):
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.aimd_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         return slurm_done
             
     def do_aimd_jobs(self):
         mission = Mission()
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.aimd_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -113,18 +117,36 @@ class AIMD(object):
                 mission.all_job_finished(error_type=SLURM_OUT.dft_out)
                 # mission.move_slurm_log_to_slurm_work_dir()
 
-    def make_aimd_file(self, aimd_dir:str, config_file:str, conifg_format:str, target_format:str,\
-                input_file:str, kspacing:float=None, flag_symm:int=None, resource_node:list[int]=None):
+    '''
+    description: 
+        input_file is aimd input control file, for vasp is incar, for pwmat is etot.input
+    return {*}
+    author: wuxingxing
+    '''    
+    def make_aimd_file(self, aimd_dir:str, config_file:str, conifg_format:str, target_format:str, \
+                input_file:str, kspacing:float=None, flag_symm:int=None, is_dftb:bool=False, in_skf:str=None):
         #1. link config file
-        target_config = link_structure(source_config = config_file, 
-                                        config_format=conifg_format,
-                                        target_dir = aimd_dir,
-                                        dft_style=target_format)
+        # target_config = link_structure(source_config = config_file, 
+        #                                 config_format=conifg_format,
+        #                                 target_dir = aimd_dir,
+        #                                 dft_style=target_format)
+
+        target_config = save_config(config=config_file, 
+                                    input_format=conifg_format,
+                                    wrap = False, 
+                                    direct = True, 
+                                    sort = True, 
+                                    save_format=target_format, 
+                                    save_path=aimd_dir, 
+                                    save_name=DFT_STYLE.get_normal_config(target_format))
+
         #2. from config get atom type
         atom_type_list, _ = get_atom_type(target_config, target_format)
         #3. set pseudo files
-        link_pseudo_by_atom(self.input_param.dft_input.pseudo, aimd_dir, atom_type_list, target_format)
-
+        if is_dftb is False:
+            pseudo_names = link_pseudo_by_atom(self.input_param.dft_input.pseudo, aimd_dir, atom_type_list, target_format)
+        else:
+            pseudo_names = []
         #4. make dft input file
         set_input_script(
             input_file=input_file,
@@ -132,20 +154,27 @@ class AIMD(object):
             dft_style=target_format,
             kspacing=kspacing, 
             flag_symm=flag_symm, 
-            resource_node=resource_node,
-            save_dir = aimd_dir
+            save_dir = aimd_dir,
+            pseudo_names=pseudo_names
         )
+        #5. if is use dftb
+        if in_skf is not None:
+            # link in.skf path to aimd dir
+            target_dir = os.path.join(aimd_dir, PWMAT.in_skf)
+            link_file(in_skf, target_dir)
 
-    def make_aimd_slurm_job_files(self, aimd_dir_list:list[str]):
+    def make_aimd_slurm_job_files(self, aimd_dir_list:list[str],use_dftb: bool=False):
         group_list = split_job_for_group(self.resource.dft_resource.group_size, aimd_dir_list, self.resource.dft_resource.parallel_num)
-        
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
             jobname = "aimd{}".format(group_index)
             tag_name = "{}-{}".format(group_index, INIT_BULK.aimd_tag)
             tag = os.path.join(self.aimd_dir, tag_name)
-            run_cmd = self.resource.dft_resource.command
+            if use_dftb:
+                run_cmd = self.resource.dft_resource.dftb_command
+            else:
+                run_cmd = self.resource.dft_resource.command
             group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.dft_resource.gpu_per_node, 
                 number_node = self.resource.dft_resource.number_node, 
                 cpu_per_node = self.resource.dft_resource.cpu_per_node,

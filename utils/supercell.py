@@ -102,7 +102,7 @@ def read_config_by_ase(source_config:str, source_config_format:str, save_dir:str
 
 def write_config_by_ase(structure, save_config:str, save_format:str):
     if save_format == DFT_STYLE.pwmat:
-        temp_poscar = os.path.join(os.path.basename(save_config), "temp_save_poscar")
+        temp_poscar = os.path.join(os.path.dirname(save_config), "temp_save_poscar")
         write_vasp(temp_poscar, structure, direct=True, sort=True)
         poscar_to_atom_config(temp_poscar, os.path.dirname(save_config), os.path.basename(save_config))
         #delete tmp file

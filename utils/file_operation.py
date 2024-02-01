@@ -108,20 +108,38 @@ def merge_files_to_one(file_list:list[str], save_file:str):
 '''
 description: 
     copy file from source to target
+    If follow_symlinks is not set and src is a symbolic link, a new
+    symlink will be created instead of copying the file it points to.
 param {str} source_file
 param {str} target_file
+param {bool} follow_symlinks
 return {*}
 author: wuxingxing
 '''
-def copy_file(source_file:str, target_file:str):
-    shutil.copyfile(source_file, target_file)
+def copy_file(source_file:str, target_file:str, follow_symlinks:bool=True):
+    if not os.path.exists(os.path.dirname(target_file)):
+        os.makedirs(os.path.dirname(target_file))
+    shutil.copyfile(source_file, target_file, follow_symlinks=follow_symlinks)
 
-def copy_dir(source_dir:str, target_dir:str):
+'''
+description: 
+    copy dir to target dir, if target dir is exists, delete it
+    symlinks is True: for link type files, maintain link format, else copy as file.
+param {str} source_dir
+param {str} target_dir
+param {*} symlinks
+return {*}
+author: wuxingxing
+'''
+def copy_dir(source_dir:str, target_dir:str, symlinks=True):
     if os.path.exists(target_dir):
         if os.path.islink(target_dir) or os.path.isfile(target_dir):
             os.remove(target_dir)
-        shutil.rmtree(target_dir)
-    shutil.copytree(source_dir, target_dir)
+        else:
+            shutil.rmtree(target_dir)
+    if not os.path.exists(os.path.dirname(target_dir)):
+        os.makedirs(os.path.dirname(target_dir))
+    shutil.copytree(source_dir, target_dir, symlinks=symlinks)
     
 '''
 description: 
@@ -201,9 +219,11 @@ author: wuxingxing
 def add_postfix_dir(source_dir:str, postfix_str:str):
     index = 1
     while True:
-        target_dir = os.path.join(os.path.dirname(source_dir), "{}-{}-{}".format(os.path.basename(source_dir), index, postfix_str))
+        target_dir = os.path.join(os.path.dirname(source_dir), "{}-{}-{}".format(os.path.basename(source_dir), postfix_str, index))
         if os.path.exists(target_dir):
             index += 1
+        else:
+            break
     return target_dir
 
 

@@ -3,14 +3,14 @@
 import os
 
 from active_learning.slurm import SlurmJob, Mission
-from utils.slurm_script import get_slurm_job_run_info, set_slurm_script_content
+from utils.slurm_script import get_slurm_job_run_info, set_slurm_script_content, split_job_for_group
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
-from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT
+from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT, SLURM_OUT
 
-from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file
+from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file, copy_dir, del_file_list
 from utils.gen_format.pwdata import Save_Data
 '''
 description: model training method:
@@ -35,52 +35,53 @@ class ModelTrian(object):
     
     '''
     description: 
-        if the slurm jobs done before and the real_train_dir is dir type, 
+        if the slurm jobs done
         it means this iter done before, need back up train files in iter*/train directory 
-
-        if the slurm jobs done before and the real_train_dir is link type, 
-        it means the train work done before but this iter dose not done, need back up train files in iter*/temp_work/train directory
-
     param {*} self
     return {*}
     author: wuxingxing
     '''    
-    def check_state(self):
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.real_train_dir, \
-            job_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_job), \
-            tag_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        if slurm_done and os.path.isdir(self.real_train_dir):
+    def back_train(self):
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.real_train_dir, \
+            job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_job), \
+            tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        if slurm_done:
             # bk and do new job
             target_bk_file = add_postfix_dir(self.real_train_dir, postfix_str="bk")
             mv_file(self.real_train_dir, target_bk_file)
-            return False
-        elif slurm_done and os.path.islink(self.real_train_dir):
-            target_bk_file = add_postfix_dir(self.train_dir, postfix_str="bk")
-            mv_file(self.train_dir, target_bk_file)
-            return False
-        return slurm_done
-
+            # if the temp_work_dir/train exists, delete the train dir
+            if os.path.exists(self.train_dir):
+                del_dir(self.train_dir)
+                
     def make_train_work(self):
+        train_list = []
         for model_index in range(0, self.input_param.strategy.model_num):
             # make model_i work dir
             model_i = make_train_name(model_index)
             model_i_dir = os.path.join(self.train_dir, model_i)
             if not os.path.exists(model_i_dir):
                 os.makedirs(model_i_dir)
-            
             # make train.json file
             train_dict = self.set_train_input_dict(work_dir=model_i_dir)
             train_json_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_json)
             save_json_file(train_dict, train_json_file_path)
+            train_list.append(model_i_dir)
+        self.make_train_slurm_job_files(train_list)
+    
+    def make_train_slurm_job_files(self, train_list:list[str]):
+        # make train slurm script
+        group_list = split_job_for_group(self.resource.dft_resource.group_size, train_list, 1)
+        for group_index, group in enumerate(group_list):
+            if group[0] == "NONE":
+                continue
 
-            # make train slurm script
-            jobname = "train{}".format(model_index)
-            tag_name = TRAIN_FILE_STRUCTUR.train_tag
-            tag = os.path.join(model_i_dir, tag_name)
-            run_cmd = self.set_train_cmd(train_json_file_path)
-            
-            train_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.train_resource.gpu_per_node, 
+            jobname = "train{}".format(group_index)
+            tag_name = "{}-{}".format(group_index, TRAIN_FILE_STRUCTUR.train_tag)
+            tag = os.path.join(self.train_dir, tag_name)
+            run_cmd = self.set_train_cmd()
+
+            group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.train_resource.gpu_per_node, 
                 number_node = self.resource.train_resource.number_node, 
                 cpu_per_node = self.resource.train_resource.cpu_per_node,
                 queue_name = self.resource.train_resource.queue_name,
@@ -89,31 +90,33 @@ class ModelTrian(object):
                 module_list = self.resource.train_resource.module_list,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
-                group = [model_i_dir],
+                group = group,
                 job_tag = tag,
                 task_tag = TRAIN_FILE_STRUCTUR.train_tag, 
                 task_tag_faild = TRAIN_FILE_STRUCTUR.train_tag_failed,
                 parallel_num=1,
                 check_type=None
                 )
-            slurm_job_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_job)
-            write_to_file(slurm_job_file_path, train_slurm_script, "w")
+            slurm_script_name = "{}-{}".format(group_index, TRAIN_FILE_STRUCTUR.train_job)
+            slurm_job_file = os.path.join(self.train_dir, slurm_script_name)
+            write_to_file(slurm_job_file, group_slurm_script, "w")
 
-    def set_train_cmd(self, train_json:str):
+    def set_train_cmd(self):
         model_path = "./{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
         cmp_model_path = None
         script = ""
-        script += "PWMLFF {} {}\n\n".format(MODEL_CMD.train, os.path.basename(train_json))
+        pwmlff = self.resource.train_resource.command
+        script += "{} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.train, TRAIN_FILE_STRUCTUR.train_json, SLURM_OUT.train_out)
         if self.input_param.strategy.compress:
-            script += "    PWMLFF {} {} -d {} -o {} -s {}\n\n".format(MODEL_CMD.compress, model_path, \
-                self.input_param.strategy.compress_dx, self.input_param.strategy.compress_order, TRAIN_FILE_STRUCTUR.compree_dp_name)
+            script += "    {} {} {} -d {} -o {} -s {} >> {}\n\n".format(pwmlff, MODEL_CMD.compress, model_path, \
+                self.input_param.strategy.compress_dx, self.input_param.strategy.compress_order, TRAIN_FILE_STRUCTUR.compree_dp_name, SLURM_OUT.train_out)
             cmp_model_path = "{}".format(TRAIN_FILE_STRUCTUR.compree_dp_name)
             
         if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
             if cmp_model_path is None:
-                script += "    PWMLFF {} {}\n\n".format(MODEL_CMD.script, model_path)
+                script += "    {} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.script, model_path, SLURM_OUT.train_out)
             else:
-                script += "    PWMLFF {} {}\n\n".format(MODEL_CMD.script, cmp_model_path)
+                script += "    {} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.script, cmp_model_path, SLURM_OUT.train_out)
         return script
 
     '''
@@ -137,6 +140,7 @@ class ModelTrian(object):
                                     "{}/{}/{}/*".format(make_iter_name(start_iter), AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result))
             if len(iter_pwdata) > 0:
                 train_feature_path.extend(iter_pwdata)
+            start_iter += 1
         train_json = self.input_param.train.to_dict()
         # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
@@ -146,10 +150,10 @@ class ModelTrian(object):
 
     def do_train_job(self):
         mission = Mission()
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.train_dir, \
-            job_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_job), \
-            tag_patten="*/{}".format(TRAIN_FILE_STRUCTUR.train_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.train_dir, \
+            job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_job), \
+            tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag))
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -157,7 +161,8 @@ class ModelTrian(object):
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()
-                    tag = os.path.join(os.path.dirname(script_path),TRAIN_FILE_STRUCTUR.train_tag)
+                    tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), TRAIN_FILE_STRUCTUR.train_tag)
+                    tag = os.path.join(os.path.dirname(script_path),tag_name)
                     slurm_job.set_tag(tag)
                     slurm_job.set_cmd(script_path)
                     mission.add_job(slurm_job)
@@ -165,13 +170,9 @@ class ModelTrian(object):
             if len(mission.job_list) > 0:
                 mission.commit_jobs()
                 mission.check_running_job()
-                mission.all_job_finished()
+                mission.all_job_finished(error_type=SLURM_OUT.train_out)
 
     def post_process_train(self):
-        # temp_work_dirs = search_files(self.train_dir, "*/{}".format("work_dir"))
-        # if self.input_param.reserve_work is True:
-        #     pass
-        # else:
-        #     for temp in temp_work_dirs:
-        #         del_dir(temp)
-        link_file(self.train_dir, self.real_train_dir)
+        copy_dir(self.train_dir, self.real_train_dir)
+        del_file_list(search_files(self.real_train_dir, "slurm*.out"))
+        del_file_list(search_files(self.real_train_dir, "*/{}".format(SLURM_OUT.train_out)))

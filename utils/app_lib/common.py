@@ -41,26 +41,27 @@ return {*}
 author: wuxingxing
 '''
 def link_structure(source_config:str, config_format:str, target_dir:str, dft_style:str):
+    
     if dft_style == DFT_STYLE.pwmat:
-        target_config = os.path.join(target_dir, os.path.basename(source_config))
         if config_format == DFT_STYLE.vasp:
             # the input config is vasp poscar, covert it to atom.confie file then mv to target dir
-            poscar_to_atom_config(poscar=source_config, 
+            target_file = poscar_to_atom_config(poscar=source_config, 
                 save_dir=target_dir, 
                 save_name="poscar_to_atom.config")
-            source_mv = os.path.join(os.path.dirname(source_config), "poscar_to_atom.config")
-            mv_file(source_mv, target_config)
+            target_config = os.path.join(target_dir, PWMAT.atom_config)
+            mv_file(target_file, target_config)
         else:
             # the input config is pwmat atom.config, then link to target dir
+            target_config = os.path.join(target_dir, os.path.basename(source_config))
             link_file(source_config, target_config)
 
     elif dft_style == DFT_STYLE.vasp:
-        target_config = os.path.join(target_dir, VASP.poscar)
         if config_format == DFT_STYLE.pwmat:
             # the input config is pwmat config, convert it to poscar file and mv to target dir
-            atom_config_to_poscar(atom_config=source_config, save_dir=target_dir)
+            target_config = atom_config_to_poscar(atom_config=source_config, save_dir=target_dir)
         else:
             # the input config is vasp poscar, link to target dir
+            target_config = os.path.join(target_dir, os.path.basename(source_config))
             link_file(source_config, target_config)
     
     elif dft_style == DFT_STYLE.lammps:
@@ -111,6 +112,8 @@ def link_pseudo_by_atom(pseudo_list:list, target_dir:str, atom_order:list[str], 
         merge_files_to_one(pseudo_find, target_pseudo_file)
     else:
         pass
+
+    return [os.path.basename(_) for _ in pseudo_find] # this return is for pwmat etot.input for IN.PSP set
 
 '''
 description: 
@@ -194,9 +197,9 @@ def set_input_script(
     config:str=None, 
     kspacing:float=None, 
     flag_symm:int=None, 
-    resource_node:list[int]=None,
     dft_style:str=None,
-    save_dir:str=None
+    save_dir:str=None,
+    pseudo_names:list[str]=None
     ):
     if dft_style == DFT_STYLE.pwmat:
         target_file = os.path.join(save_dir, PWMAT.etot_input)
@@ -205,7 +208,7 @@ def set_input_script(
             atom_config=config, 
             kspacing=kspacing, 
             flag_symm=flag_symm, 
-            resource_node=resource_node
+            pseudo_names=pseudo_names
             )
         write_to_file(target_file, script, "w")
     elif dft_style == DFT_STYLE.vasp:

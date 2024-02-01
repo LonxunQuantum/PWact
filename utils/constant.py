@@ -101,6 +101,117 @@ class DFT_STYLE:
     cp2k = "cp2k"
     lammps = "lammps"
 
+    @staticmethod
+    def get_normal_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.atom_config
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.poscar
+
+    @staticmethod
+    def get_scf_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.out_mlmd
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.outcar
+
+    
+    @staticmethod
+    def get_postfix(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return ".config"
+        elif dft_style == DFT_STYLE.vasp:
+            return ".poscar"
+
+    @staticmethod
+    def get_format_by_postfix(file_name:str):
+        if "config" in file_name.lower()\
+            or "pwmat" in file_name.lower():
+            return DFT_STYLE.pwmat
+        elif "poscar" in file_name.lower() or\
+            "contcor" in file_name.lower() or\
+                "vasp" in file_name.lower():
+            return DFT_STYLE.vasp
+
+    '''
+    description: 
+        for pwmat is final.config
+        for vasp is  CONTCAR
+    return {*}
+    author: wuxingxing
+    '''    
+    @staticmethod
+    def get_relaxed_original_name(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.final_config
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.final_config
+               
+    '''
+    description: 
+        scf files need reserved
+            for vasp is outcar poscar and incar file
+            for pwmat is atom.config etot.input report and out.mlmd file
+                the scf of pwmat will produce a file named final.config, does not reserve
+    param {str} dft_style
+    return {*}
+    author: wuxingxing
+    '''
+    @staticmethod
+    def get_scf_reserve_list(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            scf_list = PWMAT.scf_reserve_list
+        elif dft_style == DFT_STYLE.vasp:
+            scf_list = VASP.scf_reserve_list
+        scf_list = [_.lower() for _ in scf_list]
+        return scf_list
+    
+    '''
+    description: 
+        the files in scf does not need reserve
+    return {*}
+    author: wuxingxing
+    '''    
+    @staticmethod
+    def get_scf_del_list():
+        del_list = ["final.config"]
+        return del_list
+    
+    @staticmethod
+    def get_aimd_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.MOVEMENT
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.outcar
+
+    @staticmethod
+    def get_pertub_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "pertub.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "pertub.poscar"
+
+    @staticmethod
+    def get_super_cell_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "super_cell.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "super_cell.poscar"
+    
+    @staticmethod
+    def get_scale_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "scale.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "scale.poscar"
+
+    @staticmethod
+    def get_relaxed_config(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return "relaxed.config"
+        elif dft_style == DFT_STYLE.vasp:
+            return "relaxed.poscar"
+    
 class DFT_TYPE:
     relax = "relax"
     aimd = "aimd"
@@ -142,79 +253,6 @@ class INIT_BULK:
     npy_format_save_dir = "PWdata"
     npy_format_name = "PWdata"
 
-    @staticmethod
-    def get_scf_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return PWMAT.out_mlmd
-        elif dft_style == DFT_STYLE.vasp:
-            return VASP.outcar
-
-    @staticmethod
-    def get_aimd_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return PWMAT.MOVEMENT
-        elif dft_style == DFT_STYLE.vasp:
-            return VASP.outcar
-
-    @staticmethod
-    def get_pertub_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return "pertub.config"
-        elif dft_style == DFT_STYLE.vasp:
-            return "pertub.poscar"
-
-    @staticmethod
-    def get_super_cell_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return "super_cell.config"
-        elif dft_style == DFT_STYLE.vasp:
-            return "super_cell.poscar"
-    
-    @staticmethod
-    def get_scale_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return "scale.config"
-        elif dft_style == DFT_STYLE.vasp:
-            return "scale.poscar"
-    
-    @staticmethod
-    def get_postfix(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return ".config"
-        elif dft_style == DFT_STYLE.vasp:
-            return ".poscar"
-
-    @staticmethod
-    def get_format_by_postfix(file_name:str):
-        if "config" in file_name.lower()\
-            or "pwmat" in file_name.lower():
-            return DFT_STYLE.pwmat
-        elif "poscar" in file_name.lower() or\
-            "contcor" in file_name.lower() or\
-                "vasp" in file_name.lower():
-            return DFT_STYLE.vasp
-
-    '''
-    description: 
-        for pwmat is final.config
-        for vasp is  CONTCAR
-    return {*}
-    author: wuxingxing
-    '''    
-    @staticmethod
-    def get_relaxed_original_name(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return PWMAT.final_config
-        elif dft_style == DFT_STYLE.vasp:
-            return VASP.final_config
-
-    @staticmethod
-    def get_relaxed_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return "relaxed.config"
-        elif dft_style == DFT_STYLE.vasp:
-            return "relaxed.poscar"
-    
 class TRAIN_FILE_STRUCTUR:
     work_dir = "work_dir"
     feature_dir = "feature"
@@ -272,9 +310,6 @@ class LABEL_FILE_STRUCTURE:
     scf_tag = "tag.scf.success"
     scf_tag_failed = "tag.scf.failed"
     scf_job = "scf.job"
-       
-class SCF_FILE_STRUCTUR:
-    NCPP = "NCPP-SG15-PBE"
 
 class LAMMPS:
     input_lammps="in.lammps"
@@ -283,7 +318,14 @@ class LAMMPS:
     traj_postfix = ".lammpstrj"
     log_lammps = "log.lammps"
 
+class ENSEMBLE:
+    npt_tri = "npt_tri",
+    nvt = "nvt"
+    npt = "npt"
+    nve = "nve"
+
 class PWMAT:
+    in_skf = "in_skf"
     pwmat_out = "PWMAT.out"
     config_postfix = ".config"
     atom_config = "atom.config"
@@ -296,7 +338,7 @@ class PWMAT:
     MOVEMENT="MOVEMENT"
     MOVEMENT_low = "movement"
     kspacing_default = 0.5
-    scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", "*.config"]
+    scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", ".config"]
     final_config = "final.config"#relaxed result
 
 class VASP:
@@ -305,13 +347,8 @@ class VASP:
     poscar = "POSCAR"
     final_config = "CONTCAR"#relaxed result
     outcar = "OUTCAR"
+    scf_reserve_list = ["OUTCAR","POSCAR", "INCAR"]
 
-class ENSEMBLE:
-    npt_tri = "npt_tri",
-    nvt = "nvt"
-    npt = "npt"
-    nve = "nve"
-    
 class UNCERTAINTY:
     kpu = "KPU"
     committee="COMMITTEE"

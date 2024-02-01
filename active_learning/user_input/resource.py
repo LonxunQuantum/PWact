@@ -2,7 +2,6 @@ from utils.json_operation import get_parameter, get_required_parameter
 from utils.constant import AL_WORK, LAMMPS_CMD, PWMAT, VASP, DFT_STYLE, SLURM_OUT
 class Resource(object):
     # _instance = None
-
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter) -> None:
         if job_type == AL_WORK.run_iter:
             self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
@@ -13,7 +12,8 @@ class Resource(object):
             if self.train_resource.cpu_per_node > 1:
                 self.train_resource.cpu_per_node = 1
             print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
-            
+            self.train_resource.command = self.train_resource.command.upper()
+             
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
             self.explore_resource.command = "{} > {}".format(self.explore_resource.command, SLURM_OUT.md_out)
 
@@ -34,20 +34,13 @@ class Resource(object):
         # check dft resource
         self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
         self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
+        dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
+        if dftb_command is not None:
+            self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
         if DFT_STYLE.vasp.lower() in self.dft_resource.command.lower():
             self.dft_style = DFT_STYLE.vasp
         elif DFT_STYLE.pwmat.lower() in self.dft_resource.command.lower():
             self.dft_style = DFT_STYLE.pwmat
-
-                # if self.dft_resource.number_node > 1:
-        #     self.dft_resource.number_node = 1
-        #     print("Warining: the resouce of node in dft automatically adjust to 1")
-        # check gpu nums
-        # run_gpu = int(self.dft_resource.command.split()[2])
-        # if self.dft_resource.gpu_per_node < run_gpu:
-        #     erro_log = "Error! the gpus in commond {} is {}, exceeds the 'gpu_per_node' in DFT, automatically adjust to {}"\
-        #         .format(self.dft_resource.command, run_gpu, self.dft_resource.gpu_per_node)
-        #     raise Exception(erro_log)
 
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):
@@ -73,6 +66,7 @@ class ResourceDetail(object):
     def __init__(self, command:str, group_size:int , parallel_num:int, number_node:int , gpu_per_node:int , cpu_per_node:int ,\
                   queue_name:str, custom_flags:list[str], source_list:list[str], module_list:list[str]) -> None:
         self.command = command
+        self.dftb_command = None
         self.group_size = group_size
         self.parallel_num = parallel_num
         self.number_node = number_node

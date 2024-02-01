@@ -284,6 +284,8 @@ def read_and_check_etot_input(etot_input_path:str, kspacing:float=None, flag_sym
     key_values = {}
     for i in etot_lines[1:]:
         i = i.strip()
+        if "#" in i[:2]:
+            continue
         key = i.split('=')[0].strip().upper()
         value = None
         if key in string_keys:
@@ -292,7 +294,7 @@ def read_and_check_etot_input(etot_input_path:str, kspacing:float=None, flag_sym
             value = i.split('=')[1:]
             if len(value) > 1:
                 raise Exception(" {} error, value should be char type, please check the file {}!".format(i, etot_input_path))
-        elif key in bool_keys:
+        elif key in bool_keys:#USE_DFTB
             value = i.split('=')[1].strip().upper()
             if key == "ENERGY_DECOMP":
                 pass
@@ -327,31 +329,40 @@ def set_etot_input_by_file(
     kspacing:float=None, 
     flag_symm:int=None, 
     atom_config:str=None, 
-    resource_node:list[int]=None):
+    pseudo_names:list[str]=None):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file, atom_config)
-    # check node1 and node2 are right
+    is_skf = False
+    if "USE_DFTB" in key_values.keys() and key_values["USE_DFTB"] is not None and key_values["USE_DFTB"] == "T":
+        if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
+            is_skf = True
     index = 0
     while index < len(etot_lines):
-        if len(etot_lines[index].strip().split()) == 2:
-            node1, node2 = [int(_) for _ in etot_lines[index].strip().split()]
-            if node1 <= resource_node[0] and node2 <= resource_node[1]:
-                pass
-            else:
-                raise Exception("the node1 node2 '{}' in {} file is not consistent with resource json file '{}', please check!".format(node1, node2, resource_node))
         if "in.atom".upper() in etot_lines[index].upper(): # change the in.atom
             etot_lines[index] = "in.atom = {}\n".format(os.path.basename(atom_config))
+        if is_skf and "in.skf".upper() in etot_lines[index].upper():
+            etot_lines[index].remove(etot_lines[index])        
+        if "IN.PSP" in etot_lines[index].upper():
+            etot_lines.remove(etot_lines[index])
         index += 1
+    etot_lines.append("in.atom = {}\n".format(os.path.basename(atom_config)))
+    # if dftb and need in_skf
+    if is_skf:
+        etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
+    # is not for dftb, reset the IN.PSP
+    if "USE_DFTB" not in key_values.keys() or key_values["USE_DFTB"] is None and key_values["USE_DFTB"] == "F":
+        for pseudo_i, pseudo in enumerate(pseudo_names):
+            etot_lines.append("IN.PSP{} = {}\n".format(pseudo_i + 1, pseudo))
     key_list = list(key_values)
     # set OUT.MLMD
-    if "OUT.MLMD" not in key_list:
-        etot_lines.append("OUT.MLMD = T\n")
-    # set OUT.WG OUT.RHO OUT.VR
-    if "OUT.WG" not in key_list:
-        etot_lines.append("OUT.WG = F\n")
-    if "OUT.RHO" not in key_list:
-        etot_lines.append("OUT.RHO = F\n")
-    if "OUT.VR" not in key_list:
-        etot_lines.append("OUT.VR = F\n")
+    # if "OUT.MLMD" not in key_list:
+    #     etot_lines.append("OUT.MLMD = T\n")
+    # # set OUT.WG OUT.RHO OUT.VR
+    # if "OUT.WG" not in key_list:
+    #     etot_lines.append("OUT.WG = F\n")
+    # if "OUT.RHO" not in key_list:
+    #     etot_lines.append("OUT.RHO = F\n")
+    # if "OUT.VR" not in key_list:
+    #     etot_lines.append("OUT.VR = F\n")
     # if MP_N123 is not in etot.input file then using 'kespacing' generates it
     if "MP_N123" not in key_list:
         kspacing = PWMAT.kspacing_default if kspacing is None else kspacing
@@ -361,9 +372,6 @@ def set_etot_input_by_file(
         else:
             MP_N123 += str(flag_symm)
         etot_lines.append("MP_N123 = {}\n".format(MP_N123))
-    
-    if "in.atom".upper() not in key_list:   # if the in.atom not setted in etot.input file then add
-        etot_lines[-1] = "in.atom = {}\n".format(os.path.basename(atom_config))
 
     etot_lines.append("\n")
 
@@ -399,7 +407,8 @@ float_keys=[
     'E_ERROR',
     'RHO_ERROR',
     'FERMIDE',
-    'KSPACING'
+    'KSPACING',
+    "SYMM_PREC" #DFTB param
     ]
 
 int_keys=[
@@ -408,34 +417,37 @@ int_keys=[
     'SPIN222_MAGDIR_STEPFIX',
     'DFTD3_VERSION',
     'NUM_BAND',
-    'FLAG_SYMM'
+    'FLAG_SYMM',
+    "NUM_GPU", #DFTB param
+    "RANDOM_SEED"#DFTB param
     ]
 
 bool_keys=[
-    'OUT_WG',
-    'IN_RHO',
-    'OUT_RHO',
-    'IN_VR',
-    'OUT_VR',
-    'IN_VEXT',
-    'OUT_VATOM',
-    'OUT_FORCE',
-    'OUT_STRESS',
-    'IN_SYMM',
+    'OUT.WG',
+    'IN.RHO',
+    'OUT.RHO',
+    'IN.VR',
+    'OUT.VR',
+    'IN.VEXT',
+    'OUT.VATOM',
+    'OUT.FORCE',
+    'OUT.STRESS',
+    'IN.SYMM',
     'CHARGE_DECOMP',
     'ENERGY_DECOMP',
-    'IN_SOLVENT',
-    'IN_NONSCF',
-    'IN_OCC',
-    'IN_OCC_ADIA',
-    'OUT_MLMD',
+    'IN.SOLVENT',
+    'IN.NONSCF',
+    'IN.OCC',
+    'IN.OCC_ADIA',
+    'OUT.MLMD',
     'NUM_BLOCKED_PSI',
-    'OUT_RHOATOM'
+    'OUT.RHOATOM',
+    "USE_DFTB"
     ]
 
 char_keys=['PRECISION',
            'JOB',
-           'IN_ATOM',
+           'IN.ATOM',
            'CONVERGENCE',
            'ACCURACY',
            'XCFUNCTIONAL',
@@ -451,12 +463,13 @@ string_keys=['VFF_DETAIL',
            'NQ123',
            'RELAX_DETAIL',
            'MD_DETAIL',
+           "DFTB_DETAIL",#DFTB param
            'MD_SPECIAL',
            'SCF_SPECIAL',
            'STRESS_CORR',
            'HSE_DETAIL',
            'RELAX_HSE',
-           'IN_OCC',
+           'IN.OCC',
            'SCF_ITER0_1',
            'SCF_ITER0_2',
            'SCF_ITER1_1',

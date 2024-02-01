@@ -187,11 +187,11 @@ class WorkFileStructure(object):
 
     def _set_PWdata_NN_DP_dirs(self, json_input:dict):
         # set Pwdata dir file structure, they are used in feature generation
-        trainSetDir = get_parameter("pwdata_dir", json_input, 'PWdata')
+        trainSetDir = get_parameter("trainSetDir", json_input, 'PWdata')
         dRFeatureInputDir = get_parameter("dRFeatureInputDir", json_input, 'input')
         dRFeatureOutputDir = get_parameter("dRFeatureOutputDir", json_input, 'output')
-        trainDataPath = get_parameter("traindata_path", json_input, 'train')
-        validDataPath = get_parameter("validdata_path", json_input, 'valid')
+        trainDataPath = get_parameter("trainDataPath", json_input, 'train')
+        validDataPath = get_parameter("validDataPath", json_input, 'valid')
         self._set_data_file_paths(trainSetDir, dRFeatureInputDir, dRFeatureOutputDir, trainDataPath, validDataPath)
 
     def set_nep_file_paths(self):

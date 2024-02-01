@@ -27,13 +27,13 @@ from active_learning.slurm import SlurmJob, Mission
 
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE,\
     LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR,\
-        PWMAT, LAMMPS, SLURM_OUT, INIT_BULK
+        PWMAT, LAMMPS, SLURM_OUT, DFT_STYLE
     
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files_to_one, search_files, mv_file, file_shell_op, del_file, del_file_list
+from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files_to_one, search_files, mv_file, add_postfix_dir, del_dir, del_file_list
 from utils.app_lib.pwmat import lammps_dump_to_config, set_etot_input_by_file
-from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, link_structure, set_input_script
+from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
@@ -53,11 +53,17 @@ class Labeling(object):
         self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
+        self.real_md_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.md)
+        self.real_select_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.select)
+
         # labed work dir
         self.label_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.labeling) 
-        self.real_label_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.labeling) 
         self.scf_dir = os.path.join(self.label_dir, LABEL_FILE_STRUCTURE.scf)
         self.result_dir = os.path.join(self.label_dir, LABEL_FILE_STRUCTURE.result)
+
+        self.real_label_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.labeling) 
+        self.real_scf_dir = os.path.join(self.real_label_dir, LABEL_FILE_STRUCTURE.scf)
+        self.real_result_dir = os.path.join(self.real_label_dir, LABEL_FILE_STRUCTURE.result)
 
     '''
     description: 
@@ -90,7 +96,7 @@ class Labeling(object):
             if not os.path.exists(scf_sub_md_sys_path):
                 os.makedirs(scf_sub_md_sys_path)
             tarj_lmp = os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.tarj, "{}{}".format(config_index, LAMMPS.traj_postfix))
-            traj_target_config = os.path.join(scf_sub_md_sys_path, "{}{}".format(config_index, INIT_BULK.get_postfix(self.resource.dft_style)))
+            traj_target_config = os.path.join(scf_sub_md_sys_path, "{}{}".format(config_index, DFT_STYLE.get_postfix(self.resource.dft_style)))
             # lmps traj to atom.config
             sys_index = int(md_sys_name.split(".")[-1])
             sys_atom_config = self.input_param.explore.sys_configs[sys_index]
@@ -101,19 +107,25 @@ class Labeling(object):
             
         self.make_scf_slurm_job_files(scf_dir_list)
 
-    def check_state(self):
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.scf_dir, \
+    def back_label(self):
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.real_scf_dir, \
             job_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_job), \
             tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
-        return slurm_done
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        if slurm_done:
+            # bk and do new job
+            target_bk_file = add_postfix_dir(self.real_label_dir, postfix_str="bk")
+            mv_file(self.real_label_dir, target_bk_file)
+            # if the temp_work_dir/label exists, delete the train dir
+            if os.path.exists(self.label_dir):
+                del_dir(self.label_dir)
 
     def do_scf_jobs(self):
         mission = Mission()
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.scf_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.scf_dir, \
             job_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_job), \
             tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_done) > 0 else False
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -140,16 +152,16 @@ class Labeling(object):
         # atom_type_list, _ = get_atom_type(target_config, self.resource.dft_style)
 
         #1. set pseudo files
-        link_pseudo_by_atom(self.input_param.scf.pseudo, scf_dir, atom_type_list, self.resource.dft_style)
+        pseudo_names = link_pseudo_by_atom(self.input_param.scf.pseudo, scf_dir, atom_type_list, self.resource.dft_style)
         #2. make etot.input file
         set_input_script(
             input_file=self.input_param.scf.scf_input_list[0].input_file,
             config=source_config,
             kspacing=self.input_param.scf.scf_input_list[0].kspacing, 
             flag_symm=self.input_param.scf.scf_input_list[0].flag_symm, 
-            resource_node=[self.resource.dft_resource.number_node, self.resource.dft_resource.gpu_per_node],
             dft_style=self.resource.dft_style,
-            save_dir = scf_dir
+            save_dir=scf_dir,
+            pseudo_names=pseudo_names
         )
 
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
@@ -201,74 +213,106 @@ class Labeling(object):
             md_sys_mlmd = []
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
-                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, INIT_BULK.get_scf_config(self.resource.dft_style)))
+                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
                 md_sys_mlmd.extend(out_mlmd_list)
-            save_file = os.path.join(md_sys_dir, INIT_BULK.get_aimd_config(self.resource.dft_style))
+            save_file = os.path.join(md_sys_dir, DFT_STYLE.get_aimd_config(self.resource.dft_style))
             merge_files_to_one(out_mlmd_list, save_file)
             aimd_list.append(save_file)
         return aimd_list
 
     def get_aimd_list(self):
-        aimd_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), INIT_BULK.get_aimd_config(self.resource.dft_style)))
+        aimd_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), DFT_STYLE.get_aimd_config(self.resource.dft_style)))
         return sorted(aimd_list)
     
     '''
     description: 
-        需要修改逻辑，不能删除，先复制，然后整体删除
-        if reserve_work is True, reserve all temp work dir, copy the result to iter dir
+        if reserve_work is True
+            reserve all temp work dir
         else:
-            if reserve_md_traj is True, copy the trajs
-            if reserve_scf_files is True, copy scf files
+            if reserve_scf_files is True, copy scf and result files
     param {*} self
     return {*}
     author: wuxingxing
     '''    
     def do_post_labeling(self):
-        # for training
-        # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.work_dir)))
-        # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.train_tag)))
-        del_file_list(search_files(self.train_dir, "*/slurm*.out"))
-        copy_dir(self.train_dir, self.real_train_dir)
+        scf_dirs = search_files(self.scf_dir, "{}/{}/*{}".format(get_md_sys_template_name(),get_md_sys_template_name(), LABEL_FILE_STRUCTURE.scf))
+        for scf_dir in scf_dirs:
+            scf_files = os.listdir(scf_dir)
+            for scf_file in scf_files:
+                scf_file_path = os.path.join(scf_dir, scf_file)
+                if scf_file.lower() in DFT_STYLE.get_scf_reserve_list(self.resource.dft_style) \
+                    and scf_file.lower() not in DFT_STYLE.get_scf_del_list():# for pwmat final.config
+                    copy_file(scf_file_path, scf_file_path.replace(TEMP_STRUCTURE.tmp_run_iter_dir, ""))
+        
+        copy_dir(self.result_dir, self.real_result_dir)
 
-        #for explore dir
-        # delete md traj
-        md_dirs = search_files(self.explore_dir, "{}/{}/{}".format(EXPLORE_FILE_STRUCTURE.md, get_md_sys_template_name(),get_md_sys_template_name()))
-        for md_dir in md_dirs:
-            if self.input_param.reserve_md_traj is False:
-                del_file_list([os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.tarj)])
-            else:
-                pass
-            del_file(os.path.join(md_dir, LAMMPS.log_lammps))
-            del_file(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.md_tag))
-        # delete slurm logs
-        md_slurms = search_files(self.explore_dir, "{}/slurm-*".format(EXPLORE_FILE_STRUCTURE.md))
-        del_file_list(md_slurms)
-        # md_tags = search_files(self.explore_dir, "{}/*-tag*".format(EXPLORE_FILE_STRUCTURE.md))
-        # del_file_list(md_tags)
-        mv_file(self.explore_dir, self.real_explore_dir)
+        if not self.input_param.reserve_work:
+            del_file_list(os.path.dirname(self.real_label_dir))
 
-        # for label dir
-        # delete nouse scf files
-        if self.input_param.reserve_scf_files is False:
-            scf_dirs = search_files(self.scf_dir, "{}/{}/*{}".format(get_md_sys_template_name(),get_md_sys_template_name(), LABEL_FILE_STRUCTURE.scf))
-            for scf_dir in scf_dirs:
-                scf_files = os.listdir(scf_dir)
-                for scf_file in scf_files:
-                    if os.path.basename(scf_file) in PWMAT.scf_reserve_list:
-                        continue
-                    # is *.config but not final.config
-                    if PWMAT.config_postfix in os.path.basename(scf_file) and PWMAT.relaxed_config != os.path.basename(scf_file):
-                        continue
-                    del_file(os.path.join(scf_dir, scf_file))
-            # delete tag and logs
-            scf_slurms = search_files(self.scf_dir, "slurm-*")
-            del_file_list(scf_slurms)
-            # scf_tags = search_files(self.scf_dir, "*-tag*")
-            # del_file_list(scf_tags)
-            mv_file(self.explore_dir, self.real_explore_dir)
-        # delete label/result/ format change nouse files
-        # 
-        # move label dir to main dir
-        mv_file(self.label_dir, self.real_label_dir)
-        del_file_list([os.path.dirname(self.label_dir)])
+    # def _do_post_labeling(self):
+    #     # for training
+    #     # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.work_dir)))
+    #     # del_file_list(search_files(self.train_dir, "*/{}".format(TRAIN_FILE_STRUCTUR.train_tag)))
+    #     del_file(self.real_train_dir)
+    #     del_file(self.real_explore_dir)
+    #     del_file(self.real_label_dir)
+
+    #     del_file_list(search_files(self.train_dir, "*/slurm*.out"))
+    #     copy_dir(self.train_dir, self.real_train_dir)
+
+    #     #for explore dir
+    #     md_sys_dir_list = search_files(self.md_dir, get_md_sys_template_name())
+    #     for md_sys_dir in md_sys_dir_list:
+    #         sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
+    #         for sub_md_sys in sub_md_sys_dir_list:
+    #             target_dir = os.path.join(self.real_md_dir, md_sys_dir, sub_md_sys)
+    #             source_dir = os.path.join(self.md_dir, md_sys_dir, sub_md_sys)
+    #             copy_dir(source_dir, target_dir)# delete trajs
+    #             if self.input_param.reserve_md_traj and self.input_param.reserve_work:
+    #                 pass
+    #             else:
+    #                 del_file_list([os.path.join(target_dir, EXPLORE_FILE_STRUCTURE.tarj)])
+    #             if self.input_param.reserve_work is False:#delete lammps.log
+    #                 del_file(os.path.join(target_dir, LAMMPS.log_lammps))
+    #             md_slurms = search_files(self.md_dir, "slurm-*") #delete slurm log files
+    #             del_file_list(md_slurms)
+    #     # md_dirs = search_files(self.explore_dir, "{}/{}/{}".format(EXPLORE_FILE_STRUCTURE.md, get_md_sys_template_name(),get_md_sys_template_name()))
+    #     # for md_dir in md_dirs:
+    #     #     # 
+    #     #     # copy files then decide to reserve work
+    #     #     if self.input_param.reserve_md_traj and self.input_param.reserve_work:
+    #     #         pass
+    #     #     else:
+    #     #         del_file_list([os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.tarj)]) #delete trajs
+    #     #     if self.input_param.reserve_work is False:
+    #     #         del_file(os.path.join(md_dir, LAMMPS.log_lammps))
+    #             # del_file(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.md_tag))
+    #     # delete slurm logs
+        
+    #     # md_tags = search_files(self.explore_dir, "{}/*-tag*".format(EXPLORE_FILE_STRUCTURE.md))
+    #     # del_file_list(md_tags)
+    #     # copy_dir(self.explore_dir, self.real_explore_dir)
+
+    #     # for label dir
+    #     # delete nouse scf files
+    #     # if self.input_param.reserve_scf_files is False and self.input_param.reserve_work is False:
+    #     scf_dirs = search_files(self.scf_dir, "{}/{}/*{}".format(get_md_sys_template_name(),get_md_sys_template_name(), LABEL_FILE_STRUCTURE.scf))
+    #     for scf_dir in scf_dirs:
+    #         scf_files = os.listdir(scf_dir)
+    #         for scf_file in scf_files:
+    #             if os.path.basename(scf_file).lower() in DFT_STYLE.get_scf_reserve_list(self.resource.dft_style) \
+    #                 and os.path.basename(scf_file).lower() not in DFT_STYLE.get_scf_del_list():# for pwmat final.config
+    #                 copy_file(scf_file, scf_file.replace(TEMP_STRUCTURE.tmp_run_iter_dir, ""))
+    #     copy_dir(self.result_dir, self.real_result_dir)
+    #         # delete logs if reserve work, reserve slurm files
+    #         # scf_slurms = search_files(self.scf_dir, "slurm-*")
+    #         # del_file_list(scf_slurms)
+    #         # scf_tags = search_files(self.scf_dir, "*-tag*")
+    #         # del_file_list(scf_tags)
+    #     # label result
+    #     # copy_dir(self.result_dir, self.real_result_dir)
+    #     # mv_file(self.label_dir, self.real_label_dir)
+    #     # del_file_list([os.path.dirname(self.label_dir)])
+    #     if not self.input_param.reserve_work:
+    #         del_file_list(os.path.dirname(self.real_label_dir))

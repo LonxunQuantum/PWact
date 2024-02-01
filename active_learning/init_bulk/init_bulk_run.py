@@ -1,14 +1,14 @@
 import os
 
 from active_learning.init_bulk.relax import Relax
-from active_learning.init_bulk.duplicate_scale import do_pertub, do_post_pertub, pertub_done, \
+from active_learning.init_bulk.duplicate_scale import do_pertub_work, do_post_pertub, pertub_done, \
     duplicate_scale_done, duplicate_scale, do_post_duplicate_scale
 from active_learning.init_bulk.aimd import AIMD
 from active_learning.user_input.init_bulk_input import InitBulkParam
 from active_learning.user_input.resource import Resource
 
-from utils.constant import INIT_BULK, TEMP_STRUCTURE, PWMAT
-from utils.file_operation import merge_files_to_one, copy_file, copy_dir, search_files, file_shell_op, del_file, write_to_file
+from utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE, PWMAT
+from utils.file_operation import merge_files_to_one, copy_file, copy_dir, search_files, del_file, del_file_list, write_to_file
 from utils.gen_format.pwdata import Save_Data
 
 def init_bulk_run(resource: Resource, input_param:InitBulkParam):
@@ -20,14 +20,14 @@ def init_bulk_run(resource: Resource, input_param:InitBulkParam):
         # do relax jobs
         relax.do_relax_jobs()
         # do post process
-    relax.do_post_process()
+        relax.do_post_process()
     # do super cell and scale
     if not duplicate_scale_done(input_param):
         duplicate_scale(resource, input_param)
         do_post_duplicate_scale(resource, input_param)
     # do pertub
     if not pertub_done(input_param):
-        do_pertub(resource, input_param)
+        do_pertub_work(resource, input_param)
         do_post_pertub(resource, input_param)
     # do aimd
     aimd = AIMD(resource, input_param)
@@ -62,11 +62,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
             os.makedirs(collection_work_dir)
         #1. copy relax config file
         if init_config.relax:
-            source_config = os.path.join(relax_dir, init_config_name, INIT_BULK.get_relaxed_config(init_config.dft_style))
-            target_config = os.path.join(collection_work_dir, INIT_BULK.get_relaxed_config(init_config.dft_style))
+            source_config = os.path.join(relax_dir, init_config_name, DFT_STYLE.get_relaxed_config(init_config.dft_style))
+            target_config = os.path.join(collection_work_dir, DFT_STYLE.get_relaxed_config(init_config.dft_style))
             copy_file(source_config, target_config)
         #2. copy super cell and scaled config file
-        config_template = "*{}".format(INIT_BULK.get_postfix(init_config.dft_style))
+        config_template = "*{}".format(DFT_STYLE.get_postfix(init_config.dft_style))
         source_file_list = search_files(os.path.join(duplicate_scale_dir, init_config_name), config_template)
         for file in source_file_list:
             target_file = os.path.join(collection_dir, init_config_name, os.path.basename(file))
@@ -78,15 +78,15 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
             for source in source_dir:
                 # copy .../path/pertub/init_config_0/0.95_scale to .../path/collection/init_config_0/0.95_scale
                 target_dir = os.path.join(collection_dir, init_config_name, "{}_{}".format(os.path.basename(source),INIT_BULK.pertub))
-                copy_dir(source, target_dir)
+                copy_dir(source, target_dir, symlinks=False)
             
         #4. copy aimd result
         target_aimd_config = ""
         if init_config.aimd is True:
-            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, INIT_BULK.get_aimd_config(init_config.dft_style)))
+            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, DFT_STYLE.get_aimd_config(init_config.dft_style)))
             source_aimd = sorted(source_aimd)
             aimd_save_dir = os.path.join(collection_dir, init_config_name)
-            target_aimd_config = os.path.join(aimd_save_dir, "{}".format(INIT_BULK.get_aimd_config(init_config.dft_style)))
+            target_aimd_config = os.path.join(aimd_save_dir, "{}".format(DFT_STYLE.get_aimd_config(init_config.dft_style)))
             merge_files_to_one(source_aimd, target_aimd_config)
             
         #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
@@ -103,15 +103,13 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
     del_file(real_pertub_dir)
     del_file(real_aimd_dir)
 
-    # delete no use files
+    # copy collection file to target
+    copy_dir(collection_dir, real_collection_dir)
     if not input_param.reserve_work:
         # mv collection to real dir
-        file_shell_op("mv {} {}".format(collection_dir, real_collection_dir))
         temp_work_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir)
-        file_shell_op("rm {} -rf".format(temp_work_dir))
-    else:
-        # copy collection to real dir
-        file_shell_op("cp {} {} -r".format(collection_dir, real_collection_dir))
+        del_file_list([temp_work_dir])
+
     # print the dir of pwdatas
     pwdatas = search_files(real_collection_dir, "*/{}/*".format(INIT_BULK.npy_format_save_dir))
     pwdatas = sorted(pwdatas)

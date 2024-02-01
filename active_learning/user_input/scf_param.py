@@ -23,7 +23,10 @@ class SCFParam(object):
             json_relax = get_required_parameter("relax_input", json_dict)
             self.relax_input_list = self.set_input(json_relax, flag_symm=3) 
 
-        pseudo = get_required_parameter("pseudo", json_dict)
+        if is_scf or is_relax or (is_aimd and self.aimd_input_list[0].use_dftb is False):
+            pseudo = get_required_parameter("pseudo", json_dict)
+        else:
+            pseudo = []
         if isinstance(pseudo, str):
             pseudo = list(pseudo)
         self.pseudo = []
@@ -37,7 +40,12 @@ class SCFParam(object):
             elif self.dft_style == DFT_STYLE.pwmat:
                 atom_type = os.path.basename(pf).split('.')[0]
             self.pseudo.append([pf, atom_type])
-            
+        
+        self.in_skf = None
+        if is_aimd and self.aimd_input_list[0].use_dftb and self.aimd_input_list[0].use_skf:
+            IN_SKF = get_required_parameter("in_skf", json_dict)
+            self.in_skf = IN_SKF if os.path.isabs(IN_SKF) else os.path.abspath(IN_SKF)
+
     '''
     description: 
         set dft input file
@@ -97,26 +105,6 @@ class SCFParam(object):
 
         return input_list
 
-# class DFTInput(object):
-#     def __init__(self, input_file:str, dft_style:str, flag_symm:int=None, kspacing:int=None):
-#         self.input_file = input_file
-#         self.dft_style = dft_style
-
-#     def get_input_content(self):
-#         with open(self.input_file, "r") as fp:
-#             lines = fp.readlines()
-#         return lines        
-
-# class VASPInput(DFTInput):
-#     def __init__(self, input_file:str, dft_style:str, flag_symm:int=None, kspacing:int=None) -> None:
-#         super().__init__(input_file=input_file, dft_style=dft_style)
-        # super(VASPInput, self).__init__(input_file=input_file)
-    
-    # def get_input_content(self):
-    #     with open(self.input_file, "r") as fp:
-    #         lines = fp.readlines()
-    #     return lines
-
 class DFTInput(object):
     def __init__(self, input_file:str, dft_style:str, flag_symm:int, kspacing:int) -> None:
         # super().__init__(input_file=input_file, dft_style=dft_style)
@@ -124,11 +112,20 @@ class DFTInput(object):
         self.dft_style = dft_style
         self.kspacing = kspacing
         self.flag_symm = flag_symm
+        self.use_dftb = False
+        self.use_skf = False
         if self.kspacing is None:
             self.kspacing_default = 0.5
         # check etot input file
         if self.dft_style == DFT_STYLE.pwmat:
-            read_and_check_etot_input(self.input_file)
+            key_values, etot_lines = read_and_check_etot_input(self.input_file)
+            if "USE_DFTB" in key_values.keys() \
+                and key_values["USE_DFTB"] is not None \
+                    and key_values["USE_DFTB"] == "T":
+                self.use_dftb = True
+                if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
+                    self.use_skf = True
+            
     
     def get_input_content(self):
         if self.dft_style == DFT_STYLE.pwmat:

@@ -3,7 +3,8 @@ from active_learning.user_input.scf_param import DFTInput
 from active_learning.user_input.iter_input import SCFParam
 from utils.file_operation import str_list_format
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import DFT_STYLE, PWMAT, VASP, INIT_BULK
+from utils.constant import DFT_STYLE, PWMAT, VASP, INIT_BULK, DFT_STYLE
+from data_format.configop import extract_config
 
 class InitBulkParam(object):
     def __init__(self, json_dict: dict) -> None:
@@ -41,13 +42,13 @@ class InitBulkParam(object):
         # check and set relax etot.input file
         for config in self.sys_config:
             if config.relax_input_idx >= len(self.dft_input.relax_input_list):
-                raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config), config.relax_input_idx))
+                raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
             if is_relax:
                 config.set_relax_input_file(self.dft_input.relax_input_list[config.relax_input_idx])
         # check and set aimd etot.input file
         for config in self.sys_config:
             if config.aimd_input_idx >= len(self.dft_input.aimd_input_list):
-                raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config), config.aimd_input_idx))
+                raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config_file), config.aimd_input_idx))
             if is_aimd:
                 config.set_aimd_input_file(self.dft_input.aimd_input_list[config.aimd_input_idx])
 
@@ -55,11 +56,17 @@ class Stage(object):
     def __init__(self, json_dict: dict, index:int, sys_config_prefix:str = None, dft_style:str=None) -> None:
         self.dft_style = dft_style
         self.config_index = index
+        self.use_dftb = False
+        self.use_skf = False
+        
         config_file = get_required_parameter("config", json_dict)
-        self.config = os.path.join(sys_config_prefix, config_file) if sys_config_prefix is not None else config_file
+        self.config_file = os.path.join(sys_config_prefix, config_file) if sys_config_prefix is not None else config_file
         if not os.path.exists:
-            raise Exception("ERROR! The sys_config {} file does not exist!".format(self.config))
+            raise Exception("ERROR! The sys_config {} file does not exist!".format(self.config_file))
         self.format = get_parameter("format", json_dict, DFT_STYLE.pwmat).lower()
+        self.pbc = get_parameter("pbc", json_dict, [1,1,1])
+        # extract config file to Config object, then use it
+        # self.config = extract_config(self.config_file, self.format)
         self.relax = get_parameter("relax", json_dict, True)
         self.relax_input_idx = get_parameter("relax_input_idx", json_dict, 0)
         self.relax_input_file = None
@@ -95,21 +102,7 @@ class Stage(object):
             self.perturb = None
         self.cell_pert_fraction = get_parameter("cell_pert_fraction", json_dict, 0.03)
         self.atom_pert_distance = get_parameter("atom_pert_distance", json_dict, 0.01)
-        
-        self.set_result_file_name()
-
-    '''
-    description: 
-    param {*} self
-        according to dft style set the file name of relaxed file, super_cell file and scale file 
-    return {*}
-    author: wuxingxing
-    '''    
-    def set_result_file_name(self):
-        self.relaxed_file = INIT_BULK.get_relaxed_config(self.dft_style)# the file name after relaxed
-        self.scale_file = INIT_BULK.get_scale_config(self.dft_style)
-        self.suepr_cell_file = INIT_BULK.get_super_cell_config(self.dft_style)# the file name after super cell
-
+    
     def set_relax_input_file(self, input_file:DFTInput):
         self.relax_input_file = input_file.input_file
         self.relax_kspacing = input_file.kspacing 
@@ -119,3 +112,5 @@ class Stage(object):
         self.aimd_input_file = input_file.input_file
         self.aimd_kspacing = input_file.kspacing
         self.aimd_flag_symm = input_file.flag_symm
+        self.use_dftb = input_file.use_dftb
+        self.use_skf = input_file.use_skf

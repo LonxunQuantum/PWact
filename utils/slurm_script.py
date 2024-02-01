@@ -38,18 +38,28 @@ CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'sh
 
 '''
 Description: 
-Obtain the execution status of the slurm jobs under the dir:
+Obtain the execution status of the slurm jobs under the 'dir'
+    the slurm.job and tag format are number-jobname.job, number-tag-type-success.
+    for example:
+        iter.0000/explore/md/
+        0-md.job 1-md.job 2-md.job 3-md.job 4-md.job 5-md.job 
+        0-tag.md.success 1-tag.md.success 2-tag.md.success 3-tag.md.success 4-tag.md.success 5-tag.md.success
+
+        or
+
+        0-scf.job 1-scf.job 2-scf.job 3-scf.job 4-scf.job
+        0-tag.scf.success 1-tag.scf.success 2-tag.scf.success 3-tag.scf.success 4-tag.scf.success
 param {*} dir
 Returns: 
 Author: WU Xingxing
 '''
 def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.*.success"):
-    slurm_job_files = glob.glob(os.path.join(dir, job_patten))
-    slrum_job_dirs = [os.path.dirname(_) for _ in slurm_job_files]
+    slurm_job_files = sorted(glob.glob(os.path.join(dir, job_patten)))
+    slrum_job_dirs = [int(os.path.basename(_).split('-')[0]) for _ in slurm_job_files]
 
-    slurm_tag_sucess_files = glob.glob(os.path.join(dir, tag_patten))
-    slrum_tag_sucess_dirs = [os.path.dirname(_) for _ in slurm_tag_sucess_files]
-
+    slurm_tag_sucess_files = sorted(glob.glob(os.path.join(dir, tag_patten)))
+    slrum_tag_sucess_dirs = [int(os.path.basename(_).split('-')[0]) for _ in slurm_tag_sucess_files]
+    
     slurm_failed = []
     slurm_success = []
 
