@@ -21,14 +21,14 @@ from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam, MdDetail, SysConfig
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPS, PWMAT, LAMMPS_CMD, UNCERTAINTY, VASP, DFT_STYLE
+        FORCEFILED, ENSEMBLE, LAMMPS, PWMAT, LAMMPS_CMD, UNCERTAINTY, VASP, DFT_STYLE, SLURM_OUT
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, del_file, del_dir, del_file_list, mv_file
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
-from utils.app_lib.common import get_atom_type, link_structure
+from utils.app_lib.common import get_atom_type
 from data_format.configop import save_config
 
 import os
@@ -183,7 +183,7 @@ class Explore(object):
             if len(mission.job_list) > 0:
                 mission.commit_jobs()
                 mission.check_running_job()
-                mission.all_job_finished()
+                mission.all_job_finished(error_type=SLURM_OUT.md_out)
                 
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
@@ -193,6 +193,7 @@ class Explore(object):
         #     config_format=self.sys_paths[sys_index].format, 
         #     target_dir=md_dir, 
         #     dft_style=DFT_STYLE.lammps)
+
         target_config = save_config(config=self.sys_paths[sys_index].sys_config,
                                     input_format=self.sys_paths[sys_index].format,
                                     wrap = False, 

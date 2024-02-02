@@ -35,6 +35,8 @@ from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files
 from utils.app_lib.pwmat import lammps_dump_to_config, set_etot_input_by_file
 from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
 
+from data_format.configop import extract_pwdata
+
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
@@ -216,9 +218,11 @@ class Labeling(object):
                 out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
                 md_sys_mlmd.extend(out_mlmd_list)
-            save_file = os.path.join(md_sys_dir, DFT_STYLE.get_aimd_config(self.resource.dft_style))
-            merge_files_to_one(out_mlmd_list, save_file)
-            aimd_list.append(save_file)
+            # save_file = os.path.join(md_sys_dir, DFT_STYLE.get_aimd_config(self.resource.dft_style))
+            # merge_files_to_one(out_mlmd_list, save_file)
+            aimd_list.append(md_sys_mlmd)
+            # aimd_list.append(save_file)
+            
         return aimd_list
 
     def get_aimd_list(self):
@@ -236,6 +240,7 @@ class Labeling(object):
     author: wuxingxing
     '''    
     def do_post_labeling(self):
+        # collect scf files
         scf_dirs = search_files(self.scf_dir, "{}/{}/*{}".format(get_md_sys_template_name(),get_md_sys_template_name(), LABEL_FILE_STRUCTURE.scf))
         for scf_dir in scf_dirs:
             scf_files = os.listdir(scf_dir)
@@ -244,7 +249,19 @@ class Labeling(object):
                 if scf_file.lower() in DFT_STYLE.get_scf_reserve_list(self.resource.dft_style) \
                     and scf_file.lower() not in DFT_STYLE.get_scf_del_list():# for pwmat final.config
                     copy_file(scf_file_path, scf_file_path.replace(TEMP_STRUCTURE.tmp_run_iter_dir, ""))
-        
+
+        # scf files to pwdata format
+        scf_configs = self.collect_scf_configs()
+        for scf_list in scf_configs:
+            extract_pwdata(data_list=scf_list, 
+                data_format=self.resource.dft_style,
+                datasets_path=self.result_dir, 
+                train_valid_ratio=self.input_param.train.train_valid_ratio, 
+                data_shuffle=self.input_param.train.data_shuffle, 
+                merge_data=True,
+                data_name=os.path.basename(os.path.dirname(scf_list[0]))
+            )
+        # copy to main dir
         copy_dir(self.result_dir, self.real_result_dir)
 
         if not self.input_param.reserve_work:

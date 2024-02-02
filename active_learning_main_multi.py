@@ -6,7 +6,6 @@ from utils.constant import UNCERTAINTY, AL_WORK, PWMAT, LABEL_FILE_STRUCTURE
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from utils.json_operation import convert_keys_to_lowercase
-from utils.gen_format.pwdata import Save_Data
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
@@ -18,6 +17,9 @@ from active_learning.label.labeling import Labeling
 
 from active_learning.init_bulk.init_bulk_run import init_bulk_run
 from active_learning.environment import check_envs
+
+from data_format.configop import extract_pwdata
+
 
 def run_iter():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
@@ -70,20 +72,7 @@ def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab.make_scf_work()
     #3. do scf work
     lab.do_scf_jobs()
-    #4. collect scf configs outcar or movement
-    lab.collect_scf_configs()
-    #5. change the movement format to pwdata format
-    aimd_list = lab.get_aimd_list()
-    if len(aimd_list) > 0:
-        for aimd_file in aimd_list:
-            save_name = os.path.basename(os.path.dirname(aimd_file))
-            Save_Data(data_path=aimd_file, 
-                datasets_path=lab.result_dir, 
-                save_name=save_name,
-                train_ratio = input_param.train.train_valid_ratio, 
-                random = input_param.train.data_shuffle, 
-                format=resource.dft_style)
-    #6. collect the files of this iteration to label/result dir
+    #4. collect scf configs outcar or movement, then to pwdata format
     lab.do_post_labeling()
     
 def do_training_work(itername:str, resource : Resource, input_param: InputParam):
@@ -146,19 +135,23 @@ def to_pwdata(input_cmds:list):
     parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat", type=str, default="pwmat")
     parser.add_argument('-s', '--savepath', help='specify stored directory', type=str, default='PWdata')
     parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory', type=float, default=0.8)
-    parser.add_argument('-r', '--data_shuffle', help='specify stored directory', type=bool, default=True)
+    parser.add_argument('-r', '--data_shuffle', help='specify stored directory', type=bool, required=False, default=True)
+    parser.add_argument('-m', '--merge', help='merge inputs to one', type=bool, required=False, default=False)
     parser.add_argument('-w', '--work_dir', help='specify work dir', type=str, default='./')
-    
     args = parser.parse_args(input_cmds)
+    print(args.work_dir)
     os.chdir(args.work_dir)
-    for config in args.input:
-        Save_Data(data_path=config, 
-        datasets_path=args.savepath,
-        train_ratio = args.train_valid_ratio, 
-        random = args.data_shuffle, 
-        format= args.format)
 
-def extract_pwmata(input_cmds):
+    extract_pwdata(data_list=args.input, 
+                data_format=args.format, 
+                datasets_path=args.savepath, 
+                train_valid_ratio=args.train_valid_ratio, 
+                data_shuffle=args.data_shuffle,
+                merge_data=args.merge
+                )
+    
+
+def gather_pwmata(input_cmds):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help='specify input dir you want to extract pwdatas', type=str, default=None)
     parser.add_argument('-s', '--save_dir', help="specify the dir to save the extract result", type=str, default="extract_result")
@@ -191,7 +184,7 @@ def print_run_json_template():
 
 '''
 description: 
-    输出大的命令选项
+    print commands
 return {*}
 author: wuxingxing
 '''
@@ -235,8 +228,8 @@ def main():
     elif "pwdata".upper() in sys.argv[1].upper():
         to_pwdata(sys.argv[2:])
     
-    elif "extract_pwdata".upper() in sys.argv[1].upper():
-        extract_pwmata(sys.argv[2:])
+    elif "gather_pwdata".upper() in sys.argv[1].upper():
+        gather_pwmata(sys.argv[2:])
 
 
 if __name__ == "__main__":

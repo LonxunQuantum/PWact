@@ -251,7 +251,7 @@ class INIT_BULK:
     
     collection = "collection"
     npy_format_save_dir = "PWdata"
-    npy_format_name = "PWdata"
+    npy_format_name = "pwdata"
 
 class TRAIN_FILE_STRUCTUR:
     work_dir = "work_dir"

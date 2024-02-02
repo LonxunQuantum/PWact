@@ -174,7 +174,7 @@ class Mission(object):
                     work_dirs = error_job.get_slurm_works_dir()
                     tmp_error = ""
                     for _ in work_dirs:
-                        tmp_error += "{}/{}".format(_, error_type)
+                        tmp_error += "{}/{}\n".format(_, error_type)
 
                 error_log_content += "For more details on errors, please refer to the following documents:\n"
                 error_log_content += tmp_error if tmp_error is not None else error_log_path

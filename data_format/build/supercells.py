@@ -5,7 +5,7 @@ from data_format.image import Image
 class SupercellError(Exception):
     """Use if construction of supercell fails"""
 
-def make_supercell(image_data:Image, supercell_matrix:list, pbc: list = None, wrap=True, tol=1e-5):
+def make_supercell(image_data: Image, supercell_matrix: list, pbc: list = None, wrap=True, tol=1e-5):
     """Construct supercell from image_data and supercell_matrix
 
     Args:
@@ -21,11 +21,11 @@ def make_supercell(image_data:Image, supercell_matrix:list, pbc: list = None, wr
     lattice_points = np.dot(lattice_points_frac, supercell)
 
     superatoms = Image(lattice=supercell, pbc=pbc)
-    superatoms.cartesian = True
     for lp in lattice_points:
         shifted_atoms = prim.copy()
         shifted_atoms.arrays['position'] += lp
         superatoms.extend(shifted_atoms)
+    superatoms.cartesian = True
 
     # check number of atoms is correct
     n_target = int(np.round(np.linalg.det(supercell_matrix) * len(prim.position)))

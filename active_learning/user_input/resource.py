@@ -1,5 +1,5 @@
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import AL_WORK, LAMMPS_CMD, PWMAT, VASP, DFT_STYLE, SLURM_OUT
+from utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT
 class Resource(object):
     # _instance = None
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter) -> None:

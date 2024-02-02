@@ -7,9 +7,9 @@ from active_learning.init_bulk.aimd import AIMD
 from active_learning.user_input.init_bulk_input import InitBulkParam
 from active_learning.user_input.resource import Resource
 
-from utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE, PWMAT
-from utils.file_operation import merge_files_to_one, copy_file, copy_dir, search_files, del_file, del_file_list, write_to_file
-from utils.gen_format.pwdata import Save_Data
+from utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
+from utils.file_operation import copy_file, copy_dir, search_files, del_file, del_file_list, write_to_file
+from data_format.configop import extract_pwdata
 
 def init_bulk_run(resource: Resource, input_param:InitBulkParam):
     #1. do relax
@@ -53,7 +53,6 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
     real_pertub_dir = os.path.join(input_param.root_dir, INIT_BULK.pertub)
     real_aimd_dir = os.path.join(input_param.root_dir, INIT_BULK.aimd)
     
-    pwdata_list = []
     for init_config in init_configs:
         init_config_name = "init_config_{}".format(init_config.config_index)
         
@@ -81,22 +80,22 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                 copy_dir(source, target_dir, symlinks=False)
             
         #4. copy aimd result
-        target_aimd_config = ""
+        source_aimd = []
         if init_config.aimd is True:
             source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, DFT_STYLE.get_aimd_config(init_config.dft_style)))
+            if len(source_aimd) == 0:
+                continue
             source_aimd = sorted(source_aimd)
-            aimd_save_dir = os.path.join(collection_dir, init_config_name)
-            target_aimd_config = os.path.join(aimd_save_dir, "{}".format(DFT_STYLE.get_aimd_config(init_config.dft_style)))
-            merge_files_to_one(source_aimd, target_aimd_config)
-            
-        #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
-        if os.path.exists(target_aimd_config):
-            Save_Data(data_path=target_aimd_config, 
-                datasets_path=os.path.join(aimd_save_dir, INIT_BULK.npy_format_save_dir), 
-                train_ratio = input_param.train_valid_ratio, 
-                random = input_param.data_shuffle, 
-                format= os.path.basename(target_aimd_config).lower())
-            pwdata_list.append(os.path.join(aimd_save_dir, INIT_BULK.npy_format_save_dir, os.path.basename(target_aimd_config)))
+            #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
+            extract_pwdata(data_list=source_aimd, 
+                    data_format=DFT_STYLE.get_aimd_config(resource.dft_style),
+                    datasets_path=os.path.join(collection_dir, init_config_name), 
+                    train_valid_ratio=input_param.train_valid_ratio, 
+                    data_shuffle=input_param.data_shuffle, 
+                    merge_data=True,
+                    data_name = INIT_BULK.npy_format_save_dir
+                )
+
     # delete link files
     del_file(real_relax_dir)
     del_file(real_duplicate_scale_dir)
@@ -111,7 +110,7 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         del_file_list([temp_work_dir])
 
     # print the dir of pwdatas
-    pwdatas = search_files(real_collection_dir, "*/{}/*".format(INIT_BULK.npy_format_save_dir))
+    pwdatas = search_files(real_collection_dir, "*/{}".format(INIT_BULK.npy_format_save_dir))
     pwdatas = sorted(pwdatas)
     result_lines = ["\"{}\",".format(_) for _ in pwdatas]
     result_lines = "\n".join(result_lines)

@@ -12,6 +12,8 @@ author: wuxingxing
 
 '''
 description: 
+    ----THIS FUNCTION IS DELETED----
+    
     link the source config to target_dir
     if the target is poscar:
         if the source is atom.config:
