@@ -1,7 +1,7 @@
 import re
 from tqdm import tqdm
 from data_format.image import Image
-from data_format.const import elements
+from data_format.calculators.const import elements
 
 class POSCAR(object):
     def __init__(self, poscar_file, pbc = None) -> None:
@@ -52,8 +52,8 @@ class POSCAR(object):
         for i in range(0, len(position_content)):
             numbers = self.number_pattern.findall(position_content[i])
             position.append([float(_) for _ in numbers[:3]])
-            if position_content[i].split()[3] in elements:
-                atom_types_image.append(elements.index(position_content[i].split()[3]))
+            # if position_content[i].split()[3] in elements:
+            #     atom_types_image.append(elements.index(position_content[i].split()[3]))
         
         if len(atom_types_image) == 0:
             for atom_name, num in zip(atom_names, atom_type_num):

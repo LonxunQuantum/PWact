@@ -3,7 +3,7 @@ import re
 from tqdm import tqdm
 from collections import Counter
 from data_format.image import Image
-from data_format.const import deltaE
+from data_format.calculators.const import deltaE
 
 class MOVEMENT(object):
     def __init__(self, movement_file):

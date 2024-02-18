@@ -35,7 +35,7 @@ from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files
 from utils.app_lib.pwmat import lammps_dump_to_config, set_etot_input_by_file
 from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
 
-from data_format.configop import extract_pwdata
+from data_format.configop import extract_pwdata, save_config
 
 class Labeling(object):
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
@@ -97,14 +97,12 @@ class Labeling(object):
             scf_sub_md_sys_path = os.path.join(self.scf_dir, md_sys_name, sub_md_sys_name, "{}-{}".format(config_index, LABEL_FILE_STRUCTURE.scf))
             if not os.path.exists(scf_sub_md_sys_path):
                 os.makedirs(scf_sub_md_sys_path)
-            tarj_lmp = os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.tarj, "{}{}".format(config_index, LAMMPS.traj_postfix))
-            traj_target_config = os.path.join(scf_sub_md_sys_path, "{}{}".format(config_index, DFT_STYLE.get_postfix(self.resource.dft_style)))
-            # lmps traj to atom.config
-            sys_index = int(md_sys_name.split(".")[-1])
-            sys_atom_config = self.input_param.explore.sys_configs[sys_index]
-            atom_type_list, atomic_number_list = get_atom_type(sys_atom_config.sys_config, sys_atom_config.format)
-            target_file = lammps_dump_to_config(dump_file=tarj_lmp, save_file = traj_target_config, type_map=atom_type_list, dft_style=self.resource.dft_style)
-            self.make_scf_file(scf_sub_md_sys_path, target_file, atom_type_list=atom_type_list)
+            tarj_lmp = os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.traj, "{}{}".format(config_index, LAMMPS.traj_postfix))
+            atom_names = None
+            with open(os.path.join(sub_md_sys_path, LAMMPS.atom_type_file), 'r') as rf:
+                line = rf.readline()
+                atom_names = line.split()
+            self.make_scf_file(scf_sub_md_sys_path, tarj_lmp, atom_names)
             scf_dir_list.append(scf_sub_md_sys_path)
             
         self.make_scf_slurm_job_files(scf_dir_list)
@@ -146,26 +144,37 @@ class Labeling(object):
                 mission.check_running_job()
                 mission.all_job_finished(error_type=SLURM_OUT.dft_out)
                     
-    def make_scf_file(self, scf_dir:str, source_config:str, atom_type_list:list):
+    def make_scf_file(self, scf_dir:str, tarj_lmp:str, atom_names:list[str]=None):
         # target_config = link_structure(source_config = source_config, 
         #                                 config_format= self.resource.dft_style,
         #                                 target_dir   = scf_dir,
         #                                 dft_style    = self.resource.dft_style)
         # atom_type_list, _ = get_atom_type(target_config, self.resource.dft_style)
-
+        config_index = os.path.basename(tarj_lmp).split('.')[0]
+        target_config = save_config(config=tarj_lmp,
+                                    input_format=LAMMPS.traj_format,
+                                    wrap = False, 
+                                    direct = True, 
+                                    sort = True, 
+                                    save_format=self.resource.dft_style, 
+                                    save_path=scf_dir, 
+                                    save_name="{}{}".format(config_index, DFT_STYLE.get_postfix(self.resource.dft_style)),
+                                    atom_names=atom_names)
+        #2. from config get atom type
+        atom_type_list, _ = get_atom_type(target_config, self.resource.dft_style)
         #1. set pseudo files
         pseudo_names = link_pseudo_by_atom(self.input_param.scf.pseudo, scf_dir, atom_type_list, self.resource.dft_style)
         #2. make etot.input file
         set_input_script(
             input_file=self.input_param.scf.scf_input_list[0].input_file,
-            config=source_config,
+            config=target_config,
+            dft_style=self.resource.dft_style,
             kspacing=self.input_param.scf.scf_input_list[0].kspacing, 
             flag_symm=self.input_param.scf.scf_input_list[0].flag_symm, 
-            dft_style=self.resource.dft_style,
             save_dir=scf_dir,
             pseudo_names=pseudo_names
         )
-
+        
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
         group_list = split_job_for_group(self.resource.dft_resource.group_size, scf_sub_list, self.resource.dft_resource.parallel_num)
         
@@ -209,21 +218,18 @@ class Labeling(object):
     author: wuxingxing
     '''         
     def collect_scf_configs(self):
-        aimd_list = []
+        md_sys_mlmd = []
         md_sys_dir_list = search_files(self.scf_dir, get_md_sys_template_name())
         for md_sys_dir in md_sys_dir_list:
-            md_sys_mlmd = []
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
                 out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
-                md_sys_mlmd.extend(out_mlmd_list)
+                md_sys_mlmd.append(out_mlmd_list)
             # save_file = os.path.join(md_sys_dir, DFT_STYLE.get_aimd_config(self.resource.dft_style))
             # merge_files_to_one(out_mlmd_list, save_file)
-            aimd_list.append(md_sys_mlmd)
             # aimd_list.append(save_file)
-            
-        return aimd_list
+        return md_sys_mlmd
 
     def get_aimd_list(self):
         aimd_list = search_files(self.scf_dir, "{}/{}".format(get_md_sys_template_name(), DFT_STYLE.get_aimd_config(self.resource.dft_style)))
@@ -252,14 +258,14 @@ class Labeling(object):
 
         # scf files to pwdata format
         scf_configs = self.collect_scf_configs()
-        for scf_list in scf_configs:
-            extract_pwdata(data_list=scf_list, 
-                data_format=self.resource.dft_style,
-                datasets_path=self.result_dir, 
+        for scf_md in scf_configs:
+            datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
+            extract_pwdata(data_list=scf_md, 
+                data_format=DFT_STYLE.get_aimd_config(self.resource.dft_style),
+                datasets_path=os.path.join(self.result_dir, datasets_path_name),
                 train_valid_ratio=self.input_param.train.train_valid_ratio, 
                 data_shuffle=self.input_param.train.data_shuffle, 
-                merge_data=True,
-                data_name=os.path.basename(os.path.dirname(scf_list[0]))
+                merge_data=True
             )
         # copy to main dir
         copy_dir(self.result_dir, self.real_result_dir)

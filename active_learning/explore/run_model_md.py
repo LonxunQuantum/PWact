@@ -17,7 +17,7 @@
 """
 from active_learning.slurm import Mission, SlurmJob
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
-
+from active_learning.explore import select_image
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam, MdDetail, SysConfig
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
@@ -25,7 +25,7 @@ from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE,
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
-from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, del_file, del_dir, del_file_list, mv_file
+from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, mv_file
 from utils.app_lib.lammps import make_lammps_input
 from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
 from utils.app_lib.common import get_atom_type
@@ -61,10 +61,12 @@ class Explore(object):
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
+        self.kpu_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
        
         self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
         self.real_md_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.real_select_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.select)
+        self.real_kpu_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
 
     def back_explore(self):
         slurm_remain, slurm_done = get_slurm_job_run_info(self.real_md_dir, \
@@ -95,7 +97,7 @@ class Explore(object):
                         # mkdir: md.000.sys.000/md.000.sys.000.t.000
                         if not os.path.exists(temp_dir):
                             os.makedirs(temp_dir)
-                        self.set_md_files(temp_dir, sys_index, temp_index, None, md)
+                        self.set_md_files(len(md_work_list), temp_dir, sys_index, temp_index, None, md)
                         md_work_list.append(temp_dir)
                     elif ENSEMBLE.npt in md.ensemble: # for npt ensemble
                         for press_index, press in enumerate(md.press_list):
@@ -211,6 +213,8 @@ class Explore(object):
         press=md_detail.press_list[press_index] if press_index is not None else None
         # get atom type
         atom_type_list, atomic_number_list = get_atom_type(self.sys_paths[sys_index].sys_config, self.sys_paths[sys_index].format)
+        atom_type_file = os.path.join(md_dir, LAMMPS.atom_type_file)
+        write_to_file(atom_type_file, " ".join(atom_type_list), "w")
         restart_file = search_files(md_dir, "lmps.restart.*")
         restart = 1 if len(restart_file) > 0 else 0 
         lmp_input_content = make_lammps_input(
@@ -268,15 +272,18 @@ class Explore(object):
         
     '''
     description: 
-        1. copy the explore/md and explore/select under temp_work_dir to iter*/explore
+        1. copy the explore/md under temp_work_dir to iter*/explore
         2. if reserve traj is false, delete the trajs under iter*/explore/md/*/traj dir
-        3. delte slurm*.out log files
+           if use kpu, copy the kpu_model_devi.out to iter*/explore
+           delte slurm*.out log files and lammps.log file
+        4. copy the explore/select under temp_work_dir to iter*/explore
     param {*} self
     return {*}
     author: wuxingxing
     '''    
     def post_process_md(self):
         md_sys_dir_list = search_files(self.md_dir, get_md_sys_template_name())
+        is_kpu = self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper()
         for md_sys_dir in md_sys_dir_list:
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
@@ -285,7 +292,12 @@ class Explore(object):
                 if self.input_param.reserve_md_traj and self.input_param.reserve_work:
                     pass
                 else:
-                    del_file_list([os.path.join(target_dir, EXPLORE_FILE_STRUCTURE.tarj)])
+                    del_file_list([os.path.join(target_dir, EXPLORE_FILE_STRUCTURE.traj)])
+                if is_kpu:
+                    kpu_source_file = os.path.join(self.kpu_dir, os.path.basename(md_sys_dir), os.path.basename(sub_md_sys), EXPLORE_FILE_STRUCTURE.kpu_model_devi)
+                    kpu_taget_file = os.path.join(target_dir, EXPLORE_FILE_STRUCTURE.kpu_model_devi)
+                    if os.path.exists(kpu_source_file):
+                        copy_file(kpu_source_file, kpu_taget_file)
                 if self.input_param.reserve_work is False:#delete lammps.log
                     del_file(os.path.join(target_dir, LAMMPS.log_lammps))
                 md_slurms = search_files(self.real_md_dir, "slurm-*") #delete slurm log files
@@ -307,69 +319,21 @@ class Explore(object):
         model_devi_files = sorted(model_devi_files)
         
         #2. for each file, read the model_deviation
-        devi_pd = pd.DataFrame(columns=["devi_force", "config_index", "file_path"])
+        devi_pd = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
         for devi_file in model_devi_files:
             devi_force = read_data(devi_file, skiprows=0)
             tmp_pd = pd.DataFrame()
-            tmp_pd["devi_force"] = devi_force[:, EXPLORE_FILE_STRUCTURE.model_devi_force]
-            tmp_pd["config_index"] = devi_force[:, EXPLORE_FILE_STRUCTURE.model_devi_step]
-            tmp_pd["file_path"] = os.path.dirname(devi_file)
+            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] = devi_force[:, 1]
+            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[1]] = devi_force[:, 0]
+            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[2]] = os.path.dirname(devi_file)
             devi_pd = pd.concat([devi_pd, tmp_pd])
         devi_pd.reset_index(drop=True, inplace=True)
         devi_pd["config_index"].astype(int)
         #3. select images with lower and upper limitation
-        lower = self.input_param.strategy.lower_model_deiv_f
-        higer = self.input_param.strategy.upper_model_deiv_f
-        max_select = self.input_param.strategy.max_select
-        accurate_pd  = devi_pd[devi_pd['devi_force'] < lower]
-        candidate_pd = devi_pd[(devi_pd['devi_force'] >= lower) & (devi_pd['devi_force'] < higer)]
-        error_pd     = devi_pd[devi_pd['devi_force'] > higer]
-        #4. if selected images more than number limitaions, randomly select
-        remove_candi = None
-        rand_candi = None
-        if candidate_pd.shape[0] > max_select:
-            rand_candi = candidate_pd.sample(max_select)
-            remove_candi = candidate_pd.drop(rand_candi.index)
-        
-        #5. save select info
-        if not os.path.exists(self.select_dir):
-            os.makedirs(self.select_dir)
-        summary = "total structures {}    accurate {} rate {:.2f}%    selected {} rate {:.2f}%    error {} rate {:.2f}%\n"\
-            .format(devi_pd.shape[0], accurate_pd.shape[0], accurate_pd.shape[0]/devi_pd.shape[0]*100, \
-                        candidate_pd.shape[0], candidate_pd.shape[0]/devi_pd.shape[0]*100, \
-                            error_pd.shape[0], error_pd.shape[0]/devi_pd.shape[0]*100)
-
-        accurate_pd.to_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
-        candi_info = ""
-        if rand_candi is not None:
-            rand_candi.to_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate))
-            remove_candi.to_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate_delete))
-            candi_info += "candidate configurations: {}, randomly select {}, delete {}\n\    select details in file {}\n    delete details in file {}.\n".format(
-                    candidate_pd.shape[0], rand_candi.shape[0], remove_candi.shape[0],\
-                    os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate),\
-                    os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate_delete)  
-                )
-        else:
-            candidate_pd.to_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate))
-            candi_info += "candidate configurations: {}\n    select details in file {}\n".format(
-                    candidate_pd.shape[0],
-                    os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate))
-                
-        error_pd.to_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
-        
-        summary_info = ""
-
-        summary_info += summary
-        summary_info += "\nselect by model deviation force:\n"
-        summary_info += "accurate configurations: {}, details in file {}\n".\
-            format(accurate_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.accurate))
-            
-        summary_info += candi_info
-            
-        summary_info += "error configurations: {}, details in file {}\n".\
-            format(error_pd.shape[0], os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.failed))
-        
-        write_to_file(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
-        # print("committee method result:\n {}".format(summary_info))
-        return summary
+        summary_info = select_image(save_dir=self.select_dir, 
+                        devi_pd=devi_pd, 
+                        lower=self.input_param.strategy.lower_model_deiv_f, 
+                        higer=self.input_param.strategy.upper_model_deiv_f, 
+                        max_select=self.input_param.strategy.max_select)
+        print("Image select result:\n {}".format(summary_info))
     

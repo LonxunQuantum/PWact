@@ -6,22 +6,26 @@ from data_format.build.supercells import make_supercell
 from data_format.pertub.perturbation import BatchPerturbStructure
 from data_format.pertub.scale import BatchScaleCell
 from data_format.pwdata import Configs
+from data_format.lammpsdata import LMP
+from data_format.dump import DUMP
 
-def extract_config(config_path:str, format:str, pbc:list[int]=[1,1,1]):
+def extract_config(config_path:str, format:str, pbc:list[int]=[1,1,1], atom_names: list[str] = None):
     if format.lower() == "config" or format.lower() == "pwmat":
         image = CONFIG(config_path, pbc).image_list[0]
     elif format.lower() == "poscar" or format.lower() == "vasp":
         image = POSCAR(config_path, pbc).image_list[0]
-    elif format.lower() == "lammps":
-        image = None
+    elif format.lower() == "lmp" or format.lower() == "lammps":
+        image = LMP(config_path).image_list[0]
+    elif format.lower() == "dump":# for lammps single structure traj file
+        image = DUMP(dump_file=config_path, atom_names=atom_names).image_list[0]
     else:
         raise ValueError("Invalid format")
     return image
 
 def save_config(config, input_format:str = None, wrap = False, direct = True, sort = True, \
-        save_format:str=None, save_path:str=None, save_name:str=None):
+        save_format:str=None, save_path:str=None, save_name:str=None, atom_names: list[str] = None):
     if isinstance(config, str):
-        config = extract_config(config_path=config, format=input_format)
+        config = extract_config(config_path=config, format=input_format, atom_names=atom_names)
         
     config.to(file_path=save_path, 
             file_name  =save_name, 
@@ -127,66 +131,79 @@ def extract_pwdata(data_list:list[str],
                     )
     
 if __name__ == "__main__":
-    in_config = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/1.config"
-    save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures"
-    image = extract_config(config_path=in_config, format="pwmat")
+    # in_config = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/1.config"
+    # save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures"
+    # image = extract_config(config_path=in_config, format="pwmat")
     
-    save_config(image, wrap=False, direct=True, sort=True,\
-        save_format="pwmat", save_path=save_path, save_name="temp_atom.config")
-    save_config(image, wrap=False, direct=True, sort=True,\
-        save_format="vasp", save_path=save_path, save_name="temp_poscar")
+    # save_config(image, wrap=False, direct=True, sort=True,\
+    #     save_format="pwmat", save_path=save_path, save_name="temp_atom.config")
+    # save_config(image, wrap=False, direct=True, sort=True,\
+    #     save_format="vasp", save_path=save_path, save_name="temp_poscar")
     
-    do_super_cell(config=image,
-            supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
-            pbc=[1, 1, 1], 
-            direct = True, 
-            sort = True, \
-            save_format="pwmat", save_path=save_path, save_name="temp_super_atom.config")
+    # do_super_cell(config=image,
+    #         supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
+    #         pbc=[1, 1, 1], 
+    #         direct = True, 
+    #         sort = True, \
+    #         save_format="pwmat", save_path=save_path, save_name="temp_super_atom.config")
     
-    do_super_cell(config="/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/44_POSCAR",
-        input_format="vasp",
-        supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
-        pbc=[1, 1, 1], 
-        direct = True, 
-        sort = True, \
-        save_format="pwmat", save_path=save_path, save_name="temp_super_atom_from_poscar.config")
+    # do_super_cell(config="/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/44_POSCAR",
+    #     input_format="vasp",
+    #     supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
+    #     pbc=[1, 1, 1], 
+    #     direct = True, 
+    #     sort = True, \
+    #     save_format="pwmat", save_path=save_path, save_name="temp_super_atom_from_poscar.config")
     
     
-    do_super_cell(config="/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/44_POSCAR",
-        input_format="vasp",
-        supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
-        pbc=[1, 1, 1], 
-        direct = True, 
-        sort = True, \
-        save_format="vasp", save_path=save_path, save_name="temp_super_poscar")
+    # do_super_cell(config="/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/44_POSCAR",
+    #     input_format="vasp",
+    #     supercell_matrix=[[2,0,0], [0,2,0], [0,0,2]], 
+    #     pbc=[1, 1, 1], 
+    #     direct = True, 
+    #     sort = True, \
+    #     save_format="vasp", save_path=save_path, save_name="temp_super_poscar")
 
-    do_scale(config=image,
-            scale_factor=0.99, 
-            direct=True,
-            sort=True, 
-            save_format="pwmat", save_path=save_path, save_name="temp_scale_atom.config")
+    # do_scale(config=image,
+    #         scale_factor=0.99, 
+    #         direct=True,
+    #         sort=True, 
+    #         save_format="pwmat", save_path=save_path, save_name="temp_scale_atom.config")
 
-    do_scale(config=image,
-            scale_factor=0.99, 
-            direct=True,
-            sort=True, 
-            save_format="vasp", save_path=save_path, save_name="temp_scale_poscar")
+    # do_scale(config=image,
+    #         scale_factor=0.99, 
+    #         direct=True,
+    #         sort=True, 
+    #         save_format="vasp", save_path=save_path, save_name="temp_scale_poscar")
     
-    save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/temp_pwmat_pertub"
-    do_pertub(config=image, 
-        pert_num=50, 
-        cell_pert_fraction=0.01, 
-        atom_pert_distance=0.04, 
-        direct=True,
-        sort=True, 
-        save_format="pwmat", save_path=save_path, save_name="pertub.config")
+    # save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/temp_pwmat_pertub"
+    # do_pertub(config=image, 
+    #     pert_num=50, 
+    #     cell_pert_fraction=0.01, 
+    #     atom_pert_distance=0.04, 
+    #     direct=True,
+    #     sort=True, 
+    #     save_format="pwmat", save_path=save_path, save_name="pertub.config")
     
-    save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/temp_vasp_pertub"
-    do_pertub(config=image, 
-        pert_num=50, 
-        cell_pert_fraction=0.01, 
-        atom_pert_distance=0.04, 
-        direct=True,
-        sort=True, 
-        save_format="vasp", save_path=save_path, save_name="pertub.poscar")
+    # save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/temp_vasp_pertub"
+    # do_pertub(config=image, 
+    #     pert_num=50, 
+    #     cell_pert_fraction=0.01, 
+    #     atom_pert_distance=0.04, 
+    #     direct=True,
+    #     sort=True, 
+    #     save_format="vasp", save_path=save_path, save_name="pertub.poscar")
 
+    # convert trajs to config for model_deviation calculate
+    import glob
+    traj_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj"
+    save_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj2config"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    trajs = glob.glob(os.path.join(traj_dir, "*.lammpstrj"))
+    trajs = sorted(trajs)
+    for traj in trajs:
+        save_name = "{}.config".format(os.path.basename(traj).split('.')[0])
+        save_config(traj,  input_format="dump", wrap=False, direct=True, sort=True,\
+        save_format="pwmat", save_path=save_dir, save_name=save_name)
+        print("{} to {} done!".format(traj, save_name))

@@ -78,9 +78,11 @@ def make_lammps_input(
     #     md_script += "variable    ELE_TEMP        equal %f\n" % ele_temp_f
     # if ele_temp_a is not None:
     #     md_script += "variable    ELE_TEMP        equal %f\n" % ele_temp_a
-    md_script += "variable        PRESS           equal %f\n" % press
+    if press is not None:
+        md_script += "variable        PRESS           equal %f\n" % press
     md_script += "variable        TAU_T           equal %f\n" % tau_t
-    md_script += "variable        TAU_P           equal %f\n" % tau_p
+    if tau_p is not None:
+        md_script += "variable        TAU_P           equal %f\n" % tau_p
     md_script += "\n"
     
     md_script += "units           metal\n"

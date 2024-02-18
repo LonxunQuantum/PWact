@@ -1,6 +1,6 @@
 import os
 from data_format.image import frac2cart
-from data_format.const import elements
+from data_format.calculators.const import elements
 
 def save_to_extxyz(image_data_all: list, output_path: str, output_file: str):
     output_file = open(os.path.join(output_path, output_file), 'w')

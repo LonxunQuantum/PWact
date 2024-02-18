@@ -23,6 +23,11 @@ class InputParam(object):
         
         self.train = TrainParam(json_input=json_dict["train"], cmd=MODEL_CMD.train)
         self.strategy = StrategyParam(json_dict["strategy"])
+
+        if self.strategy.uncertainty == UNCERTAINTY.kpu and \
+            self.train.optimizer_param.opt_name.upper() != "LKF":
+            raise Exception("Error! The uncertainty kpu only support the optimizer LKF, please set the 'optimizer/optimizer' in train dict to 'LKF' ")
+
         self.explore = ExploreParam(json_dict["explore"])
         dft_style = get_required_parameter("dft_style", json_dict["dft"])
         self.scf = SCFParam(json_dict=json_dict["dft"], dft_style=dft_style, is_scf=True, root_dir = self.root_dir)
@@ -56,7 +61,7 @@ class StrategyParam(object):
         self.md_type = get_parameter("md_type", json_dict, FORCEFILED.libtorch_lmps)
         
         self.max_select = get_parameter("max_select", json_dict, 1000)
-        self.uncertainty = get_parameter("uncertainty", json_dict, UNCERTAINTY.committee)
+        self.uncertainty = get_parameter("uncertainty", json_dict, UNCERTAINTY.committee).upper()
         if self.uncertainty.upper() == UNCERTAINTY.kpu:
             self.model_num = 1
             self.base_kpu_max_images = get_parameter("base_kpu_max_images", json_dict, 200)
@@ -77,7 +82,11 @@ class StrategyParam(object):
         if self.compress:
             if self.uncertainty == UNCERTAINTY.committee and self.md_type == FORCEFILED.fortran_lmps:
                 raise Exception("Error! The compress model does not fortran lammps! Please set the 'md_type' to 2!")
-                    
+        if self.uncertainty == UNCERTAINTY.kpu:
+            if self.compress:
+                error_log = "Error! the kpu uncertainty does not support compress, please set the 'compress' in strategy dict to be false!"
+                raise Exception(error_log)
+
     def to_dict(self):
         res = {}
         res["md_type"] = self.md_type

@@ -28,6 +28,7 @@ class SLURM_OUT:
     dft_out = "dft.log"
     train_out = "train.log"
     md_out = "md.log"
+    kpu_out = "kpu.log"
 
 '''
 description: 
@@ -51,6 +52,7 @@ return {*}
 author: wuxingxing
 '''
 class TRAIN_INPUT_PARAM:
+    save_p_matrix = "save_p_matrix" # for kpu
     raw_files = "raw_files"
     datasets_path = "datasets_path"
     test_mvm_files = "test_movement_file"
@@ -283,6 +285,7 @@ class TRAIN_FILE_STRUCTUR:
     fortran_dp_name = "forcefield.ff"
 
 class EXPLORE_FILE_STRUCTURE:
+    kpu= "kpu"
     md = "md"
     select = "select"
     md_tag = "tag.md.success"
@@ -296,13 +299,13 @@ class EXPLORE_FILE_STRUCTURE:
     accurate = "accurate.csv"
     select_summary = "select_summary.txt"
 
-    tarj ="traj"
+    traj ="traj"
     
-    # for committee method 
+    # for committee and kpu method 
     model_devi = "model_devi.out"
-    model_devi_force = 1 # the model deviation foce data row in model_deviation.out file
-    model_devi_energy = 2
-    model_devi_step = 0
+    kpu_model_devi = "kpu_model_devi.out"
+    devi_columns = ["devi_force", "config_index", "file_path"]
+
 
 class LABEL_FILE_STRUCTURE:
     scf = "scf"
@@ -317,6 +320,9 @@ class LAMMPS:
     lammps_sys_config = "lmp.config"
     traj_postfix = ".lammpstrj"
     log_lammps = "log.lammps"
+    traj_format = "dump"
+    lmp_format = "lmp"
+    atom_type_file = "atom_type.txt"
 
 class ENSEMBLE:
     npt_tri = "npt_tri",

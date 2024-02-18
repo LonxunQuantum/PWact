@@ -8,7 +8,8 @@ from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
-from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, MODEL_CMD, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT, SLURM_OUT
+from utils.constant import AL_STRUCTURE, UNCERTAINTY, TEMP_STRUCTURE, MODEL_CMD, \
+    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT, SLURM_OUT
 
 from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file, copy_dir, del_file_list
 from utils.gen_format.pwdata import Save_Data
@@ -114,7 +115,9 @@ class ModelTrian(object):
             
         if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
             if cmp_model_path is None:
-                script += "    {} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.script, model_path, SLURM_OUT.train_out)
+                # script model_record/dp_model.ckpt the torch_script_module.pt will in model_record dir
+                script += "    {} {} {} >> {}\n".format(pwmlff, MODEL_CMD.script, model_path, SLURM_OUT.train_out)
+                script += "    mv ./{}/{} .\n\n".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name)
             else:
                 script += "    {} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.script, cmp_model_path, SLURM_OUT.train_out)
         return script
@@ -146,6 +149,8 @@ class ModelTrian(object):
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
         train_json[TRAIN_INPUT_PARAM.raw_files] = []
         train_json[TRAIN_INPUT_PARAM.datasets_path] = train_feature_path
+        if self.input_param.strategy.uncertainty == UNCERTAINTY.kpu:
+            train_json[TRAIN_INPUT_PARAM.save_p_matrix] = True
         return train_json
 
     def do_train_job(self):

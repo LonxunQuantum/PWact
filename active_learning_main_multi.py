@@ -97,16 +97,14 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
     md.do_md_jobs()
     # 4. select images
     if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
-        summary = md.select_image_by_committee()
+        md.select_image_by_committee()
         # committee: read model deviation file under md file
     elif input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper():
-        summary = uncertainty_analyse_kpu(itername, resource, input_param)
-    print(summary)
+        uncertainty_analyse_kpu(itername, resource, input_param)
     print("config selection done!")
     # 5. do post process after lammps md running
     md.post_process_md()
     print("lammps md done!")
-    return summary
 
 def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: InputParam):
     mkpu = ModelKPU(itername, resource, input_param)
