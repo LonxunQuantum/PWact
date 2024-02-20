@@ -1,36 +1,34 @@
 import os
 import numpy as np
 import subprocess
-from utils.app_lib.poscar2lammps import p2l
-from utils.constant import LAMMPS, ELEMENTTABLE_2, PWMAT, VASP, DFT_STYLE
-from dpdata import System as dp_system
-from utils.file_operation import del_file, copy_file, mv_file
-'''
-description: 
-    lammps dump file to poscar format or pwmat format
-param {str} dump_file
-param {str} save_file
-param {list} type_map
-param {bool} unwrap
-return {*}
-author: wuxingxing
-'''
-def lammps_dump_to_config(dump_file:str, save_file:str, type_map:list[str], unwrap:bool=False, dft_style:str=None):
-    system = dp_system(dump_file, type_map=type_map, begin=0, step=1, unwrap=False, fmt = 'lammps/dump')
-    tmp_poscar = os.path.join(os.path.dirname(save_file), "tmp_psocar")
-    system.to_poscar(tmp_poscar, frame_idx=0)
-    if dft_style == DFT_STYLE.pwmat:
-        target_file = poscar_to_atom_config(
-            poscar=tmp_poscar, 
-            save_dir=os.path.dirname(save_file), 
-            save_name=os.path.basename(save_file)
-            )
-        del_file(tmp_poscar)
-    elif dft_style == DFT_STYLE.vasp:
-        target_file = os.path.join(os.path.dirname(save_file), VASP.poscar)
-        copy_file(tmp_poscar, target_file)
-        del_file(tmp_poscar)
-    return target_file
+from utils.constant import PWMAT, VASP
+from utils.file_operation import del_file, copy_file
+# '''
+# description: 
+#     lammps dump file to poscar format or pwmat format
+# param {str} dump_file
+# param {str} save_file
+# param {list} type_map
+# param {bool} unwrap
+# return {*}
+# author: wuxingxing
+# '''
+# def lammps_dump_to_config(dump_file:str, save_file:str, type_map:list[str], unwrap:bool=False, dft_style:str=None):
+#     system = dp_system(dump_file, type_map=type_map, begin=0, step=1, unwrap=False, fmt = 'lammps/dump')
+#     tmp_poscar = os.path.join(os.path.dirname(save_file), "tmp_psocar")
+#     system.to_poscar(tmp_poscar, frame_idx=0)
+#     if dft_style == DFT_STYLE.pwmat:
+#         target_file = poscar_to_atom_config(
+#             poscar=tmp_poscar, 
+#             save_dir=os.path.dirname(save_file), 
+#             save_name=os.path.basename(save_file)
+#             )
+#         del_file(tmp_poscar)
+#     elif dft_style == DFT_STYLE.vasp:
+#         target_file = os.path.join(os.path.dirname(save_file), VASP.poscar)
+#         copy_file(tmp_poscar, target_file)
+#         del_file(tmp_poscar)
+#     return target_file
         
 
 
@@ -91,44 +89,15 @@ def atom_config_to_poscar(atom_config:str, save_dir:str, save_name:str=None):
     del_file(tmp_atom_config)# delete temp file
     return target_file
 
-def atom_config_to_lammps_in(atom_config_dir:str, atom_config_name:str="atom.config"):
-    cwd = os.getcwd()
-    os.chdir(atom_config_dir)
-    subprocess.run(["config2poscar.x {}".format(atom_config_name)], shell = True)
-    p2l(output_name = LAMMPS.lammps_sys_config)
-    subprocess.run(["rm","atom.config","POSCAR"])
-    os.chdir(cwd)
-    
-def poscar_to_lammps_in(poscar_dir:str):
-    cwd = os.getcwd()
-    os.chdir(poscar_dir)
-    p2l(output_name = LAMMPS.lammps_sys_config)
-    subprocess.run(["rm","atom.config","POSCAR"])
-    os.chdir(cwd)
-    return os.path.join(poscar_dir, LAMMPS.lammps_sys_config)
-
-def traj_to_atom_config(tarj_file:str, atom_save_file:str):
-    # read traj_file
-    # return atom type name list: such as H, Cu
-    raise Exception("ERROR! traj_to_atom_config not realized")
-
-def convert_config_to_mvm(config_list:list[str], mvm_save_file:str):
-    # for config in config_list:
-    #     content = 
-    raise Exception("Error! the method convert_config_to_mvm in app_lib/pwmat.py not realized!")
-
-
 def _reciprocal_box(box):
     rbox = np.linalg.inv(box)
     rbox = rbox.T
     return rbox
 
-
 def _make_pwmat_kp_mp(kpoints):
     ret = ""
     ret += "%d %d %d 0 0 0 " % (kpoints[0], kpoints[1], kpoints[2])
     return ret
-
 
 def _make_kspacing_kpoints(config, kspacing):
     with open(config, "r") as fp:
@@ -146,7 +115,6 @@ def _make_kspacing_kpoints(config, kspacing):
     ]
     ret = _make_pwmat_kp_mp(kpoints)
     return ret
-
 
 def make_pwmat_input_dict(
     node1,

@@ -1,8 +1,8 @@
 import os
 import argparse
 from utils.app_lib.pwmat import poscar_to_atom_config, atom_config_to_poscar
-from utils.constant import PWMAT, DFT_STYLE
-from utils.file_operation import copy_file, del_file
+from utils.constant import DFT_STYLE
+from utils.file_operation import del_file
 from ase.io.vasp import read_vasp, write_vasp
 from ase.build import make_supercell
 from ase import Atoms

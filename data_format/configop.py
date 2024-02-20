@@ -80,9 +80,9 @@ def do_pertub(config, input_format:str=None, pert_num:int=None, cell_pert_fracti
 
 '''
 description: 
-    if merge is ture, save pwdata to datasets_path/type_*...
+    if merge is ture, save pwdata to datasets_path/data_name ...
     else:
-        save pwdata to datasets_path/train or valid
+        save pwdata to datasets_path/data_name/train or valid
 return {*}
 author: wuxingxing
 '''
@@ -95,11 +95,11 @@ def extract_pwdata(data_list:list[str],
                 ):
     data_name = None
     if merge_data:
+        data_name = os.path.basename(datasets_path)
         if not os.path.isabs(datasets_path):
-            data_name = datasets_path
+            # data_name = datasets_path
             datasets_path = os.path.dirname(os.path.join(os.getcwd(), datasets_path))
         else:
-            data_name = os.path.basename(datasets_path)
             datasets_path = os.path.dirname(datasets_path)
         multi_data = []
         for data_path in data_list:

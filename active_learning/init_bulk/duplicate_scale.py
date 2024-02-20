@@ -1,10 +1,7 @@
 import os
 
-from utils.pertub.perturbation import BatchPerturbStructure
-from utils.constant import PWMAT
 from utils.file_operation import search_files, link_file, write_to_file
 from utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
-from utils.supercell import scale_config, super_cell_ase
 
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.init_bulk_input import InitBulkParam

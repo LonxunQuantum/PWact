@@ -149,7 +149,7 @@ class ModelKPU(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these KPU Jobs:\n")
+                print("Run these KPU Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()

@@ -9,10 +9,9 @@ from active_learning.user_input.iter_input import InputParam
 
 from utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
 from utils.constant import AL_STRUCTURE, UNCERTAINTY, TEMP_STRUCTURE, MODEL_CMD, \
-    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, PWMAT, SLURM_OUT
+    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT
 
-from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, link_file, add_postfix_dir, mv_file, copy_dir, del_file_list
-from utils.gen_format.pwdata import Save_Data
+from utils.file_operation import save_json_file, write_to_file, del_dir, search_files, add_postfix_dir, mv_file, copy_dir, del_file_list
 '''
 description: model training method:
 1. go to train data path
@@ -162,7 +161,7 @@ class ModelTrian(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("recover these train Jobs:\n")
+                print("Run these train Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()

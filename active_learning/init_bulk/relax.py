@@ -22,10 +22,9 @@ from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 from active_learning.slurm import SlurmJob, Mission
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE
+from utils.constant import INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE
 
 from utils.file_operation import write_to_file, link_file, search_files, mv_file, del_file, copy_file
-from utils.app_lib.pwmat import set_etot_input_by_file
 from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
 from data_format.configop import save_config
 class Relax(object):
@@ -65,7 +64,7 @@ class Relax(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these relax Jobs:\n")
+                print("Run these relax Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()

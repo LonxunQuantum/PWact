@@ -1,10 +1,10 @@
-import pandas as pd
+from pandas.core.frame import DataFrame
 import os
 
 from utils.constant import EXPLORE_FILE_STRUCTURE
 from utils.file_operation import write_to_file
 
-def select_image(save_dir:str, devi_pd:pd.DataFrame, lower:float, higer:float, max_select:float):
+def select_image(save_dir:str, devi_pd:DataFrame, lower:float, higer:float, max_select:float):
     accurate_pd  = devi_pd[devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] < lower]
     candidate_pd = devi_pd[(devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] >= lower) & (devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] < higer)]
     error_pd     = devi_pd[devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] > higer]

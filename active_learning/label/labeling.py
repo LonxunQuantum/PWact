@@ -22,17 +22,15 @@ import os
 import pandas as pd
 
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.iter_input import InputParam, SCFParam
+from active_learning.user_input.iter_input import InputParam
 from active_learning.slurm import SlurmJob, Mission
 
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE,\
-    LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR,\
-        PWMAT, LAMMPS, SLURM_OUT, DFT_STYLE
+    LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, DFT_STYLE
     
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from utils.file_operation import write_to_file, copy_file, copy_dir, merge_files_to_one, search_files, mv_file, add_postfix_dir, del_dir, del_file_list
-from utils.app_lib.pwmat import lammps_dump_to_config, set_etot_input_by_file
+from utils.file_operation import write_to_file, copy_file, copy_dir, search_files, mv_file, add_postfix_dir, del_dir, del_file_list
 from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
 
 from data_format.configop import extract_pwdata, save_config
@@ -129,7 +127,7 @@ class Labeling(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these SCF Jobs:\n")
+                print("Run these SCF Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()

@@ -104,7 +104,7 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
     print("config selection done!")
     # 5. do post process after lammps md running
     md.post_process_md()
-    print("lammps md done!")
+    print("exploring done!")
 
 def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: InputParam):
     mkpu = ModelKPU(itername, resource, input_param)
@@ -223,7 +223,7 @@ def main():
     elif "run_json".upper() in sys.argv[1].upper():
         print_run_json_template()
     
-    elif "pwdata".upper() in sys.argv[1].upper():
+    elif "pwdata".upper() in sys.argv[1].upper():#these function may use pwdata command
         to_pwdata(sys.argv[2:])
     
     elif "gather_pwdata".upper() in sys.argv[1].upper():

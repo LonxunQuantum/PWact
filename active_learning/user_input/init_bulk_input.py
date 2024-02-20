@@ -3,8 +3,7 @@ from active_learning.user_input.scf_param import DFTInput
 from active_learning.user_input.iter_input import SCFParam
 from utils.file_operation import str_list_format
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import DFT_STYLE, PWMAT, VASP, INIT_BULK, DFT_STYLE
-from data_format.configop import extract_config
+from utils.constant import DFT_STYLE
 
 class InitBulkParam(object):
     def __init__(self, json_dict: dict) -> None:

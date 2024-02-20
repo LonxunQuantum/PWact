@@ -89,11 +89,10 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
             #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
             extract_pwdata(data_list=source_aimd, 
                     data_format=DFT_STYLE.get_aimd_config(resource.dft_style),
-                    datasets_path=os.path.join(collection_dir, init_config_name), 
+                    datasets_path=os.path.join(collection_dir, init_config_name, INIT_BULK.npy_format_save_dir), 
                     train_valid_ratio=input_param.train_valid_ratio, 
                     data_shuffle=input_param.data_shuffle, 
-                    merge_data=True,
-                    data_name = INIT_BULK.npy_format_save_dir
+                    merge_data=True
                 )
 
     # delete link files

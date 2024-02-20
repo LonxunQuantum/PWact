@@ -1,6 +1,6 @@
 import os
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWMAT, DFT_STYLE
+from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, DFT_STYLE
 from active_learning.user_input.train_param.train_param import TrainParam
 from active_learning.user_input.scf_param import SCFParam
 

@@ -17,23 +17,21 @@
 """
 from active_learning.slurm import Mission, SlurmJob
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
-from active_learning.explore import select_image
+from active_learning.explore.select_image import select_image
 from active_learning.user_input.resource import Resource
-from active_learning.user_input.iter_input import InputParam, MdDetail, SysConfig
+from active_learning.user_input.iter_input import InputParam, MdDetail
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPS, PWMAT, LAMMPS_CMD, UNCERTAINTY, VASP, DFT_STYLE, SLURM_OUT
+        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, mv_file
 from utils.app_lib.lammps import make_lammps_input
-from utils.app_lib.pwmat import atom_config_to_lammps_in, poscar_to_lammps_in
 from utils.app_lib.common import get_atom_type
 from data_format.configop import save_config
 
 import os
 import pandas as pd
-import glob
 """
 md_dir:
   a. pwmat+dpkf run md ->MOVEMENT
@@ -172,7 +170,7 @@ class Explore(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these MD Jobs:\n")
+                print("Run these MD Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()
@@ -335,5 +333,5 @@ class Explore(object):
                         lower=self.input_param.strategy.lower_model_deiv_f, 
                         higer=self.input_param.strategy.upper_model_deiv_f, 
                         max_select=self.input_param.strategy.max_select)
-        print("Image select result:\n {}".format(summary_info))
+        print("Image select result:\n {}\n\n".format(summary_info))
     

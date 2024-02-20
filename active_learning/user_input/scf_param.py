@@ -1,7 +1,6 @@
 import os
-from utils.constant import DFT_STYLE, DFT_TYPE
+from utils.constant import DFT_STYLE
 from utils.app_lib.pwmat import read_and_check_etot_input
-# from utils.app_lib.vasp import read_and_check_incar
 from utils.json_operation import get_parameter, get_required_parameter
 from utils.app_lib.common import get_vasp_pseudo_atom_type
 class SCFParam(object):

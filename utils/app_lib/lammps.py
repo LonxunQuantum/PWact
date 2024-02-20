@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-import random, os, sys, dpdata
+import random
+import os
 import numpy as np
-import subprocess as sp
-import scipy.constants as pc
-from packaging.version import Version
 
-from utils.constant import ENSEMBLE, FORCEFILED, LAMMPS
+from utils.constant import FORCEFILED
 
 def _sample_sphere():
     while True:

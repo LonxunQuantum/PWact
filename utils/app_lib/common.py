@@ -1,7 +1,7 @@
-from utils.constant import DFT_STYLE, VASP, PWMAT, LAMMPS,\
+from utils.constant import DFT_STYLE, VASP, PWMAT, \
     ELEMENTTABLE_2, ELEMENTTABLE
-from utils.file_operation import link_file, merge_files_to_one, write_to_file, copy_file, mv_file
-from utils.app_lib.pwmat import set_etot_input_by_file, atom_config_to_poscar, poscar_to_atom_config, poscar_to_lammps_in
+from utils.file_operation import link_file, merge_files_to_one, write_to_file, copy_file
+from utils.app_lib.pwmat import set_etot_input_by_file
 import os
 
 '''
@@ -9,71 +9,6 @@ description:
     this script for pwmat, vasp, ... common operation
 author: wuxingxing
 '''
-
-'''
-description: 
-    ----THIS FUNCTION IS DELETED----
-    
-    link the source config to target_dir
-    if the target is poscar:
-        if the source is atom.config:
-            convert atom.config to poscar
-        else the target is pwmat:
-            link the source atom.config to target dir
-
-    else if the target is atom.config:
-        if the source is poscar:
-            convert poscar to atom.config
-        else the target is pwmat:
-            link the source atom.config to target dir
-
-    elif if the target is lammps format:
-        if the source is poscar:
-            convert poscar to lammps format
-        else if the source is atom.config:
-            convert the source atom.config to poscar then convert the poscar to lammps in
-        else the source is lammps format:
-            link to target dir
-
-param {str} source_config
-param {str} config_format
-param {str} target_dir
-param {str} dft_style
-return {*}
-author: wuxingxing
-'''
-def link_structure(source_config:str, config_format:str, target_dir:str, dft_style:str):
-    
-    if dft_style == DFT_STYLE.pwmat:
-        if config_format == DFT_STYLE.vasp:
-            # the input config is vasp poscar, covert it to atom.confie file then mv to target dir
-            target_file = poscar_to_atom_config(poscar=source_config, 
-                save_dir=target_dir, 
-                save_name="poscar_to_atom.config")
-            target_config = os.path.join(target_dir, PWMAT.atom_config)
-            mv_file(target_file, target_config)
-        else:
-            # the input config is pwmat atom.config, then link to target dir
-            target_config = os.path.join(target_dir, os.path.basename(source_config))
-            link_file(source_config, target_config)
-
-    elif dft_style == DFT_STYLE.vasp:
-        if config_format == DFT_STYLE.pwmat:
-            # the input config is pwmat config, convert it to poscar file and mv to target dir
-            target_config = atom_config_to_poscar(atom_config=source_config, save_dir=target_dir)
-        else:
-            # the input config is vasp poscar, link to target dir
-            target_config = os.path.join(target_dir, os.path.basename(source_config))
-            link_file(source_config, target_config)
-    
-    elif dft_style == DFT_STYLE.lammps:
-        if config_format == DFT_STYLE.pwmat:
-            atom_config_to_poscar(atom_config=source_config, save_dir=target_dir)
-        elif config_format == DFT_STYLE.vasp:
-            copy_file(source_config, os.path.join(target_dir, VASP.poscar))
-        target_config = poscar_to_lammps_in(target_dir)
-        
-    return target_config
 
 '''
 description: 

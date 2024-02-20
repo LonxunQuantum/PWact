@@ -41,7 +41,7 @@ class AIMD(object):
         
     def make_aimd_work(self):
         aimd_paths = []
-        dftb_sign = []
+        use_dftb = False
         for init_config in self.init_configs:
             if init_config.aimd is False:
                 continue
@@ -80,9 +80,8 @@ class AIMD(object):
                     in_skf=self.input_param.dft_input.in_skf)
 
                 aimd_paths.append(aimd_dir)
-                dftb_sign.append(init_config.use_dftb)
+                use_dftb = init_config.use_dftb
         # make slurm script and slurm job
-        use_dftb = True if len(dftb_sign) > 0 else False
         self.make_aimd_slurm_job_files(aimd_paths, use_dftb)
     
     def check_work_done(self):
@@ -101,7 +100,7 @@ class AIMD(object):
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
-                print("Doing these aimd Jobs:\n")
+                print("Run these aimd Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
                     slurm_job = SlurmJob()
