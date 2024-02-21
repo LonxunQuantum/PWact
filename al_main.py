@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import argparse
-from utils.constant import UNCERTAINTY, AL_WORK, PWMAT, LABEL_FILE_STRUCTURE
+from utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, LABEL_FILE_STRUCTURE
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from utils.json_operation import convert_keys_to_lowercase
@@ -42,27 +42,32 @@ def run_iter():
     ii = -1
     numb_task = 3
     max_tasks = input_param.explore.md_job_num
-    
     while ii < max_tasks:#control by config.json
         ii += 1
         iter_name=make_iter_name(ii)
-        print("current iter is {}".format(iter_name))
         for jj in range (numb_task) :
-            if ii * max_tasks + jj <= iter_rec[0] * max_tasks + iter_rec[1] :
+            if ii * max_tasks*10000 + jj <= iter_rec[0] * max_tasks*10000 + iter_rec[1] : 
                 continue
+            print("current iter is {}".format(iter_name))
             task_name="task %02d"%jj
             print("{} - {}".format(iter_name, task_name))
-            if   jj == 0:
+            if  jj == 0 and ii <= max_tasks: # the last iter, only need to train the model with all datas
                 print ("training start: iter {} - task {}".format(ii, jj))
                 do_training_work(iter_name, resource, input_param)
-            elif jj == 1:
+                write_to_file(record, "\n{} {}".format(ii, jj), "a") #record_iter
+            elif jj == 1 and ii < max_tasks:
                 print ("exploring start: iter {} - task {}".format(ii, jj))
                 do_exploring_work(iter_name, resource, input_param)
-            elif jj == 2:
+                write_to_file(record, "\n{} {}".format(ii, jj), "a") #record_iter
+            elif jj == 2 and ii < max_tasks:
                 print ("run_fp: iter {} - task {}".format(ii, jj))
                 run_fp(iter_name, resource, input_param)
-            #record_iter
-            write_to_file(record, "\n{} {}".format(ii, jj), "a")
+                write_to_file(record, "\n{} {}".format(ii, jj), "a") #record_iter
+            # write_to_file(record, "\n{} {}".format(ii, jj), "a")
+            if jj == 2 and not input_param.reserve_work: # delete temp_work_dir under current iteration after the labeling done
+                del_file_list([os.path.join(input_param.root_dir, iter_name, TEMP_STRUCTURE.tmp_run_iter_dir)])
+
+    print("Active learning done! \nYou could use cmd 'al_pwmlff gather_pwdata' to collect all datas sampled from iterations.")
 
 def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)

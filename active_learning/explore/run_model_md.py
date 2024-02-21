@@ -123,14 +123,14 @@ class Explore(object):
                 if self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
                     gpu_per_node = 1
                     cpu_per_node = 1
-                    run_cmd = "mpirun -np {} {} -in {}".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps)
+                    run_cmd = "mpirun -np {} {} -in {} >> {} ".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
                 else:
                     cpu_per_node = self.resource.explore_resource.gpu_per_node
                     gpu_per_node = self.resource.explore_resource.gpu_per_node
-                    run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps)
+                    run_cmd = "mpirun -np {} {} -in {} >> {} ".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
             else:
                 cpu_per_node = self.resource.explore_resource.cpu_per_node
-                run_cmd = "mpirun -np {} {} -in {}".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPS.input_lammps)
+                run_cmd = "mpirun -np {} {} -in {} >> {} ".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPS.input_lammps, SLURM_OUT.md_out)
                 
             group_slurm_script = set_slurm_script_content(
                             gpu_per_node=gpu_per_node, 

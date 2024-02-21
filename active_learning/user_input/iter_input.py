@@ -15,8 +15,8 @@ class InputParam(object):
         
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
         # self.reserve_feature = get_parameter("reserve_feature", json_dict, False)
-        self.reserve_md_traj = get_parameter("reserve_md_traj", json_dict, False)
-        self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False)
+        self.reserve_md_traj = get_parameter("reserve_md_traj", json_dict, False)   #
+        self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False) # not used
 
         init_data = get_parameter("init_data", json_dict, [])
         self.init_data = self.get_init_data(init_data)
