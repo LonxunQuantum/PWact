@@ -13,6 +13,12 @@ class SCFParam(object):
         
         self.dft_style = dft_style
         self.root_dir = root_dir
+
+        self.relax_input_list = []
+        self.aimd_input_list = []
+        self.scf_input_list = []
+        self.pseudo = []
+
         if is_scf:
             self.scf_input_list = self.set_input(json_dict, flag_symm=0)
         if is_aimd:
@@ -28,7 +34,6 @@ class SCFParam(object):
             pseudo = []
         if isinstance(pseudo, str):
             pseudo = list(pseudo)
-        self.pseudo = []
         for pf in pseudo:
             if not os.path.exists(pf):
                 raise Exception("Error! pseduo file {} does not exist!".format(pf))
@@ -113,11 +118,18 @@ class DFTInput(object):
         self.flag_symm = flag_symm
         self.use_dftb = False
         self.use_skf = False
-        if self.kspacing is None:
-            self.kspacing_default = 0.5
+
         # check etot input file
         if self.dft_style == DFT_STYLE.pwmat:
             key_values, etot_lines = read_and_check_etot_input(self.input_file)
+
+            if "MP_N123" in key_values and self.kspacing is not None:
+                error_info = "ERROR! The 'kspacing' in DFT/input/{} dict and 'MP_N123' in {} file cannot coexist.\n".format(os.path.basename(self.input_file), os.path.basename(self.input_file))
+                error_info += "If 'MP_N123' is not indicated in DFT/input/{}, we will use 'kspacing' param to generate the 'MP_N123' parameter\n".format(os.path.basename(self.input_file))
+                raise Exception(error_info)
+            elif "MP_N123" not in key_values and self.kspacing is None:
+                self.kspacing  = 0.5
+
             if "USE_DFTB" in key_values.keys() \
                 and key_values["USE_DFTB"] is not None \
                     and key_values["USE_DFTB"] == "T":

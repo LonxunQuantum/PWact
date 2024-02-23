@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import argparse
-from utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, LABEL_FILE_STRUCTURE
+from utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from utils.json_operation import convert_keys_to_lowercase
@@ -135,12 +135,12 @@ def init_bulk():
 def to_pwdata(input_cmds:list):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
-    parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat", type=str, default="pwmat")
-    parser.add_argument('-s', '--savepath', help='specify stored directory', type=str, default='PWdata')
-    parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory', type=float, default=0.8)
-    parser.add_argument('-r', '--data_shuffle', help='specify stored directory', type=bool, required=False, default=True)
-    parser.add_argument('-m', '--merge', help='merge inputs to one', type=bool, required=False, default=False)
-    parser.add_argument('-w', '--work_dir', help='specify work dir', type=str, default='./')
+    parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat, default is 'movement'", type=str, default="movement")
+    parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')
+    parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
+    parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
+    parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
+    parser.add_argument('-w', '--work_dir', help='specify work dir, default is current dir', type=str, default='./')
     args = parser.parse_args(input_cmds)
     print(args.work_dir)
     os.chdir(args.work_dir)
@@ -156,19 +156,32 @@ def to_pwdata(input_cmds:list):
 
 def gather_pwmata(input_cmds):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', help='specify input dir you want to extract pwdatas', type=str, default=None)
-    parser.add_argument('-s', '--save_dir', help="specify the dir to save the extract result", type=str, default="extract_result")
+    parser.add_argument('-i', '--input_dir', help="specify the dir above the iterations, the default dir is current dir './'\nthe result could be found in './final_pwdata'", type=str, default='./')
     args = parser.parse_args(input_cmds)
-    if not os.path.exists(args.input):
-        raise Exception("Error! The input dir {} not exists!".format(args.input))
-    pwdata_lists = search_files(args.input, "iter*/{}".format(LABEL_FILE_STRUCTURE.result))
-    if os.path.exists(args.save_dir):
-       del_dir(args.save_dir)
-    os.makedirs(args.save_dir)
-    for pwdata in pwdata_lists:
-        iter_name = os.path.basename(os.path.dirname(pwdata))
-        target_dir = os.path.join(args.save_dir, iter_name)
+    if not os.path.exists(args.input_dir):
+        raise Exception("Error! The input dir {} not exists!".format(args.input_dir))
+    pwdata_lists = search_files(args.input_dir, "iter*/{}/{}/*".format(AL_STRUCTURE.labeling,  LABEL_FILE_STRUCTURE.result))
+    pwdata_lists = sorted(pwdata_lists)
+    save_dir = "./final_pwdata"
+    res_data_list = []
+    for pwdata in pwdata_lists: # /path/iter.0001/label/result/md.000.sys.001.t.001
+        data_name = os.path.basename(pwdata) # md.000.sys.001.t.001
+        iter_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(pwdata)))) #iter.0001
+        target_dir = os.path.join(save_dir, iter_name, data_name) #./final_pwdata/iter.0001/md.000.sys.001.t.001
         copy_dir(pwdata, target_dir)
+        # print("target: {}\n source: {}\n".format(target_dir, pwdata))
+        res_data_list.append(target_dir)
+
+    result_lines = ["\"{}\",".format(_) for _ in res_data_list]
+    result_lines = "\n".join(result_lines)
+    # result_lines = result_lines[:-1] # Filter the last ','
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    result_save_path = os.path.join(save_dir, "final_pwdata_list.txt")
+    write_to_file(result_save_path, result_lines, mode='w')
+    print("All datas in iterations are:\n")
+    print(result_lines)
+    print("more details could be found in dir {}\n".format(save_dir))
 
 def print_init_json_template():
     pass
@@ -210,30 +223,35 @@ def environment_check():
 
 def main():
     environment_check()
-    if len(sys.argv) == 1 or "-h".upper() in sys.argv[1].upper() or "help".upper() in sys.argv[1].upper():
+    if len(sys.argv) == 1 or "-h".upper() == sys.argv[1].upper() or \
+        "help".upper() == sys.argv[1].upper() or "-help".upper() == sys.argv[1].upper() or "--help".upper() == sys.argv[1].upper():
         print_cmd()
 
-    elif "init_bulk".upper() in sys.argv[1].upper():
+    elif "init_bulk".upper() == sys.argv[1].upper():
         init_bulk()
 
-    elif "int_surface".upper() in sys.argv[1].upper():
+    elif "int_surface".upper() == sys.argv[1].upper():
         init_surface()
 
-    elif "run".upper() in sys.argv[1].upper():
-        run_iter()
-
-    elif "init_json".upper() in sys.argv[1].upper():
+    elif "init_json".upper() == sys.argv[1].upper():
         print_init_json_template()
 
-    elif "run_json".upper() in sys.argv[1].upper():
+    elif "run_json".upper() == sys.argv[1].upper():
         print_run_json_template()
     
-    elif "pwdata".upper() in sys.argv[1].upper():#these function may use pwdata command
-        to_pwdata(sys.argv[2:])
-    
-    elif "gather_pwdata".upper() in sys.argv[1].upper():
+    elif "gather_pwdata".upper() == sys.argv[1].upper():
         gather_pwmata(sys.argv[2:])
 
+    elif "to_pwdata".upper() == sys.argv[1].upper():#these function may use pwdata command
+        to_pwdata(sys.argv[2:])
+ 
+    elif "run".upper() == sys.argv[1].upper():
+        run_iter()
+        
+    else:
+        print("ERROR! The input cmd {} can not be recognized, please check.".format(sys.argv[1]))
+        print("\n\n\nYou can enter the following command.\n\n\n")
+        print_cmd()
 
 if __name__ == "__main__":
     main()

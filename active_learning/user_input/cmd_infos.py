@@ -14,10 +14,10 @@ def cmd_infos():
 
     # cmd_info += "run_json".upper() + "\n"
 
-    cmd_info += "pwdata".upper() + "\n"
-    cmd_info += "you could use this method to change outcars or movements to pwdata format, for more detail for this command, you could use 'PWMLFF_AL pwdata -h'\n\n"
+    cmd_info += "to_pwdata".upper() + "\n"
+    cmd_info += "you could use this method to change outcars or movements to pwdata format.\nFor more detail for this command, you could use 'al_pwmlff to_pwdata -h'\n\n"
 
     cmd_info += "gather_pwdata".upper() + "\n"
-    cmd_info += "you could use this method to extract pwdatas after active learing done, for more detail for this command, you could use 'PWMLFF_AL extract_pwdata -h'\n\n"
+    cmd_info += "you could use this method to extract pwdatas after active learing done.\nFor more detail for this command, you could use 'al_pwmlff gather_pwdata -h'\n\n"
     
     return cmd_info

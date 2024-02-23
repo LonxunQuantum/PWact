@@ -4,10 +4,10 @@ from active_learning.user_input.iter_input import SCFParam
 from utils.file_operation import str_list_format
 from utils.json_operation import get_parameter, get_required_parameter
 from utils.constant import DFT_STYLE
-
+from utils.app_lib.pwmat import read_and_check_etot_input
 class InitBulkParam(object):
     def __init__(self, json_dict: dict) -> None:
-        self.root_dir = get_parameter("work_dir", json_dict, "work_dir")
+        self.root_dir = get_parameter("work_dir", json_dict, "./")
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
         
@@ -19,7 +19,7 @@ class InitBulkParam(object):
         # read init configs
         sys_config_prefix = get_parameter("sys_config_prefix", json_dict, None)
         sys_configs = get_required_parameter("sys_configs", json_dict)
-        if isinstance(sys_configs, str):
+        if isinstance(sys_configs, dict):
             sys_configs = [sys_configs]
 
         # set sys_config detail
@@ -40,15 +40,15 @@ class InitBulkParam(object):
         self.dft_input = SCFParam(json_dict=json_dict, is_relax=is_relax, is_aimd=is_aimd, root_dir=self.root_dir, dft_style=self.dft_style)
         # check and set relax etot.input file
         for config in self.sys_config:
-            if config.relax_input_idx >= len(self.dft_input.relax_input_list):
-                raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
             if is_relax:
+                if config.relax_input_idx >= len(self.dft_input.relax_input_list):
+                    raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
                 config.set_relax_input_file(self.dft_input.relax_input_list[config.relax_input_idx])
         # check and set aimd etot.input file
         for config in self.sys_config:
-            if config.aimd_input_idx >= len(self.dft_input.aimd_input_list):
-                raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config_file), config.aimd_input_idx))
             if is_aimd:
+                if config.aimd_input_idx >= len(self.dft_input.aimd_input_list):
+                    raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config_file), config.aimd_input_idx))
                 config.set_aimd_input_file(self.dft_input.aimd_input_list[config.aimd_input_idx])
 
 class Stage(object):

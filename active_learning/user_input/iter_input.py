@@ -3,14 +3,13 @@ from utils.json_operation import get_parameter, get_required_parameter
 from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, DFT_STYLE
 from active_learning.user_input.train_param.train_param import TrainParam
 from active_learning.user_input.scf_param import SCFParam
-
 class InputParam(object):
     # _instance = None
     def __init__(self, json_dict: dict) -> None:
         self.root_dir = get_parameter("work_dir", json_dict, "work_dir")
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
-        self.record_file = get_parameter("record_file", json_dict, "{}.record".format(os.path.basename(self.root_dir)))
+        self.record_file = get_parameter("record_file", json_dict, "al.record")
         print("Warning! record_file not provided, automatically set to {}! ".format(self.record_file))
         
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
@@ -60,16 +59,16 @@ class StrategyParam(object):
     def __init__(self, json_dict) -> None:
         self.md_type = get_parameter("md_type", json_dict, FORCEFILED.libtorch_lmps)
         
-        self.max_select = get_parameter("max_select", json_dict, 1000)
+        self.max_select = get_parameter("max_select", json_dict, 200)
         self.uncertainty = get_parameter("uncertainty", json_dict, UNCERTAINTY.committee).upper()
         if self.uncertainty.upper() == UNCERTAINTY.kpu:
             self.model_num = 1
-            self.base_kpu_max_images = get_parameter("base_kpu_max_images", json_dict, 200)
-            self.base_kpu_mvm_ratio = get_parameter("base_kpu_mvm_ratio", json_dict, 0.2)
             self.kpu_upper = get_parameter("kpu_upper", json_dict, 1.5)
             self.kpu_lower = get_parameter("kpu_lower", json_dict, 0.5)
         elif self.uncertainty.upper() == UNCERTAINTY.committee:
             self.model_num = get_parameter("model_num", json_dict, 4)
+            if self.model_num < 3:
+                raise Exception("ERROR! for {}, make sure model_num >= 3".format(UNCERTAINTY.committee))
             self.lower_model_deiv_f = get_required_parameter("lower_model_deiv_f", json_dict)
             self.upper_model_deiv_f = get_required_parameter("upper_model_deiv_f", json_dict)
         else:

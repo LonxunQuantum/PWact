@@ -136,7 +136,8 @@ def set_input_script(
     flag_symm:int=None, 
     dft_style:str=None,
     save_dir:str=None,
-    pseudo_names:list[str]=None
+    pseudo_names:list[str]=None,
+    is_scf = False
     ):
     if dft_style == DFT_STYLE.pwmat:
         target_file = os.path.join(save_dir, PWMAT.etot_input)
@@ -145,7 +146,8 @@ def set_input_script(
             atom_config=config, 
             kspacing=kspacing, 
             flag_symm=flag_symm, 
-            pseudo_names=pseudo_names
+            pseudo_names=pseudo_names,
+            is_scf = is_scf
             )
         write_to_file(target_file, script, "w")
     elif dft_style == DFT_STYLE.vasp:

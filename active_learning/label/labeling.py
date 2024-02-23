@@ -109,7 +109,7 @@ class Labeling(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.real_scf_dir, \
             job_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_job), \
             tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True
         if slurm_done:
             # bk and do new job
             target_bk_file = add_postfix_dir(self.real_label_dir, postfix_str="bk")
@@ -123,7 +123,7 @@ class Labeling(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.scf_dir, \
             job_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_job), \
             tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.scf_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -170,7 +170,8 @@ class Labeling(object):
             kspacing=self.input_param.scf.scf_input_list[0].kspacing, 
             flag_symm=self.input_param.scf.scf_input_list[0].flag_symm, 
             save_dir=scf_dir,
-            pseudo_names=pseudo_names
+            pseudo_names=pseudo_names,
+            is_scf = True,
         )
         
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):

@@ -45,7 +45,7 @@ class ModelTrian(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.real_train_dir, \
             job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_job), \
             tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
         if slurm_done:
             # bk and do new job
             target_bk_file = add_postfix_dir(self.real_train_dir, postfix_str="bk")
@@ -157,7 +157,7 @@ class ModelTrian(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.train_dir, \
             job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_job), \
             tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:

@@ -88,7 +88,7 @@ class AIMD(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
         return slurm_done
             
     def do_aimd_jobs(self):
@@ -96,7 +96,7 @@ class AIMD(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:

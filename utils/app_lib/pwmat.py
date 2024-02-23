@@ -94,10 +94,10 @@ def _reciprocal_box(box):
     rbox = rbox.T
     return rbox
 
-def _make_pwmat_kp_mp(kpoints):
-    ret = ""
-    ret += "%d %d %d 0 0 0 " % (kpoints[0], kpoints[1], kpoints[2])
-    return ret
+# def _make_pwmat_kp_mp(kpoints):
+#     ret = ""
+#     ret += "%d %d %d 0 0 0 " % (kpoints[0], kpoints[1], kpoints[2])
+#     return ret
 
 def _make_kspacing_kpoints(config, kspacing):
     with open(config, "r") as fp:
@@ -111,10 +111,15 @@ def _make_kspacing_kpoints(config, kspacing):
             box = np.array(box)
             rbox = _reciprocal_box(box)
     kpoints = [
-        (np.ceil(2 * np.pi * np.linalg.norm(ii) / kspacing).astype(int)) for ii in rbox
+        round(2 * np.pi * np.linalg.norm(ii) / kspacing) for ii in rbox
     ]
-    ret = _make_pwmat_kp_mp(kpoints)
+    kpoints[0] = 1 if kpoints[0] == 0 else kpoints[0]
+    kpoints[1] = 1 if kpoints[1] == 0 else kpoints[1]
+    kpoints[2] = 1 if kpoints[2] == 0 else kpoints[2]
+    ret = ""
+    ret += "%d %d %d 0 0 0 " % (kpoints[0], kpoints[1], kpoints[2])
     return ret
+    # ret = _make_pwmat_kp_mp(kpoints)
 
 def make_pwmat_input_dict(
     node1,
@@ -243,7 +248,7 @@ def _make_flag_symm(flag_symm = None):
         raise RuntimeError("unknow flag_symm type " + str(flag_symm))
     return flag_symm
 
-def read_and_check_etot_input(etot_input_path:str, kspacing:float=None, flag_symm:int=None):
+def read_and_check_etot_input(etot_input_path:str):
     with open(etot_input_path, "r") as fp:
         lines = fp.readlines()
     
@@ -283,6 +288,23 @@ def read_and_check_etot_input(etot_input_path:str, kspacing:float=None, flag_sym
 
 '''
 description: 
+    check mp_123 and kspacing for scf etot.input file
+param {*} self
+param {str} etot_input
+param {None} kspacing
+return {*}
+author: wuxingxing
+'''
+def check_kspacing_mp_123(etot_input:str, kspacing:None):
+    key_values, etot_lines = read_and_check_etot_input(etot_input)
+    if kspacing is not None and "MP_123" in key_values:
+        error_info = "The 'kspacing' in DFT/input/{} dict and 'MP_123' in ethot.input cannot coexist.\n".format(os.path.basename(etot_input))
+        error_info += "If 'MP_123' is not indicated in DFT/input/{}, we will use 'kspacing' param to generate the 'MP_123' parameter\n".format(os.path.basename(etot_input))
+        raise Exception(error_info)
+        
+
+'''
+description: 
     set etot.input content, 
     if the etot_input_file exists, read and check format, then supplement unset parameters
     else set the content according to user input json file
@@ -297,40 +319,48 @@ def set_etot_input_by_file(
     kspacing:float=None, 
     flag_symm:int=None, 
     atom_config:str=None, 
-    pseudo_names:list[str]=None):
-    key_values, etot_lines = read_and_check_etot_input(etot_input_file, atom_config)
+    pseudo_names:list[str]=None,
+    is_scf = False # if True, job is scf, and 'OUT.MLMD = T' to etot.input
+    ):
+    key_values, etot_lines = read_and_check_etot_input(etot_input_file)
     is_skf = False
     if "USE_DFTB" in key_values.keys() and key_values["USE_DFTB"] is not None and key_values["USE_DFTB"] == "T":
         if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
             is_skf = True
     index = 0
+    new_etot_lines = []
     while index < len(etot_lines):
         if "in.atom".upper() in etot_lines[index].upper(): # change the in.atom
-            etot_lines[index] = "in.atom = {}\n".format(os.path.basename(atom_config))
-        if is_skf and "in.skf".upper() in etot_lines[index].upper():
-            etot_lines[index].remove(etot_lines[index])        
-        if "IN.PSP" in etot_lines[index].upper():
-            etot_lines.remove(etot_lines[index])
+            # etot_lines[index] = "in.atom = {}\n".format(os.path.basename(atom_config))
+            new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
+        # remove the in.skf in.psp* in etot.input file if exists
+        elif "in.skf".upper() in etot_lines[index].upper():
+            # etot_lines[index].remove(etot_lines[index])
+            pass
+        elif "IN.PSP" in etot_lines[index].upper():
+            pass
+            # etot_lines.remove(etot_lines[index])
+        else:
+            new_etot_lines.append(etot_lines[index])
         index += 1
-    etot_lines.append("in.atom = {}\n".format(os.path.basename(atom_config)))
     # if dftb and need in_skf
     if is_skf:
-        etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
+        new_etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
     # is not for dftb, reset the IN.PSP
     if "USE_DFTB" not in key_values.keys() or key_values["USE_DFTB"] is None and key_values["USE_DFTB"] == "F":
         for pseudo_i, pseudo in enumerate(pseudo_names):
-            etot_lines.append("IN.PSP{} = {}\n".format(pseudo_i + 1, pseudo))
+            new_etot_lines.append("IN.PSP{} = {}\n".format(pseudo_i + 1, pseudo))
     key_list = list(key_values)
     # set OUT.MLMD
-    # if "OUT.MLMD" not in key_list:
-    #     etot_lines.append("OUT.MLMD = T\n")
+    if "OUT.MLMD" not in key_list:
+        new_etot_lines.append("OUT.MLMD = T\n")
     # # set OUT.WG OUT.RHO OUT.VR
-    # if "OUT.WG" not in key_list:
-    #     etot_lines.append("OUT.WG = F\n")
-    # if "OUT.RHO" not in key_list:
-    #     etot_lines.append("OUT.RHO = F\n")
-    # if "OUT.VR" not in key_list:
-    #     etot_lines.append("OUT.VR = F\n")
+    if "OUT.WG" not in key_list:
+        etot_lines.append("OUT.WG = F\n")
+    if "OUT.RHO" not in key_list:
+        etot_lines.append("OUT.RHO = F\n")
+    if "OUT.VR" not in key_list:
+        etot_lines.append("OUT.VR = F\n")
     # if MP_N123 is not in etot.input file then using 'kespacing' generates it
     if "MP_N123" not in key_list:
         kspacing = PWMAT.kspacing_default if kspacing is None else kspacing
@@ -339,11 +369,11 @@ def set_etot_input_by_file(
             MP_N123 += str(key_values["FLAG_SYMM"])
         else:
             MP_N123 += str(flag_symm)
-        etot_lines.append("MP_N123 = {}\n".format(MP_N123))
+        new_etot_lines.append("MP_N123 = {}\n".format(MP_N123))
 
-    etot_lines.append("\n")
+    new_etot_lines.append("\n")
 
-    return "".join(etot_lines)
+    return "".join(new_etot_lines)
 
 def is_alive_atomic_energy(movement_list:list):
     if len(movement_list) < 1:

@@ -39,7 +39,7 @@ class Relax(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.relax_dir, \
         job_patten="*-{}".format(INIT_BULK.relax_job), \
         tag_patten="*-{}".format(INIT_BULK.relax_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
         return slurm_done
     
     def make_relax_work(self):
@@ -60,7 +60,7 @@ class Relax(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.relax_dir, \
             job_patten="*-{}".format(INIT_BULK.relax_job), \
             tag_patten="*-{}".format(INIT_BULK.relax_tag))
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
