@@ -142,10 +142,10 @@ class ModelKPU(object):
     '''    
     def do_kpu_jobs(self):
         mission = Mission()
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.kpu_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.kpu_dir, \
             job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.kpu_job), \
             tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.kpu_tag))
-        slurm_done = False if len(slurm_remain) > 0 else True
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:

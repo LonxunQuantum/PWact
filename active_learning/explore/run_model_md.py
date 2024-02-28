@@ -67,10 +67,10 @@ class Explore(object):
         self.real_kpu_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
 
     def back_explore(self):
-        slurm_remain, slurm_done = get_slurm_job_run_info(self.real_md_dir, \
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.real_md_dir, \
         job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
         tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
-        slurm_done = False if len(slurm_remain) > 0 else True
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done:
             # bk and do new job
             target_bk_file = add_postfix_dir(self.real_explore_dir, postfix_str="bk")
@@ -166,7 +166,7 @@ class Explore(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.md_dir, \
             job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
             tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
-        slurm_done = False if len(slurm_remain) > 0 else True
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:

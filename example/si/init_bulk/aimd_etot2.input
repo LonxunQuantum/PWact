@@ -1,12 +1,11 @@
-1 4
+4 1
 in.atom = atom.config
 IN.PSP1 = Si.SG15.PBE.UPF
-Ecut = 50
-Ecut2 = 200
+Ecut = 60
+Ecut2 = 240
 job = md
-md_detail = 2, 4, 2.0, 1200.000000, 1200.000000
+md_detail = 2, 20, 2.0, 500.000000, 500.000000
 
-xcfunctional = GGA
 E_error = 0
 Rho_error = 1E-5
 
@@ -17,4 +16,6 @@ OUT.FORCE = T
 OUT.STRESS = T 
 OUT.MLMD = T
 ENERGY_DECOMP = T, 1
+
+MP_N123 = 2 2 2 0 0 0 0
 
