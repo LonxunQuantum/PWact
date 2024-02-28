@@ -329,7 +329,6 @@ def set_etot_input_by_file(
             is_skf = True
     index = 0
     new_etot_lines = []
-    new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
     while index < len(etot_lines):
         # remove the in.skf in.psp* in etot.input file if exists
         if "in.skf".upper() in etot_lines[index].upper():
@@ -341,6 +340,7 @@ def set_etot_input_by_file(
         else:
             new_etot_lines.append(etot_lines[index])
         index += 1
+    new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
     # if dftb and need in_skf
     if is_skf:
         new_etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
