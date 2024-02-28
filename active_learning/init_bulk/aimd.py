@@ -88,7 +88,7 @@ class AIMD(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False # len(slurm_remain) > 0 exist slurm jobs need to do
         return slurm_done
             
     def do_aimd_jobs(self):
@@ -96,7 +96,7 @@ class AIMD(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.aimd_dir, \
             job_patten="*-{}".format(INIT_BULK.aimd_job), \
             tag_patten="*-{}".format(INIT_BULK.aimd_tag))
-        slurm_done = False if len(slurm_remain) > 0 else True # len(slurm_remain) > 0 exist slurm jobs need to do
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False # len(slurm_remain) > 0 exist slurm jobs need to do
         if slurm_done is False:
             #recover slurm jobs
             if len(slurm_remain) > 0:
@@ -170,10 +170,7 @@ class AIMD(object):
             jobname = "aimd{}".format(group_index)
             tag_name = "{}-{}".format(group_index, INIT_BULK.aimd_tag)
             tag = os.path.join(self.aimd_dir, tag_name)
-            if use_dftb:
-                run_cmd = self.resource.dft_resource.dftb_command
-            else:
-                run_cmd = self.resource.dft_resource.command
+            run_cmd = self.resource.dft_resource.command
             group_slurm_script = set_slurm_script_content(gpu_per_node=self.resource.dft_resource.gpu_per_node, 
                 number_node = self.resource.dft_resource.number_node, 
                 cpu_per_node = self.resource.dft_resource.cpu_per_node,
@@ -195,5 +192,5 @@ class AIMD(object):
             write_to_file(slurm_job_file, group_slurm_script, "w")
 
     def do_post_process(self):
-        if not os.path.exists(self.real_aimd_dir):
+        if os.path.exists(self.aimd_dir):
             link_file(self.aimd_dir, self.real_aimd_dir)

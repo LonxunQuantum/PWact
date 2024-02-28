@@ -140,6 +140,8 @@ def to_pwdata(input_cmds:list):
     parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
     parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
     parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
+    parser.add_argument('-g', '--gap', help='Trail point interval before and after, default is 1', type=int, default=1)
+
     parser.add_argument('-w', '--work_dir', help='specify work dir, default is current dir', type=str, default='./')
     args = parser.parse_args(input_cmds)
     print(args.work_dir)
@@ -150,7 +152,8 @@ def to_pwdata(input_cmds:list):
                 datasets_path=args.savepath, 
                 train_valid_ratio=args.train_valid_ratio, 
                 data_shuffle=args.data_shuffle,
-                merge_data=args.merge
+                merge_data=args.merge,
+                interval = args.gap
                 )
     
 

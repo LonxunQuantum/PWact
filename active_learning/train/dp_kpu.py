@@ -95,7 +95,7 @@ class ModelKPU(object):
         self.make_kpu_slurm_job_files(kpu_list)
 
     def make_kpu_slurm_job_files(self, kpu_list:list[str]):
-        group_list = split_job_for_group(self.resource.dft_resource.group_size, kpu_list, 1)
+        group_list = split_job_for_group(self.resource.train_resource.group_size, kpu_list, 1)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue

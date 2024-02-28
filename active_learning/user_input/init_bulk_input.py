@@ -13,6 +13,7 @@ class InitBulkParam(object):
         
         self.data_shuffle = get_parameter("data_shuffle", json_dict, True)
         self.train_valid_ratio = get_parameter("train_valid_ratio", json_dict, 0.8)
+        self.interval = get_parameter("interval", json_dict, 1)
 
         # self.reserve_pwmat_files = get_parameter("reserve_pwmat_files", json_dict, False)
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
@@ -25,28 +26,28 @@ class InitBulkParam(object):
         # set sys_config detail
         self.dft_style = get_required_parameter("dft_style", json_dict).lower()
         self.sys_config:list[Stage] = []
-        is_relax = False
-        is_aimd = False
+        self.is_relax = False
+        self.is_aimd = False
         for index, config in enumerate(sys_configs):
             stage = Stage(config, index, sys_config_prefix, self.dft_style)
             self.sys_config.append(stage)
-            if stage.relax and is_relax is False:
-                is_relax = True
-            if stage.aimd and is_aimd is False:
-                is_aimd = True
+            if stage.relax:
+                self.is_relax = True
+            if stage.aimd:
+                self.is_aimd = True
                 
         # for PWmat: set etot.input files and persudo files
         # for Vasp: set INCAR files and persudo files
-        self.dft_input = SCFParam(json_dict=json_dict, is_relax=is_relax, is_aimd=is_aimd, root_dir=self.root_dir, dft_style=self.dft_style)
+        self.dft_input = SCFParam(json_dict=json_dict, is_relax=self.is_relax, is_aimd=self.is_aimd, root_dir=self.root_dir, dft_style=self.dft_style)
         # check and set relax etot.input file
         for config in self.sys_config:
-            if is_relax:
+            if self.is_relax:
                 if config.relax_input_idx >= len(self.dft_input.relax_input_list):
                     raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
                 config.set_relax_input_file(self.dft_input.relax_input_list[config.relax_input_idx])
         # check and set aimd etot.input file
         for config in self.sys_config:
-            if is_aimd:
+            if self.is_aimd:
                 if config.aimd_input_idx >= len(self.dft_input.aimd_input_list):
                     raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config_file), config.aimd_input_idx))
                 config.set_aimd_input_file(self.dft_input.aimd_input_list[config.aimd_input_idx])

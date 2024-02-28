@@ -13,28 +13,32 @@ from data_format.configop import extract_pwdata
 
 def init_bulk_run(resource: Resource, input_param:InitBulkParam):
     #1. do relax
-    relax = Relax(resource, input_param)
-    if not relax.check_work_done():
-        # make relax work dir
-        relax.make_relax_work()
-        # do relax jobs
-        relax.do_relax_jobs()
-        # do post process
-        relax.do_post_process()
+    if input_param.is_relax:
+        relax = Relax(resource, input_param)
+        if not relax.check_work_done():
+            # make relax work dir
+            relax.make_relax_work()
+            # do relax jobs
+            relax.do_relax_jobs()
+            # do post process
+            relax.do_post_process()
     # do super cell and scale
     if not duplicate_scale_done(input_param):
         duplicate_scale(resource, input_param)
         do_post_duplicate_scale(resource, input_param)
+
     # do pertub
     if not pertub_done(input_param):
         do_pertub_work(resource, input_param)
         do_post_pertub(resource, input_param)
+
     # do aimd
-    aimd = AIMD(resource, input_param)
-    if not aimd.check_work_done():
-        aimd.make_aimd_work()
-        aimd.do_aimd_jobs()
-        aimd.do_post_process()
+    if input_param.is_aimd:
+        aimd = AIMD(resource, input_param)
+        if not aimd.check_work_done():
+            aimd.make_aimd_work()
+            aimd.do_aimd_jobs()
+            aimd.do_post_process()
     # do collection
     do_collection(resource, input_param)
        
@@ -92,7 +96,8 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                     datasets_path=os.path.join(collection_dir, init_config_name, INIT_BULK.npy_format_save_dir), 
                     train_valid_ratio=input_param.train_valid_ratio, 
                     data_shuffle=input_param.data_shuffle, 
-                    merge_data=True
+                    merge_data=True,
+                    interval=input_param.interval
                 )
 
     # delete link files
@@ -110,10 +115,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
 
     # print the dir of pwdatas
     pwdatas = search_files(real_collection_dir, "*/{}".format(INIT_BULK.npy_format_save_dir))
-    pwdatas = sorted(pwdatas)
-    result_lines = ["\"{}\",".format(_) for _ in pwdatas]
-    result_lines = "\n".join(result_lines)
-    # result_lines = result_lines[:-1] # Filter the last ','
-    result_save_path = os.path.join(real_collection_dir, INIT_BULK.npy_format_name)
-    write_to_file(result_save_path, result_lines, mode='w')
-    
+    if len(pwdatas) > 0:
+        pwdatas = sorted(pwdatas)
+        result_lines = ["\"{}\",".format(_) for _ in pwdatas]
+        result_lines = "\n".join(result_lines)
+        # result_lines = result_lines[:-1] # Filter the last ','
+        result_save_path = os.path.join(real_collection_dir, INIT_BULK.npy_format_name)
+        write_to_file(result_save_path, result_lines, mode='w')
+        

@@ -44,13 +44,13 @@ class MOVEMENT(object):
                 image.atomic_energy = atomic_energy["atomic_energy"]
             elif "-------------" in ii:
                 image.content = mvm_contents[idx:]
-                continue
-            else:
                 # If Atomic-Energy is not in the file, calculate it from the Ep
-                if image and len(image.atomic_energy) == 0 and image.atom_type_num:
+                if len(image.atomic_energy) == 0 and image.atom_type_num:
                     atomic_energy, _, _, _ = np.linalg.lstsq([image.atom_type_num], np.array([image.Ep]), rcond=1e-3)
                     atomic_energy = np.repeat(atomic_energy, image.atom_type_num)
                     image.atomic_energy = atomic_energy.tolist()
+                continue
+
         image.image_nums = len(self.image_list)
         print("Load data %s successfully! \t\t\t\t Image nums: %d" % (movement_file, image.image_nums))
     

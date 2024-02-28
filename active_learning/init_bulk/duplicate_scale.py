@@ -1,6 +1,6 @@
 import os
 
-from utils.file_operation import search_files, link_file, write_to_file
+from utils.file_operation import search_files, link_file, copy_file, write_to_file
 from utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
 
 from active_learning.user_input.resource import Resource
@@ -38,7 +38,7 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
                 #     save_config=super_cell_config, 
                 #     dft_stype=resource.dft_style, 
                 #     source_config_format=config_format)
-                do_super_cell(config=init_config.config_file,
+                do_super_cell(config=config_file,
                     input_format=config_format,
                     supercell_matrix=init_config.super_cell, 
                     pbc=init_config.pbc, 
@@ -79,7 +79,8 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
 def do_post_duplicate_scale(resource: Resource, input_param:InitBulkParam):
     duplicate_scale_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.super_cell_scale) 
     real_duplicate_scale_dir = os.path.join(input_param.root_dir, INIT_BULK.super_cell_scale) 
-    link_file(duplicate_scale_dir, real_duplicate_scale_dir)
+    if os.path.exists(duplicate_scale_dir):
+        link_file(duplicate_scale_dir, real_duplicate_scale_dir)
     tag = os.path.join(duplicate_scale_dir, INIT_BULK.tag_super_cell)
     if not os.path.exists(tag):
         write_to_file(tag, "super cell and scale done ", "w")
@@ -131,7 +132,7 @@ def do_pertub_work(resource: Resource, input_param:InitBulkParam):
             if not os.path.exists(work_dir):
                 os.makedirs(work_dir)
             target_config = os.path.join(work_dir, os.path.basename(config))
-            link_file(config, target_config)
+            copy_file(config, target_config)
             # BatchPerturbStructure.batch_perturb(
             #     work_dir=work_dir,
             #     source_config = target_config,
@@ -157,7 +158,8 @@ def do_pertub_work(resource: Resource, input_param:InitBulkParam):
 def do_post_pertub(resource: Resource, input_param:InitBulkParam):
     pertub_dir = os.path.join(input_param.root_dir,TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.pertub)
     real_pertub_dir = os.path.join(input_param.root_dir,INIT_BULK.pertub)
-    link_file(pertub_dir, real_pertub_dir)
+    if os.path.exists(pertub_dir):
+        link_file(pertub_dir, real_pertub_dir)
     tag = os.path.join(pertub_dir, INIT_BULK.tag_pertub)
     if not os.path.exists(tag):
         write_to_file(tag, "pertub done ", "w")

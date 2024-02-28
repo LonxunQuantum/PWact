@@ -34,9 +34,9 @@ class Resource(object):
         # check dft resource
         self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
         self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
-        dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
-        if dftb_command is not None:
-            self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
+        # dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
+        # if dftb_command is not None:
+        #     self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
         if DFT_STYLE.vasp.lower() in self.dft_resource.command.lower():
             self.dft_style = DFT_STYLE.vasp
         elif DFT_STYLE.pwmat.lower() in self.dft_resource.command.lower():
@@ -67,7 +67,6 @@ class ResourceDetail(object):
     def __init__(self, command:str, group_size:int , parallel_num:int, number_node:int , gpu_per_node:int , cpu_per_node:int ,\
                   queue_name:str, custom_flags:list[str], source_list:list[str], module_list:list[str]) -> None:
         self.command = command
-        self.dftb_command = None
         self.group_size = group_size
         self.parallel_num = parallel_num
         self.number_node = number_node

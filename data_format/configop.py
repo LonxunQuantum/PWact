@@ -91,7 +91,8 @@ def extract_pwdata(data_list:list[str],
                 datasets_path="PWdata", 
                 train_valid_ratio:float=0.8, 
                 data_shuffle:bool=True,
-                merge_data:bool=False
+                merge_data:bool=False,
+                interval:int=1
                 ):
     data_name = None
     if merge_data:
@@ -104,7 +105,7 @@ def extract_pwdata(data_list:list[str],
         multi_data = []
         for data_path in data_list:
             image_data = Configs.read(data_format, data_path)
-            multi_data += image_data
+            multi_data += image_data[::interval]
         get_all = Configs.get(multi_data)
         Configs.save(image_data_dict=get_all, 
                     datasets_path=datasets_path, 
@@ -131,12 +132,12 @@ def extract_pwdata(data_list:list[str],
                     )
     
 if __name__ == "__main__":
-    # in_config = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures/1.config"
-    # save_path = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/sys_config/structures"
-    # image = extract_config(config_path=in_config, format="pwmat")
+    in_config = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub/0_pertub.config"
+    save_path = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub"
+    image = extract_config(config_path=in_config, format="pwmat")
     
-    # save_config(image, wrap=False, direct=True, sort=True,\
-    #     save_format="pwmat", save_path=save_path, save_name="temp_atom.config")
+    save_config(image, wrap=False, direct=True, sort=True,\
+        save_format="vasp", save_path=save_path, save_name="temp_poscar")
     # save_config(image, wrap=False, direct=True, sort=True,\
     #     save_format="vasp", save_path=save_path, save_name="temp_poscar")
     
@@ -195,15 +196,15 @@ if __name__ == "__main__":
     #     save_format="vasp", save_path=save_path, save_name="pertub.poscar")
 
     # convert trajs to config for model_deviation calculate
-    import glob
-    traj_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj"
-    save_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj2config"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    trajs = glob.glob(os.path.join(traj_dir, "*.lammpstrj"))
-    trajs = sorted(trajs)
-    for traj in trajs:
-        save_name = "{}.config".format(os.path.basename(traj).split('.')[0])
-        save_config(traj,  input_format="dump", wrap=False, direct=True, sort=True,\
-        save_format="pwmat", save_path=save_dir, save_name=save_name)
-        print("{} to {} done!".format(traj, save_name))
+    # import glob
+    # traj_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj"
+    # save_dir = "/data/home/wuxingxing/datas/al_dir/si_5_pwmat/iter.0000/temp_run_iter_work/explore/md/md.000.sys.000/md.000.sys.000.t.000/traj2config"
+    # if not os.path.exists(save_dir):
+    #     os.makedirs(save_dir)
+    # trajs = glob.glob(os.path.join(traj_dir, "*.lammpstrj"))
+    # trajs = sorted(trajs)
+    # for traj in trajs:
+    #     save_name = "{}.config".format(os.path.basename(traj).split('.')[0])
+    #     save_config(traj,  input_format="dump", wrap=False, direct=True, sort=True,\
+    #     save_format="pwmat", save_path=save_dir, save_name=save_name)
+    #     print("{} to {} done!".format(traj, save_name))

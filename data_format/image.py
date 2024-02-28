@@ -57,11 +57,11 @@ class Image(object):
     
     def copy(self):
         """Return a copy."""
-        atoms = self.__class__(lattice=self.lattice, position=self.position, pbc=self.pbc, cartesian=self.cartesian)
         if self.cartesian:
             pass
         else:
             self._set_cartesian()
+        atoms = self.__class__(lattice=self.lattice, position=self.position, pbc=self.pbc, cartesian=self.cartesian)
         atoms.arrays = {}
         # atoms.cartesian = self.cartesian
         prim_dict = self.prim_dict()

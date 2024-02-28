@@ -71,7 +71,7 @@ class ModelTrian(object):
     
     def make_train_slurm_job_files(self, train_list:list[str]):
         # make train slurm script
-        group_list = split_job_for_group(self.resource.dft_resource.group_size, train_list, 1)
+        group_list = split_job_for_group(self.resource.train_resource.group_size, train_list, 1)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
                 continue
