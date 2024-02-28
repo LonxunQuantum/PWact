@@ -329,8 +329,8 @@ def set_etot_input_by_file(
             is_skf = True
     index = 0
     new_etot_lines = []
+    new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
     while index < len(etot_lines):
-        new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
         # remove the in.skf in.psp* in etot.input file if exists
         if "in.skf".upper() in etot_lines[index].upper():
             # etot_lines[index].remove(etot_lines[index])
@@ -370,7 +370,7 @@ def set_etot_input_by_file(
         new_etot_lines.append("MP_N123 = {}\n".format(MP_N123))
 
     new_etot_lines.append("\n")
-
+    
     return "".join(new_etot_lines)
 
 def is_alive_atomic_energy(movement_list:list):
