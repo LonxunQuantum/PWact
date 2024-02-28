@@ -330,14 +330,12 @@ def set_etot_input_by_file(
     index = 0
     new_etot_lines = []
     while index < len(etot_lines):
-        if "in.atom".upper() in etot_lines[index].upper(): # change the in.atom
-            # etot_lines[index] = "in.atom = {}\n".format(os.path.basename(atom_config))
-            new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
+        new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
         # remove the in.skf in.psp* in etot.input file if exists
-        elif "in.skf".upper() in etot_lines[index].upper():
+        if "in.skf".upper() in etot_lines[index].upper():
             # etot_lines[index].remove(etot_lines[index])
             pass
-        elif "IN.PSP" in etot_lines[index].upper():
+        elif "IN.PSP" in etot_lines[index].upper(): # to avoid the new_etot_lines add 'IN.PSP' and 'in.skf' in etot_lines
             pass
             # etot_lines.remove(etot_lines[index])
         else:
