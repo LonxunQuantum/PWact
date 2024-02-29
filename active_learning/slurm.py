@@ -52,6 +52,12 @@ class SlurmJob(object):
         status = self.update_status()
         print ("# job {} submitted!".format(self.job_id))
 
+    def scancel_job(self):
+        ret = Popen (["scancel " + self.job_id], shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = ret.communicate()
+        print("scancel job {}".format(self.job_id))
+        print(str(stderr, encoding='ascii'))
+
     def update_status(self):
         self.status = self.check_status()
         return self.status
@@ -73,16 +79,23 @@ class SlurmJob(object):
                 sys.exit ()
         status_line = str(stdout, encoding='ascii').split ('\n')[-2]
         status_word = status_line.split ()[4]
-        if      status_word in ["PD","CF","S"] :
+        if   status_word in ["PD","CF","S"] :
             return JobStatus.waiting
-        elif    status_word in ["R","CG"] :
+        elif status_word in ["R","CG"] :
             return JobStatus.running
-        elif    status_word in ["C","E","K","BF","CA","CD","F","NF","PR","SE","ST","TO"] :
+        elif status_word in ["C","E","K","BF","CA","CD","F","NF","PR","SE","ST","TO"] :
             if os.path.exists (self.job_finish_tag) :
                 print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
                 return JobStatus.finished
             else :
                 return JobStatus.terminated
+        elif status_word in ["RH"] : #for job in 'RH' status, scancel the job and return terminated
+                self.scancel_job()
+                if os.path.exists (self.job_finish_tag) :
+                    print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
+                    return JobStatus.finished
+                else:
+                    return JobStatus.terminated
         else :
             return JobStatus.unknown
 
@@ -166,18 +179,26 @@ class Mission(object):
             error_log_content = ""
             for error_job in error_jobs:
                 error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
-                error_log_content += "ERRIR! The cmd '{}' failed!\nThe slurm job file is {}\n"\
-                    .format(error_job.submit_cmd, 
-                    os.path.join(error_job.slurm_job_run_dir, error_job.slurm_job_name))
+                error_log_content += "JOB ERRIR! The cmd '{}' failed!\nFor more details on errors, please refer to the following documents:\n"\
+                    .format(error_job.submit_cmd)
+
+                slurm_content = "    Slurm script file is {}\n    The slurm log is {}\n"\
+                    .format(os.path.join(error_job.slurm_job_run_dir, error_job.slurm_job_name), error_log_path)
+
                 tmp_error = None
                 if error_type is not None:
                     work_dirs = error_job.get_slurm_works_dir()
-                    tmp_error = ""
-                    for _ in work_dirs:
-                        tmp_error += "{}/{}\n".format(_, error_type)
+                    if len(work_dirs) > 0:
+                        tmp_error = "    Task logs under this slurm job:\n"
+                        for _ in work_dirs:
+                            job_error_log  = "{}/{}".format(_, error_type)
+                            job_finish_tag = "{}/{}".format(_, error_job.job_finish_tag)
+                            if os.path.exists(job_error_log) and not os.path.exists(job_finish_tag):
+                                tmp_error += "        {}\n".format(job_error_log)
 
-                error_log_content += "For more details on errors, please refer to the following documents:\n"
-                error_log_content += tmp_error if tmp_error is not None else error_log_path
+                error_log_content += slurm_content
+                if tmp_error is not None:
+                    error_log_content += tmp_error
                 error_log_content += "\n\n"
             raise Exception(error_log_content)
         return True
