@@ -26,8 +26,9 @@ from active_learning.slurm import SlurmJob, Mission
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
 from utils.file_operation import write_to_file, link_file
-from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
-from data_format.configop import save_config
+from utils.app_lib.common import link_pseudo_by_atom, set_input_script
+from data_format.configop import save_config, get_atom_type
+
 class AIMD(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
         self.resource = resource
@@ -53,14 +54,14 @@ class AIMD(object):
             init_config_dirname=init_config_name, 
             init_config_path=init_config.config_file, 
             pertub_dir=self.pertub_dir,
-            dft_style=init_config.dft_style
+            dft_style=self.resource.dft_style
             )
 
             for index, config in enumerate(config_list):
                 if config_type == INIT_BULK.pertub:
                     tmp_config_dir = os.path.basename(os.path.basename(os.path.dirname(config)))
                 elif config_type == INIT_BULK.super_cell or config_type == INIT_BULK.scale:
-                    tmp_config_dir = os.path.basename(config).replace(DFT_STYLE.get_postfix(init_config.dft_style), "")
+                    tmp_config_dir = os.path.basename(config).replace(DFT_STYLE.get_postfix(self.resource.dft_style), "")
                 elif config_type == INIT_BULK.relax:
                     tmp_config_dir = INIT_BULK.relax
                 else:
@@ -72,7 +73,7 @@ class AIMD(object):
                     aimd_dir=aimd_dir, 
                     config_file=config, 
                     conifg_format=DFT_STYLE.get_format_by_postfix(os.path.basename(config)), 
-                    target_format=self.resource.dft_style,
+                    target_format=DFT_STYLE.get_pwdata_format(self.resource.dft_style, is_cp2k_coord=True),
                     input_file=init_config.aimd_input_file, 
                     kspacing=init_config.aimd_kspacing, 
                     flag_symm=init_config.aimd_flag_symm,
@@ -124,43 +125,44 @@ class AIMD(object):
     '''    
     def make_aimd_file(self, aimd_dir:str, config_file:str, conifg_format:str, target_format:str, \
                 input_file:str, kspacing:float=None, flag_symm:int=None, is_dftb:bool=False, in_skf:str=None):
-        #1. link config file
-        # target_config = link_structure(source_config = config_file, 
-        #                                 config_format=conifg_format,
-        #                                 target_dir = aimd_dir,
-        #                                 dft_style=target_format)
-
+        #1. set config file
         target_config = save_config(config=config_file, 
                                     input_format=conifg_format,
                                     wrap = False, 
                                     direct = True, 
                                     sort = True, 
-                                    save_format=target_format, 
+                                    save_format=DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_cp2k_coord=True), 
                                     save_path=aimd_dir, 
-                                    save_name=DFT_STYLE.get_normal_config(target_format))
+                                    save_name=DFT_STYLE.get_normal_config(self.resource.dft_style))
 
-        #2. from config get atom type
-        atom_type_list, _ = get_atom_type(target_config, target_format)
-        #3. set pseudo files
-        if is_dftb is False:
-            pseudo_names = link_pseudo_by_atom(self.input_param.dft_input.pseudo, aimd_dir, atom_type_list, target_format)
+        atom_type_list, _ = get_atom_type(config_file, conifg_format)
+        #2. set pseudo files
+        if not is_dftb:
+            pseudo_names = link_pseudo_by_atom(
+                pseudo_list     = self.input_param.dft_input.pseudo, 
+                target_dir      = aimd_dir, 
+                atom_order      = atom_type_list, 
+                dft_style       = self.resource.dft_style,
+                basis_set_file  =self.input_param.dft_input.basis_set_file,
+                potential_file  =self.input_param.dft_input.potential_file
+                )
         else:
+            # link in.skf path to aimd dir
             pseudo_names = []
-        #4. make dft input file
+            target_dir = os.path.join(aimd_dir, PWMAT.in_skf)
+            link_file(in_skf, target_dir)
+        #3. make dft input file
         set_input_script(
             input_file=input_file,
             config=target_config,
-            dft_style=target_format,
+            dft_style=self.resource.dft_style,
             kspacing=kspacing, 
             flag_symm=flag_symm, 
             save_dir = aimd_dir,
-            pseudo_names=pseudo_names
+            pseudo_names=pseudo_names,
+            basis_set_file_name=self.input_param.dft_input.basis_set_file,# these for cp2k
+            potential_file_name=self.input_param.dft_input.potential_file
         )
-        #5. if is use dftb
-        if in_skf is not None:
-            # link in.skf path to aimd dir
-            target_dir = os.path.join(aimd_dir, PWMAT.in_skf)
-            link_file(in_skf, target_dir)
 
     def make_aimd_slurm_job_files(self, aimd_dir_list:list[str],use_dftb: bool=False):
         group_list = split_job_for_group(self.resource.dft_resource.group_size, aimd_dir_list, self.resource.dft_resource.parallel_num)

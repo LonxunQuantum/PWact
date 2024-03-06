@@ -1,8 +1,8 @@
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT
+from utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT, CP2K
 class Resource(object):
     # _instance = None
-    def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter) -> None:
+    def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None) -> None:
         if job_type == AL_WORK.run_iter:
             self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
             if self.train_resource.number_node > 1:
@@ -33,14 +33,17 @@ class Resource(object):
 
         # check dft resource
         self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
-        self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
+        
         # dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
         # if dftb_command is not None:
         #     self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
-        if DFT_STYLE.vasp.lower() in self.dft_resource.command.lower():
-            self.dft_style = DFT_STYLE.vasp
-        elif DFT_STYLE.pwmat.lower() in self.dft_resource.command.lower():
-            self.dft_style = DFT_STYLE.pwmat
+        self.dft_style = dft_style
+        if DFT_STYLE.vasp.lower() == dft_style.lower():
+            self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
+        elif DFT_STYLE.pwmat.lower() == dft_style.lower():
+            self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
+        elif DFT_STYLE.cp2k.lower() == dft_style.lower():
+            self.dft_resource.command = "{} {} > {}".format(self.dft_resource.command, CP2K.cp2k_inp, SLURM_OUT.dft_out)
 
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):

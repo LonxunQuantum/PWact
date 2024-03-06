@@ -36,9 +36,23 @@ class SlurmJob(object):
         self.slurm_job_name = os.path.basename(script_path)
         slurm_cmd = get_slurm_sbatch_cmd(self.slurm_job_run_dir, self.slurm_job_name)
         self.submit_cmd = slurm_cmd
-        
-    def set_tag(self, tag):
+    
+    '''
+    description: 
+        the job_type could be:
+            cp2k/relax, cp2k/scf, cp2k/aimd, pwmat/relax, pwmat/scf, pwmat/aimd, vasp/relax, vasp/scf, vasp/aimd, lammps
+    param {*} self
+    param {*} tag
+    param {str} job_type
+    return {*}
+    author: wuxingxing
+    '''    
+    def set_tag(self, tag, job_type:str=None):
         self.job_finish_tag = tag
+        if job_type is not None: # use to determine if the lammps md task has terminated due to "ERROR: there are two atoms too close" reason
+            self.job_type = job_type.lower()
+        else:
+            self.job_type = None
 
     def submit(self):
         # ret = Popen([self.submit_cmd + " " + self.job_script], stdout=PIPE, stderr=PIPE, shell = True)
@@ -88,6 +102,12 @@ class SlurmJob(object):
                 print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
                 return JobStatus.finished
             else :
+                # for lammps md job, if the job stops because of 'ERROR: there are two atoms too close', set the job.status to finished
+                if self.job_type is not None and self.job_type == "lammps":
+                    end_normal = self.check_lammps_out_file()
+                    if end_normal:
+                        return JobStatus.finished
+
                 return JobStatus.terminated
         elif status_word in ["RH"] : #for job in 'RH' status, scancel the job and return terminated
                 self.scancel_job()
@@ -121,6 +141,29 @@ class SlurmJob(object):
                 work_dir = line.split()[-1].strip()
                 work_dir_list.append(work_dir)
         return work_dir_list
+
+    '''
+    description: 
+        if the job is md task, and stoped because of 'ERROR: there are two atoms too close' let the task end normally
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''    
+    def check_lammps_out_file(self):
+        # read last line of md.log file
+        md_dirs = self.get_slurm_works_dir()
+        for md_dir in md_dirs:
+            with open(os.path.join(md_dir, "md.log"), "rb") as file:
+                file.seek(-2, 2)  # 定位到文件末尾前两个字节
+                while file.read(1) != b'\n':  # 逐字节向前查找换行符
+                    file.seek(-2, 1)  # 向前移动两个字节
+                last_line = file.readline().decode().strip()  # 读取最后一行并去除换行符和空白字符
+            if "ERROR: there are two atoms" in last_line:
+                with open(os.path.join(md_dir, "tag.md.success"), 'w') as wf:
+                    wf.writelines("ERROR: there are two atoms too close")
+                return True
+            else:
+                return False
 
 
 class Mission(object):

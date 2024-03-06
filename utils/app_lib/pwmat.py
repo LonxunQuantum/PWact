@@ -330,11 +330,14 @@ def set_etot_input_by_file(
     index = 0
     new_etot_lines = []
     while index < len(etot_lines):
-        # remove the in.skf in.psp* in etot.input file if exists
-        if "in.skf".upper() in etot_lines[index].upper():
+        # remove the in.atom, in.skf in.psp* in etot.input file if exists
+        if "in.atom".upper() in etot_lines[index].upper():
             # etot_lines[index].remove(etot_lines[index])
             pass
-        elif "IN.PSP" in etot_lines[index].upper(): # to avoid the new_etot_lines add 'IN.PSP' and 'in.skf' in etot_lines
+        elif "in.skf".upper() in etot_lines[index].upper():
+            # etot_lines[index].remove(etot_lines[index])
+            pass
+        elif "IN.PSP" in etot_lines[index].upper(): # to avoid the new_etot_lines add 'IN.PSP' and 'in.skf' 'in.atom' in etot_lines
             pass
             # etot_lines.remove(etot_lines[index])
         else:
@@ -351,7 +354,8 @@ def set_etot_input_by_file(
     key_list = list(key_values)
     # set OUT.MLMD
     if "OUT.MLMD" not in key_list:
-        new_etot_lines.append("OUT.MLMD = T\n")
+        if is_scf:
+            new_etot_lines.append("OUT.MLMD = T\n")
     # # set OUT.WG OUT.RHO OUT.VR
     if "OUT.WG" not in key_list:
         etot_lines.append("OUT.WG = F\n")

@@ -21,14 +21,13 @@ from active_learning.explore.select_image import select_image
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam, MdDetail
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT
+        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
 from utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, mv_file
 from utils.app_lib.lammps import make_lammps_input
-from utils.app_lib.common import get_atom_type
-from data_format.configop import save_config
+from data_format.configop import save_config, get_atom_type
 
 import os
 import pandas as pd
@@ -176,7 +175,7 @@ class Explore(object):
                     slurm_job = SlurmJob()
                     tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), EXPLORE_FILE_STRUCTURE.md_tag)
                     tag = os.path.join(os.path.dirname(script_path),tag_name)
-                    slurm_job.set_tag(tag)
+                    slurm_job.set_tag(tag, job_type=SLURM_JOB_TYPE.lammps)
                     slurm_job.set_cmd(script_path)
                     mission.add_job(slurm_job)
 
@@ -187,13 +186,6 @@ class Explore(object):
                 
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
-        #1. set sys.config file
-        # link_structure(
-        #     source_config=self.sys_paths[sys_index].sys_config, 
-        #     config_format=self.sys_paths[sys_index].format, 
-        #     target_dir=md_dir, 
-        #     dft_style=DFT_STYLE.lammps)
-
         target_config = save_config(config=self.sys_paths[sys_index].sys_config,
                                     input_format=self.sys_paths[sys_index].format,
                                     wrap = False, 

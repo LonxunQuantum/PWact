@@ -24,9 +24,9 @@ from data_format.configop import extract_pwdata
 def run_iter():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
     machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
-    
-    resource = Resource(machine_info)
+
     input_param = InputParam(system_info)
+    resource = Resource(machine_info, dft_style=input_param.dft_style)
     os.chdir(input_param.root_dir)
     print("The work dir change to {}".format(os.getcwd()))
     record = input_param.record_file
@@ -124,7 +124,7 @@ def init_bulk():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
     machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
     input_param = InitBulkParam(system_info)
-    resource = Resource(machine_info, job_type=AL_WORK.init_bulk)
+    resource = Resource(machine_info, job_type=AL_WORK.init_bulk, dft_style=input_param.dft_style)
 
     os.chdir(input_param.root_dir)
     

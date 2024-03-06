@@ -153,13 +153,19 @@ def set_slurm_script_content(
                 
         # set conda env
         script += "\n"
-        script += CONDA_ENV
-        script += "\n"        
+        # script += CONDA_ENV
+        # script += "\n"
+
+        script += "echo \"SLURM_SUBMIT_DIR is $SLURM_SUBMIT_DIR\"\n\n"
+        script += "echo \"Starting job $SLURM_JOB_ID at \" `date`\n\n"
+        script += "echo \"Running on nodes: $SLURM_NODELIST\"\n\n"
+
         script += "start=$(date +%s)\n"
 
         # set source_list
         for source in source_list:
             script += source + "\n"
+            
         script += "\n"        
         # set module_list
         for module in module_list:
@@ -176,6 +182,10 @@ def set_slurm_script_content(
             check_info = common_check_success(task_tag, task_tag_faild)
             
         while job_id < len(group):
+            if group[job_id] == "NONE":
+                job_id += 1
+                continue
+            
             for i in range(parallel_num):
                 if group[job_id] == "NONE":
                     job_id += 1
@@ -189,10 +199,13 @@ def set_slurm_script_content(
                 job_cmd += "} &\n\n"
                 job_tag_list.append(os.path.join(group[job_id], task_tag))
                 job_id += 1
+                if job_id > len(group):
+                    break
             job_cmd += "wait\n\n"
         
         script += job_cmd
-        
+        script += "echo \"Job $SLURM_JOB_ID done at \" `date`\n\n"
+
         right_script = ""
         right_script += "    end=$(date +%s)\n"
         right_script += "    take=$(( end - start ))\n"
@@ -201,6 +214,8 @@ def set_slurm_script_content(
         error_script  = "    exit 1\n"
         
         script += get_job_tag_check_string(job_tag_list, right_script, error_script)
+
+
         return script
     
 

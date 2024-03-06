@@ -19,6 +19,8 @@ class InputParam(object):
 
         init_data = get_parameter("init_data", json_dict, [])
         self.init_data = self.get_init_data(init_data)
+        # the init data for pretraining
+        self.init_data_only_pretrain = get_parameter("init_data_only_pretrain", json_dict, False)
         
         self.train = TrainParam(json_input=json_dict["train"], cmd=MODEL_CMD.train)
         self.strategy = StrategyParam(json_dict["strategy"])
@@ -28,8 +30,8 @@ class InputParam(object):
             raise Exception("Error! The uncertainty kpu only support the optimizer LKF, please set the 'optimizer/optimizer' in train dict to 'LKF' ")
 
         self.explore = ExploreParam(json_dict["explore"])
-        dft_style = get_required_parameter("dft_style", json_dict["dft"])
-        self.scf = SCFParam(json_dict=json_dict["dft"], dft_style=dft_style, is_scf=True, root_dir = self.root_dir)
+        self.dft_style = get_required_parameter("dft_style", json_dict["dft"])
+        self.scf = SCFParam(json_dict=json_dict["dft"], dft_style=self.dft_style, is_scf=True, root_dir = self.root_dir)
 
     def to_dict(self):
         res = {}

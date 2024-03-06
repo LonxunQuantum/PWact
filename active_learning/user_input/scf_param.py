@@ -1,5 +1,5 @@
 import os
-from utils.constant import DFT_STYLE
+from utils.constant import DFT_STYLE, CP2K
 from utils.app_lib.pwmat import read_and_check_etot_input
 from utils.json_operation import get_parameter, get_required_parameter
 from utils.app_lib.common import get_vasp_pseudo_atom_type
@@ -18,9 +18,11 @@ class SCFParam(object):
         self.aimd_input_list = []
         self.scf_input_list = []
         self.pseudo = []
-
+        self.use_dftb = False
         if is_scf:
             self.scf_input_list = self.set_input(json_dict, flag_symm=0)
+            if self.scf_input_list[0].use_dftb:
+                self.use_dftb = True
         if is_aimd:
             json_aimd = get_required_parameter("aimd_input", json_dict)
             self.aimd_input_list = self.set_input(json_aimd, flag_symm=0)
@@ -28,10 +30,19 @@ class SCFParam(object):
             json_relax = get_required_parameter("relax_input", json_dict)
             self.relax_input_list = self.set_input(json_relax, flag_symm=3) 
 
-        if is_scf or is_relax or (is_aimd and self.aimd_input_list[0].use_dftb is False):
-            pseudo = get_required_parameter("pseudo", json_dict)
-        else:
-            pseudo = []
+        # self.use_dftb = True if self.scf_input_list[0].use_dftb else False
+        # set pseudo potential files
+
+        # for cp2k is some dicts, not used, just read the user input file
+        # self.basis_set_file = get_parameter("basis_set_file_name", json_dict, None)
+        # self.potential_file = get_parameter("potential_file_name", json_dict, None)
+        # self.xc_functional = get_parameter("xc_functional", json_dict, "PBE")
+        # self.potential = get_parameter("potential", json_dict, None)
+        # self.basis_set = get_parameter("basis_set", json_dict, None)
+        
+        # for pwmat, use 'pseudo' key
+        # for vasp is INCAR file, use 'pseudo' key        
+        pseudo = get_parameter("pseudo", json_dict, [])
         if isinstance(pseudo, str):
             pseudo = list(pseudo)
         for pf in pseudo:
@@ -44,19 +55,33 @@ class SCFParam(object):
             elif self.dft_style == DFT_STYLE.pwmat:
                 atom_type = os.path.basename(pf).split('.')[0]
             self.pseudo.append([pf, atom_type])
-        
+
+        # for pwmat-dftb is in_skf, a dir string
+        in_skf = get_parameter("in_skf", json_dict, None)
         self.in_skf = None
-        if is_aimd and self.aimd_input_list[0].use_dftb and self.aimd_input_list[0].use_skf:
-            IN_SKF = get_required_parameter("in_skf", json_dict)
-            self.in_skf = IN_SKF if os.path.isabs(IN_SKF) else os.path.abspath(IN_SKF)
+        if self.use_dftb:
+            if in_skf is not None:
+                self.in_skf = in_skf if os.path.isabs(in_skf) else os.path.abspath(in_skf)
+                if not os.path.exists(self.in_skf):
+                    raise Exception("ERROR! The 'in_skf' dir {} not exsit!".format(self.in_skf))
+            else:
+                raise Exception("ERROR! The 'USE_DFTB' is set in scf.input file, but the 'in_skf' dir not set!")
+        else:
+            pass
+        # for cp2k
+        self.basis_set_file = get_parameter("basis_set_file_name", json_dict, None)
+        self.potential_file = get_parameter("potential_file_name", json_dict, None)
 
     '''
     description: 
         set dft input file
         for PWmat: etot.input
         for Vasp: Incar
-        json_input: could be a dict or a list of dict for pwamt etot.input files
-                    or a string or string list for Incar file path
+        for cp2k: input.inp file
+
+        json_input: could be a string or list string, for input control file or a list files
+                    could be a dict ir dict list, mainly for pwmat to set kspacing
+
     param {*} self
     param {*} json_etot
     param {*} root_dir
@@ -74,14 +99,6 @@ class SCFParam(object):
             if not os.path.exists(input_file):
                 raise Exception("Error! The input file {} does not exist!".format(input_file))
             input_list = [DFTInput(input_file, self.dft_style, flag_symm, None)]
-        # for vasp incar: the input is a str list of multi incar files
-        elif isinstance(json_input, list) and isinstance(json_input[0], str):
-            for input_file in json_input:
-                if not os.path.isabs(input_file):
-                    input_file = os.path.join(self.root_dir, input_file)
-                if not os.path.exists(input_file):
-                    raise Exception("Error! The input file {} does not exist!".format(input_file))
-                input_list.append(DFTInput(input_file, self.dft_style, flag_symm, None))
 
         # for pwmat etot.input: the input is a dict including etot.input file path, kspacing and flag_symm
         elif isinstance(json_input, dict):
@@ -93,6 +110,16 @@ class SCFParam(object):
             flag_symm = get_parameter("flag_symm", json_input, flag_symm)
             kspacing = get_parameter("kspacing", json_input, None)
             input_list = [DFTInput(input_file, self.dft_style, flag_symm, kspacing)]
+        
+        # for vasp incar: the input is a str list of multi incar files
+        elif isinstance(json_input, list) and isinstance(json_input[0], str):
+            for input_file in json_input:
+                if not os.path.isabs(input_file):
+                    input_file = os.path.join(self.root_dir, input_file)
+                if not os.path.exists(input_file):
+                    raise Exception("Error! The input file {} does not exist!".format(input_file))
+                input_list.append(DFTInput(input_file, self.dft_style, flag_symm, None))
+
         # for pwmat etot.input: the input is a dict list: for each dict including etot.input file path, kspacing and flag_symm
         elif isinstance(json_input, list) and isinstance(json_input[0], dict):
             for json_detail in json_input:
@@ -104,12 +131,14 @@ class SCFParam(object):
                 flag_symm = get_parameter("flag_symm", json_detail, flag_symm)
                 kspacing = get_parameter("kspacing", json_detail, None)
                 input_list.append(DFTInput(input_file, self.dft_style, flag_symm, kspacing))
+                
         else:
             raise Exception("the dft input file cat not recognized!")
 
         return input_list
 
 class DFTInput(object):
+
     def __init__(self, input_file:str, dft_style:str, flag_symm:int, kspacing:int) -> None:
         # super().__init__(input_file=input_file, dft_style=dft_style)
         self.input_file = input_file
@@ -137,7 +166,6 @@ class DFTInput(object):
                 if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
                     self.use_skf = True
             
-    
     def get_input_content(self):
         if self.dft_style == DFT_STYLE.pwmat:
             return read_and_check_etot_input(self.input_file)
@@ -148,56 +176,3 @@ class DFTInput(object):
         else:
             raise Exception("the dft style {} not realized!".format(self.dft_style))    
     
-    # these code for etot.input script generated from user input param
-    # def __init_variable(self):
-    #     self.node1 = None
-    #     self.node2 = None
-    #     self.e_error = None
-    #     self.rho_error = None
-    #     self.ecut = None
-    #     self.ecut2 = None
-    #     self.kspacing = None
-    #     self.out_wg = None
-    #     self.out_rho = None
-    #     self.out = None
-    #     self.out_force = None
-    #     self.out_stress = None
-    #     self.out_mlmd = None
-    #     self.MP_N123 = None
-    #     self.SCF_ITER0_1 = None
-    #     self.SCF_ITER0_2 = None
-    #     self.energy_decomp = None
-    #     self.energy_decomp_special2 = None
-    #     self.flag_symm = None
-    #     self.icmix = None
-    #     self.smearing = None
-    #     self.sigma = None
-
-    # def set_etot_input_detail(self, json_dict):
-        # self.node1 = get_required_parameter("node1", json_dict, 1)
-        # self.node2 = get_required_parameter("node2", json_dict, 4)
-        
-        # self.e_error = get_parameter("e_error", json_dict,  1.0e-6)
-        # self.rho_error = get_parameter("rho_error", json_dict,  1.0e-4)
-        # self.ecut = get_required_parameter("ecut", json_dict)
-        # self.ecut2 = get_parameter("ecut2", json_dict,  self.ecut*4)
-        
-        # self.kspacing = get_parameter("kspacing", json_dict, 0.5)
-        
-        # self.out_wg = get_parameter("out_wg", json_dict, "F")
-        # self.out_rho = get_parameter("out_rho", json_dict, "F")
-        # self.out = get_parameter("out.vr", json_dict, "F")
-        # self.out_force = get_parameter("out_force", json_dict, "T")
-        # self.out_stress = get_parameter("out_stress", json_dict, "T")
-        # self.out_mlmd = get_parameter("out_mlmd", json_dict, "F")
-        # self.MP_N123 = get_parameter("MP_N123", json_dict, None) #MP_N123 is None then using 'kespacing' generates it
-        # self.SCF_ITER0_1 = get_parameter("SCF_ITER0_1", json_dict,  None)
-        # self.SCF_ITER0_2 = get_parameter("SCF_ITER0_2", json_dict,  None)
-        # self.energy_decomp = get_parameter("energy_decomp", json_dict,  "T")
-        # self.energy_decomp_special2 = get_parameter("energy_decomp_special2", json_dict,  "2, 0.05, 1.5")
-        # self.flag_symm = get_parameter("flag_symm", json_dict,None)
-        # self.icmix = get_parameter("icmix", json_dict, None)
-        # self.smearing = get_parameter("smearing", json_dict, None)
-        # self.sigma = get_parameter("sigma", json_dict, None)
-        # self.relax_detail = get_parameter("relax_detail", json_dict, None)
-        # self.vdw = get_parameter("vdw", json_dict, None)

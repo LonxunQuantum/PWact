@@ -131,9 +131,18 @@ class ModelTrian(object):
     author: wuxingxing
     '''
     def set_train_input_dict(self, work_dir:str=None):
+        train_json = self.input_param.train.to_dict()
         train_feature_path = []
-        for _data in self.input_param.init_data:
-            train_feature_path.append(_data)
+        if self.input_param.init_data_only_pretrain and self.iter > 0:
+            # use old model param iter.*/train/train.000/model_record/dp_model.ckpt
+            pre_model = os.path.join(self.input_param.root_dir, make_iter_name(self.iter-1), \
+                AL_STRUCTURE.train, make_train_name(0), TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
+            train_json[TRAIN_INPUT_PARAM.recover_train] = True
+            train_json[TRAIN_INPUT_PARAM.model_load_file] = pre_model
+            train_json[TRAIN_INPUT_PARAM.optimizer][TRAIN_INPUT_PARAM.reset_epoch] = True
+        else:
+            for _data in self.input_param.init_data:
+                train_feature_path.append(_data)
         # search train_feature_path in iter*/label/result/*/PWdata/*
         iter_index = get_iter_from_iter_name(self.itername)
         start_iter = 0
@@ -143,7 +152,7 @@ class ModelTrian(object):
             if len(iter_pwdata) > 0:
                 train_feature_path.extend(iter_pwdata)
             start_iter += 1
-        train_json = self.input_param.train.to_dict()
+        
         # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
         train_json[TRAIN_INPUT_PARAM.raw_files] = []

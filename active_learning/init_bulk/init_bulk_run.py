@@ -21,7 +21,7 @@ def init_bulk_run(resource: Resource, input_param:InitBulkParam):
             # do relax jobs
             relax.do_relax_jobs()
             # do post process
-            relax.do_post_process()
+        relax.do_post_process()
     # do super cell and scale
     if not duplicate_scale_done(input_param):
         duplicate_scale(resource, input_param)
@@ -65,11 +65,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
             os.makedirs(collection_work_dir)
         #1. copy relax config file
         if init_config.relax:
-            source_config = os.path.join(relax_dir, init_config_name, DFT_STYLE.get_relaxed_config(init_config.dft_style))
-            target_config = os.path.join(collection_work_dir, DFT_STYLE.get_relaxed_config(init_config.dft_style))
+            source_config = os.path.join(relax_dir, init_config_name, DFT_STYLE.get_relaxed_config(resource.dft_style))
+            target_config = os.path.join(collection_work_dir, DFT_STYLE.get_relaxed_config(resource.dft_style))
             copy_file(source_config, target_config)
         #2. copy super cell and scaled config file
-        config_template = "*{}".format(DFT_STYLE.get_postfix(init_config.dft_style))
+        config_template = "*{}".format(DFT_STYLE.get_postfix(resource.dft_style))
         source_file_list = search_files(os.path.join(duplicate_scale_dir, init_config_name), config_template)
         for file in source_file_list:
             target_file = os.path.join(collection_dir, init_config_name, os.path.basename(file))
@@ -86,7 +86,7 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         #4. copy aimd result
         source_aimd = []
         if init_config.aimd is True:
-            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, DFT_STYLE.get_aimd_config(init_config.dft_style)))
+            source_aimd = search_files(os.path.join(aimd_dir, init_config_name), "*/*{}/{}".format(INIT_BULK.aimd, DFT_STYLE.get_aimd_config(resource.dft_style)))
             if len(source_aimd) == 0:
                 continue
             source_aimd = sorted(source_aimd)

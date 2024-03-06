@@ -3,7 +3,7 @@ from active_learning.user_input.scf_param import DFTInput
 from active_learning.user_input.iter_input import SCFParam
 from utils.file_operation import str_list_format
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import DFT_STYLE
+from utils.constant import DFT_STYLE, PWDATA
 from utils.app_lib.pwmat import read_and_check_etot_input
 class InitBulkParam(object):
     def __init__(self, json_dict: dict) -> None:
@@ -54,7 +54,7 @@ class InitBulkParam(object):
 
 class Stage(object):
     def __init__(self, json_dict: dict, index:int, sys_config_prefix:str = None, dft_style:str=None) -> None:
-        self.dft_style = dft_style
+        self.dft_style = dft_style #not used
         self.config_index = index
         self.use_dftb = False
         self.use_skf = False
@@ -63,10 +63,9 @@ class Stage(object):
         self.config_file = os.path.join(sys_config_prefix, config_file) if sys_config_prefix is not None else config_file
         if not os.path.exists:
             raise Exception("ERROR! The sys_config {} file does not exist!".format(self.config_file))
-        self.format = get_parameter("format", json_dict, DFT_STYLE.pwmat).lower()
+        self.format = get_parameter("format", json_dict, PWDATA.pwmat_config).lower()
         self.pbc = get_parameter("pbc", json_dict, [1,1,1])
         # extract config file to Config object, then use it
-        # self.config = extract_config(self.config_file, self.format)
         self.relax = get_parameter("relax", json_dict, True)
         self.relax_input_idx = get_parameter("relax_input_idx", json_dict, 0)
         self.relax_input_file = None

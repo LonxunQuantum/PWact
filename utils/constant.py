@@ -30,6 +30,18 @@ class SLURM_OUT:
     md_out = "md.log"
     kpu_out = "kpu.log"
 
+class SLURM_JOB_TYPE:
+    cp2k_relax = "cp2k/relax"
+    cp2k_scf = "cp2k/scf"
+    cp2k_aimd = "cp2k/aimd"
+    pwmat_relax = "pwmat/relax"
+    pwmat_scf = "pwmat/scf"
+    pwmat_aimd = "pwmat/aimd"
+    vasp_relax = "vasp/relax"
+    vasp_scf = "vasp/scf"
+    vasp_aimd = "vasp/aimd"
+    lammps = "lammps"
+
 '''
 description: 
     training commands
@@ -69,6 +81,9 @@ class TRAIN_INPUT_PARAM:
     model_load_file = "model_load_file"
     test_dir_name = "test_dir_name"
     work_dir = "work_dir"
+    optimizer = "optimizer"
+    reset_epoch = "reset_epoch"
+    #epoch
 
 '''
 description: 
@@ -93,6 +108,24 @@ class FORCEFILED:
 
 '''
 description: 
+    pwdata format
+return {*}
+author: wuxingxing
+'''
+class PWDATA:
+    pwmat_config = "pwmat/config"
+    vasp_poscar = "vasp/poscar"
+    lammps_dump = "lammps/dump"
+    lammps_lmp = "lammps/lmp"
+    pwmat_movement = "pwmat/movement"
+    vasp_outcar = "vasp/outcar"
+    extxyz = "extxyz"
+    vasp_xml = "vasp/xml"
+    cp2k_md = 'cp2k/md'
+    cp2k_scf = 'cp2k/scf'
+
+'''
+description: 
     DFT apps command
 return {*}
 author: wuxingxing
@@ -103,19 +136,45 @@ class DFT_STYLE:
     cp2k = "cp2k"
     lammps = "lammps"
 
+    '''
+    description: 
+        is_cp2k_coord: if ture, for cp2k, return 'cp2k/scf', it is used to extract config from cp2k log file
+    return {*}
+    author: wuxingxing
+    '''
     @staticmethod
-    def get_normal_config(dft_style:str):
-        if dft_style == DFT_STYLE.pwmat:
-            return PWMAT.atom_config
-        elif dft_style == DFT_STYLE.vasp:
-            return VASP.poscar
+    def get_pwdata_format(dft_style:str, is_cp2k_coord:bool=False, is_dftb:bool=False):
+        if is_dftb:
+            return "movement"
+        if dft_style.lower() == DFT_STYLE.pwmat.lower() : # atom.config
+            return PWDATA.pwmat_config
+        if dft_style.lower() == DFT_STYLE.vasp.lower(): 
+            return PWDATA.vasp_poscar
+        if dft_style.lower() == DFT_STYLE.cp2k.lower(): 
+            if is_cp2k_coord:
+                return PWDATA.cp2k_scf
+            else:
+                return PWDATA.vasp_poscar
 
     @staticmethod
-    def get_scf_config(dft_style:str):
+    def get_normal_config(dft_style:str): # the input config file name of pwmat vasp and cp2k
+        if dft_style == DFT_STYLE.pwmat: # atom.config
+            return PWMAT.atom_config
+        elif dft_style == DFT_STYLE.vasp: # poscar
+            return VASP.poscar
+        elif dft_style == DFT_STYLE.cp2k: # coord.xyz, for cp2k, the position of atoms writed in coord.xyz file, the cell is in inp file
+            return CP2K.coord_xyz
+
+    @staticmethod
+    def get_scf_config(dft_style:str, is_dftb:bool=False):
+        if is_dftb:
+            return PWMAT.MOVEMENT
         if dft_style == DFT_STYLE.pwmat:
             return PWMAT.out_mlmd
         elif dft_style == DFT_STYLE.vasp:
             return VASP.outcar
+        elif dft_style == DFT_STYLE.cp2k:
+            return CP2K.final_config
 
     
     @staticmethod
@@ -124,16 +183,23 @@ class DFT_STYLE:
             return ".config"
         elif dft_style == DFT_STYLE.vasp:
             return ".poscar"
+        elif dft_style == DFT_STYLE.cp2k:
+            return ".poscar"
 
     @staticmethod
     def get_format_by_postfix(file_name:str):
         if "config" in file_name.lower()\
             or "pwmat" in file_name.lower():
-            return DFT_STYLE.pwmat
+            return PWDATA.pwmat_config
         elif "poscar" in file_name.lower() or\
             "contcor" in file_name.lower() or\
                 "vasp" in file_name.lower():
-            return DFT_STYLE.vasp
+            return PWDATA.vasp_poscar
+        elif "inp" in file_name.lower() or\
+            "xyz" in file_name.lower() or\
+                "cp2k" in file_name.lower():
+            raise Exception()
+        
 
     '''
     description: 
@@ -148,7 +214,9 @@ class DFT_STYLE:
             return PWMAT.final_config
         elif dft_style == DFT_STYLE.vasp:
             return VASP.final_config
-               
+        elif dft_style == DFT_STYLE.cp2k:
+            return CP2K.final_config
+            
     '''
     description: 
         scf files need reserved
@@ -165,6 +233,9 @@ class DFT_STYLE:
             scf_list = PWMAT.scf_reserve_list
         elif dft_style == DFT_STYLE.vasp:
             scf_list = VASP.scf_reserve_list
+        elif dft_style == DFT_STYLE.cp2k:
+            scf_list = CP2K.scf_reserve_list
+
         scf_list = [_.lower() for _ in scf_list]
         return scf_list
     
@@ -185,12 +256,16 @@ class DFT_STYLE:
             return PWMAT.MOVEMENT
         elif dft_style == DFT_STYLE.vasp:
             return VASP.outcar
+        elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
+            return CP2K.traj_xyz
 
     @staticmethod
     def get_pertub_config(dft_style:str):
         if dft_style == DFT_STYLE.pwmat:
             return "pertub.config"
         elif dft_style == DFT_STYLE.vasp:
+            return "pertub.poscar"
+        elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
             return "pertub.poscar"
 
     @staticmethod
@@ -199,6 +274,9 @@ class DFT_STYLE:
             return "super_cell.config"
         elif dft_style == DFT_STYLE.vasp:
             return "super_cell.poscar"
+        elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
+            return "super_cell.poscar"
+
     
     @staticmethod
     def get_scale_config(dft_style:str):
@@ -206,12 +284,16 @@ class DFT_STYLE:
             return "scale.config"
         elif dft_style == DFT_STYLE.vasp:
             return "scale.poscar"
+        elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
+            return "scale.poscar"
 
     @staticmethod
     def get_relaxed_config(dft_style:str):
         if dft_style == DFT_STYLE.pwmat:
             return "relaxed.config"
         elif dft_style == DFT_STYLE.vasp:
+            return "relaxed.poscar"
+        elif dft_style == DFT_STYLE.cp2k: # for cp2k, convert the output content to poscar format
             return "relaxed.poscar"
     
 class DFT_TYPE:
@@ -344,7 +426,7 @@ class PWMAT:
     MOVEMENT="MOVEMENT"
     MOVEMENT_low = "movement"
     kspacing_default = 0.5
-    scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", ".config"]
+    scf_reserve_list = ["REPORT", "etot.input","OUT.MLMD", ".config", "MOVEMENT"]
     final_config = "final.config"#relaxed result
 
 class VASP:
@@ -354,6 +436,14 @@ class VASP:
     final_config = "CONTCAR"#relaxed result
     outcar = "OUTCAR"
     scf_reserve_list = ["OUTCAR","POSCAR", "INCAR"]
+
+class CP2K:
+    cp2k_inp  = "cp2k.inp"
+    coord_xyz = "coord.xyz"
+    cell_txt = "cell.txt"
+    traj_xyz = "traj.xyz"
+    final_config = "dft.log" # relaxed result , the cp2k output should be extraced from log
+    scf_reserve_list = [""] # scf reserve file list
 
 class UNCERTAINTY:
     kpu = "KPU"

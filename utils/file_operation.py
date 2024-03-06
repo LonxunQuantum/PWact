@@ -32,7 +32,7 @@ def file_read_last_line(file_path, type_name="int"):
             last_line = rf.readlines()[-1]  #the last line
             if '[]' in last_line:
                 return []
-            last_line = last_line.replace(" ","")[1:-2].split(',')
+            last_line = last_line.replace(" ","").split(',')
     if len(last_line) > 0 and type_name == "int":
         last_line = [int(i) for i in last_line]
     if len(last_line) > 0 and type_name == "float":

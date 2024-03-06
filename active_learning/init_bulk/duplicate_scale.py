@@ -20,8 +20,8 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
         config_file = init_config.config_file
         init_config_name = "init_config_{}".format(init_config.config_index)
         if init_config.relax:
-            config_file = os.path.join(relax_dir, init_config_name, DFT_STYLE.get_relaxed_config(init_config.dft_style))
-            config_format = resource.dft_style
+            config_file = os.path.join(relax_dir, init_config_name, DFT_STYLE.get_relaxed_config(resource.dft_style))
+            config_format = DFT_STYLE.get_format_by_postfix(DFT_STYLE.get_relaxed_config(resource.dft_style))
         else:
             config_file = init_config.config_file
         super_cell_scale_dir = os.path.join(duplicate_scale_dir, init_config_name)
@@ -30,25 +30,21 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
             if not os.path.exists(super_cell_scale_dir):
                 os.makedirs(super_cell_scale_dir)
             # super_content, lattic_index = super_cell(init_config.super_cell, config, super_cell_config)
-            super_cell_config = os.path.join(super_cell_scale_dir, DFT_STYLE.get_super_cell_config(init_config.dft_style))
+
+            super_cell_config = os.path.join(super_cell_scale_dir, DFT_STYLE.get_super_cell_config(resource.dft_style))
+
             if not os.path.exists(super_cell_config):
-                # super_cell_ase(
-                #     super_cell=init_config.super_cell,
-                #     source_config=config_file, 
-                #     save_config=super_cell_config, 
-                #     dft_stype=resource.dft_style, 
-                #     source_config_format=config_format)
                 do_super_cell(config=config_file,
                     input_format=config_format,
                     supercell_matrix=init_config.super_cell, 
                     pbc=init_config.pbc, 
                     direct = True, 
                     sort = True,
-                    save_format=resource.dft_style, 
+                    save_format=DFT_STYLE.get_pwdata_format(resource.dft_style), #cp2k ->vasp/poscar
                     save_path=super_cell_scale_dir, 
                     save_name=DFT_STYLE.get_super_cell_config(resource.dft_style))
-
-            config_format = resource.dft_style
+            config_format = DFT_STYLE.get_pwdata_format(resource.dft_style)
+            
             
         if init_config.scale is not None:
             for s_index, scale in enumerate(init_config.scale):
@@ -120,12 +116,12 @@ def do_pertub_work(resource: Resource, input_param:InitBulkParam):
             init_config_dirname=init_config_name, 
             init_config_path=init_config.config_file, 
             pertub_dir=None,
-            dft_style=init_config.dft_style
+            dft_style=resource.dft_style
             )
         print(pert_config_list)
         for index, config in enumerate(pert_config_list):
             if config_type == INIT_BULK.scale: 
-                tmp_config_dir = os.path.basename(os.path.basename(config).replace(DFT_STYLE.get_postfix(init_config.dft_style), "")) # 0.8_scale.poscar or 0.8_scale.config -> 0.8_scale
+                tmp_config_dir = os.path.basename(os.path.basename(config).replace(DFT_STYLE.get_postfix(resource.dft_style), "")) # 0.8_scale.poscar or 0.8_scale.config -> 0.8_scale
             else:
                 tmp_config_dir = config_type
             work_dir = os.path.join(pertub_dir, init_config_name, tmp_config_dir)
@@ -133,16 +129,7 @@ def do_pertub_work(resource: Resource, input_param:InitBulkParam):
                 os.makedirs(work_dir)
             target_config = os.path.join(work_dir, os.path.basename(config))
             copy_file(config, target_config)
-            # BatchPerturbStructure.batch_perturb(
-            #     work_dir=work_dir,
-            #     source_config = target_config,
-            #     source_format = DFT_STYLE.get_format_by_postfix(os.path.basename(target_config)),
-            #     target_format = init_config.dft_style,
-            #     save_post_name=DFT_STYLE.get_pertub_config(dft_style=init_config.dft_style), #for vasp is pertub.poscar, for pwmat is pertub.config
-            #     pert_num=init_config.perturb,
-            #     cell_pert_fraction=init_config.cell_pert_fraction,
-            #     atom_pert_distance=init_config.atom_pert_distance
-            # )
+            
             do_pertub(config=target_config, 
                 input_format=DFT_STYLE.get_format_by_postfix(os.path.basename(target_config)),
                 pert_num=init_config.perturb, 
@@ -150,7 +137,7 @@ def do_pertub_work(resource: Resource, input_param:InitBulkParam):
                 atom_pert_distance=init_config.atom_pert_distance, 
                 direct=True,
                 sort=True, 
-                save_format=resource.dft_style, 
+                save_format=DFT_STYLE.get_pwdata_format(resource.dft_style), 
                 save_path=work_dir, 
                 save_name=DFT_STYLE.get_pertub_config(resource.dft_style)
                 )

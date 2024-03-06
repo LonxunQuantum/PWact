@@ -22,11 +22,12 @@ from active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 from active_learning.slurm import SlurmJob, Mission
 from utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from utils.constant import INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE
+from utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE, PWDATA
 
 from utils.file_operation import write_to_file, link_file, search_files, mv_file, del_file, copy_file
-from utils.app_lib.common import link_pseudo_by_atom, get_atom_type, set_input_script
-from data_format.configop import save_config
+from utils.app_lib.common import link_pseudo_by_atom, set_input_script
+from data_format.configop import save_config, get_atom_type
+
 class Relax(object):
     def __init__(self, resource: Resource, input_param:InitBulkParam):
         self.resource = resource
@@ -50,7 +51,7 @@ class Relax(object):
                 relax_path = os.path.join(self.relax_dir, init_config_name)
                 if not os.path.exists(relax_path):
                     os.makedirs(relax_path)
-                self.make_relax_file(relax_path, init_conifg=init_config)
+                self.make_relax_file(relax_path, init_config=init_config)
                 relax_paths.append(relax_path)
         # make slurm script and slurm job
         self.make_relax_slurm_job_files(relax_paths)
@@ -80,34 +81,46 @@ class Relax(object):
                 mission.all_job_finished(error_type=SLURM_OUT.dft_out)
                 # mission.move_slurm_log_to_slurm_work_dir()
                 
-    def make_relax_file(self, relax_path, init_conifg:Stage):
-        #1. link config file
-        # target_config = link_structure(source_config = init_conifg.config_file, 
-        #                                 config_format=init_conifg.format,
-        #                                 target_dir = relax_path,
-        #                                 dft_style=self.input_param.dft_style)
-                                        
-        target_config = save_config(config=init_conifg.config_file,
-                                    input_format=init_conifg.format,
+    def make_relax_file(self, relax_path, init_config:Stage):
+        #1. set config file
+        target_config = save_config(config=init_config.config_file,
+                                    input_format=init_config.format,
                                     wrap = False, 
                                     direct = True, 
                                     sort = True, 
-                                    save_format=self.input_param.dft_style, 
+                                    save_format=DFT_STYLE.get_pwdata_format(dft_style=self.input_param.dft_style, is_cp2k_coord=True), 
                                     save_path=relax_path, 
-                                    save_name=DFT_STYLE.get_relaxed_config(self.input_param.dft_style))
+                                    save_name=DFT_STYLE.get_normal_config(self.input_param.dft_style))
 
-        atom_type_list, _ = get_atom_type(target_config, self.input_param.dft_style)
+        atom_type_list, _ = get_atom_type(init_config.config_file, init_config.format)
         #2. set pseudo files
-        pseudo_names = link_pseudo_by_atom(self.input_param.dft_input.pseudo, relax_path, atom_type_list, self.input_param.dft_style)
-        #3. make input file, for vasp is INCAR, for PWMAT is etot.input
+        if not init_config.use_dftb:
+            pseudo_names = link_pseudo_by_atom(
+                pseudo_list     = self.input_param.dft_input.pseudo, 
+                target_dir      = relax_path, 
+                atom_order      = atom_type_list, 
+                dft_style       = self.input_param.dft_style,
+                basis_set_file  =self.input_param.dft_input.basis_set_file,
+                potential_file  =self.input_param.dft_input.potential_file)
+        else:
+            # link in.skf path to aimd dir
+            target_dir = os.path.join(relax_path, PWMAT.in_skf)
+            link_file(self.input_param.dft_input.in_skf, target_dir)
+            pseudo_names = []
+        #3. make input file, for vasp is INCAR, for PWMAT is etot.input, for cp2k is inp file
         set_input_script(
-            input_file=init_conifg.relax_input_file,
+            input_file=init_config.relax_input_file,
             config=target_config,
-            kspacing=init_conifg.relax_kspacing, 
-            flag_symm=init_conifg.relax_flag_symm, 
+            kspacing=init_config.relax_kspacing, 
+            flag_symm=init_config.relax_flag_symm, 
             dft_style=self.input_param.dft_style,
             save_dir=relax_path,
-            pseudo_names=pseudo_names
+            pseudo_names=pseudo_names,
+            basis_set_file_name=self.input_param.dft_input.basis_set_file,# these for cp2k
+            potential_file_name=self.input_param.dft_input.potential_file,
+            # xc_functional=self.input_param.dft_input.xc_functional,
+            # potential=self.input_param.dft_input.potential,
+            # basis_set=self.input_param.dft_input.basis_set
         )
 
     def make_relax_slurm_job_files(self, relax_sub_list:list[str]):
@@ -144,13 +157,33 @@ class Relax(object):
             slurm_job_file = os.path.join(self.relax_dir, slurm_script_name)
             write_to_file(slurm_job_file, group_slurm_script, "w")
 
+    '''
+    description: 
+     after relax calculate:
+        for PWmat: change the 'final.config' to relaxed.config
+        for VASP: change the 'CONTCAR' to  relaxed.poscar
+        for CP2k: change the 'dft.log' to relaxed.poscar
+        
+    param {*} self
+    return {*}
+    author: wuxingxing
+    '''    
     def do_post_process(self):
         # no use thie code
         # 1. change the name of relaxed config to relaxed.config for pwmat or relaxed.poscar to vasp
         final_configs = search_files(self.relax_dir, "*/{}".format(DFT_STYLE.get_relaxed_original_name(self.resource.dft_style)))
         for final_config in final_configs:
             target_config = os.path.join(os.path.dirname(final_config), DFT_STYLE.get_relaxed_config(self.resource.dft_style))
-            copy_file(final_config, target_config)
+            if self.resource.dft_style == DFT_STYLE.cp2k:
+                save_config(config=final_config, #convert cp2k scf to poscar format
+                        input_format=PWDATA.cp2k_scf, 
+                        direct=False, 
+                        sort=False, 
+                        save_path=os.path.dirname(target_config), 
+                        save_name=os.path.basename(target_config),
+                        save_format=PWDATA.vasp_poscar)
+            else:
+                copy_file(final_config, target_config)
                 
         # 2. link relax_dir to relax_real_dir
         if not os.path.exists(self.relax_dir):
