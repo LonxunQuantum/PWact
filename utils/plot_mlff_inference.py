@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import sys
 import numpy as np
 import numpy.linalg as LA
-import matplotlib
 import matplotlib.pyplot as plt
 import os
 

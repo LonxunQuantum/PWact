@@ -2,7 +2,6 @@ import os
 from utils.constant import ELEMENTTABLE, DFT_STYLE, ELEMENTTABLE_2, CP2K, PWDATA
 from utils.app_lib.cp2k import make_cp2k_xyz
 from utils.file_operation import write_to_file
-# from pwdata.build.supercells import 
 from pwdata.main import Config
 
 from pwdata import perturb_structure, make_supercell, scale_cell
