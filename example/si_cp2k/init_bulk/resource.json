@@ -1,0 +1,20 @@
+{
+    "DFT": {
+        "command":"mpirun -np $SLURM_NTASKS cp2k.popt",
+        "task_run_num":1,
+        "number_node": 1,
+        "cpu_per_node": 64,
+        "gpu_per_node": 0,
+        "group_size": 3,
+        "queue_name": "cpu",
+        "custom_flags": [
+	    "#SBATCH -x gn18,gn43,gn66,login"
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/modulefiles/cp2k/cp2k_2024_1"
+        ],
+        "module_list": [
+            
+        ]
+    }
+}

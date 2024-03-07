@@ -1,0 +1,130 @@
+{
+    "work_dir": "/data/home/wuxingxing/datas/al_dir/si_6_cp2k",
+    "record_file" : "si.al",
+
+    "reserve_work":true,
+    "reserve_feature": false,
+    "reserve_md_traj": false,
+    "reserve_scf_files": false,
+
+    "init_data": [
+        "/data/home/wuxingxing/codespace/al_pwmlff/al_dir/si_6_cp2k/init_bulk/collection/init_config_0/PWdata"
+    ],
+
+    "train": {
+        "model_type": "DP",
+        "atom_type": [
+            14
+        ],
+        "max_neigh_num": 100,
+        "seed": 2024,
+        "model_num": 1,
+        "data_shuffle":true,
+        "train_valid_ratio": 0.8,
+        "recover_train": true,
+        "model": {
+            "descriptor": {
+                "Rmax": 6.0,
+                "Rmin": 0.5,
+                "M2": 16,
+                "network_size": [
+                    25,
+                    25,
+                    25
+                ]
+            },
+            "fitting_net": {
+                "network_size": [
+                    50,
+                    50,
+                    50,
+                    1
+                ]
+            }
+        },
+        "optimizer": {
+            "optimizer": "LKF",
+            "epochs": 30,
+            "batch_size": 4,
+            "print_freq": 10,
+            "block_size": 5120,
+            "kalman_lambda": 0.98,
+            "kalman_nue": 0.9987,
+            "train_energy": true,
+            "train_force": true,
+            "train_ei": false,
+            "train_virial": false,
+            "train_egroup": false,
+            "pre_fac_force": 2.0,
+            "pre_fac_etot": 1.0,
+            "pre_fac_ei": 1.0,
+            "pre_fac_virial": 1.0,
+            "pre_fac_egroup": 0.1
+        }
+    },
+
+    "strategy": {
+
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.1,
+        "upper_model_deiv_f": 0.2,
+        "_strategy":"KPU or committee, if committee: model_num more than 1, 是否采用devi force virial 组合需要讨论",
+        "model_num": 4,
+
+        "base_kpu_max_images":200,
+        "base_kpu_mvm_ratio":0.2,
+        "kpu_lower":0.5,
+        "kpu_upper":1.5,
+        "_kpu":"base_kpu_max_images max select images for kpu, ratio is mvms used in base kpu", 
+
+        "max_select": 50,
+        "md_type":2,
+        "_md_type": "1 for libtorch md, 2 for fortran md",
+        "compress": false,
+        "compress_order":3,
+        "Compress_dx":0.01
+    },
+
+    "explore": {
+        "sys_config_prefix": "./init_bulk/collection/init_config_0/relax_pertub",
+        "sys_configs": [
+                        {"config":"1_pertub.poscar", "format":"vasp/poscar"},
+                        {"config":"2_pertub.poscar", "format":"vasp/poscar"},
+                        {"config":"3_pertub.poscar", "format":"vasp/poscar"},
+                        {"config":"4_pertub.poscar", "format":"vasp/poscar"}
+            ],
+        "md_jobs": [
+            [{  
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [0, 1],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            } ],
+            [{
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [0, 1],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            }]
+        ]
+   },
+
+    "DFT": {
+        "dft_style": "cp2k",
+        "input": "/data/home/wuxingxing/datas/al_dir/si_6_cp2k/scf.inp",
+        "basis_set_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/BASIS_MOLOPT",
+        "potential_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/POTENTIAL"
+    }
+}

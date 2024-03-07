@@ -1,0 +1,68 @@
+{
+    "train": {
+        "command": "PWMLFF",
+        "group_size": 1,
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+            "#SBATCH -x gn43,gn66,login"
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh",
+            "conda activate torch2_feat",
+            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/bin:$PATH",
+            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/:$PYTHONPATH"
+        ],
+        "module_list": [
+            "cuda/11.6",
+            "intel/2020"
+        ]
+    },
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi_gpu",
+        "_command": "mpirun -np 8 lmp_mpi",
+        "group_size": 2,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh",
+            "conda activate torch2_feat",
+
+            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/bin:$PATH",
+            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/:$PYTHONPATH",
+
+            "export PATH=/data/home/wuxingxing/codespace/lammps_torch/src:$PATH",
+
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(python3 -c \"import torch; print(torch.__path__[0])\")/lib:$(dirname $(dirname $(which python3)))/lib:$(dirname $(dirname $(which PWMLFF)))/op/build/lib"
+        ],
+        "module_list": [
+            "cuda/11.6",
+            "intel/2020"
+        ]
+    },
+    "DFT": {
+        "command":"mpirun -np $SLURM_NTASKS cp2k.popt",
+        "task_run_num":1,
+        "number_node": 1,
+        "cpu_per_node": 64,
+        "gpu_per_node": 0,
+        "group_size": 3,
+        "queue_name": "cpu",
+        "custom_flags": [
+	    "#SBATCH -x gn18,gn43,gn66,login"
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/modulefiles/cp2k/cp2k_2024_1"
+        ],
+        "module_list": [
+            
+        ]
+    }
+}
