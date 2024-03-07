@@ -259,34 +259,34 @@ def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
         temp_exinput[print_level_line] = "    PRINT_LEVEL medium\n"
     return "".join(temp_exinput)
 
-if __name__=="__main__":
-    import dpdata
-    poscar = "/data/home/wuxingxing/datas/al_dir/si_4_vasp/init_bulk/collection/init_config_0/0.9_scale.poscar"
-    sys_data = dpdata.System(poscar).data
+# if __name__=="__main__":
+    # import dpdata
+    # poscar = "/data/home/wuxingxing/datas/al_dir/si_4_vasp/init_bulk/collection/init_config_0/0.9_scale.poscar"
+    # sys_data = dpdata.System(poscar).data
     
-    from pwdata.main import Configs
-    from pwdata.calculators.const import ELEMENTTABLE_2
-    image = Configs.read(format="pwmat", data_path="/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/atom.config")
-    image = image._set_cartesian() if image.cartesian is False else image._set_cartesian()
-    potential = {"Si":"GTH-PBE"}
-    basis_set = {"Si":"DZVP-MOLOPT-SR-GTH-q4"}
-    atom_types_image = []
-    for atom in image.atom_types_image:
-        atom_types_image.append(ELEMENTTABLE_2[atom])
-    coord_xyz = make_cp2k_xyz(
-        atom_types = atom_types_image,
-        coord_list = image.position
-    )
-    with open("/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/coord.xyz", "w") as fp:
-        fp.write(coord_xyz)
+    # from pwdata.main import Configs
+    # from pwdata.calculators.const import ELEMENTTABLE_2
+    # image = Configs.read(format="pwmat", data_path="/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/atom.config")
+    # image = image._set_cartesian() if image.cartesian is False else image._set_cartesian()
+    # potential = {"Si":"GTH-PBE"}
+    # basis_set = {"Si":"DZVP-MOLOPT-SR-GTH-q4"}
+    # atom_types_image = []
+    # for atom in image.atom_types_image:
+    #     atom_types_image.append(ELEMENTTABLE_2[atom])
+    # coord_xyz = make_cp2k_xyz(
+    #     atom_types = atom_types_image,
+    #     coord_list = image.position
+    # )
+    # with open("/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/coord.xyz", "w") as fp:
+    #     fp.write(coord_xyz)
     
-    make_cp2k_input(
-        cell = image.lattice,
-        atom_names=["Si"],
-        basis_set_file_name="BASIS_SET_FILE",
-        potential_file_name="POTENTIAL_FILE",
-        xc_functional="PBE",
-        potential=potential,
-        basis_set=basis_set,
-        coord_content=coord_xyz
-    )
+    # make_cp2k_input(
+    #     cell = image.lattice,
+    #     atom_names=["Si"],
+    #     basis_set_file_name="BASIS_SET_FILE",
+    #     potential_file_name="POTENTIAL_FILE",
+    #     xc_functional="PBE",
+    #     potential=potential,
+    #     basis_set=basis_set,
+    #     coord_content=coord_xyz
+    # )
