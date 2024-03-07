@@ -106,8 +106,10 @@ class SlurmJob(object):
                 if self.job_type is not None and self.job_type == "lammps":
                     end_normal = self.check_lammps_out_file()
                     if end_normal:
+                        with open(self.job_finish_tag, 'w') as wf:
+                            wf.writelines("Job done!")
+                        print("job {} finished: the cmd is {}.".format(self.job_id, self.submit_cmd))
                         return JobStatus.finished
-
                 return JobStatus.terminated
         elif status_word in ["RH"] : #for job in 'RH' status, scancel the job and return terminated
                 self.scancel_job()
@@ -153,17 +155,30 @@ class SlurmJob(object):
         # read last line of md.log file
         md_dirs = self.get_slurm_works_dir()
         for md_dir in md_dirs:
-            with open(os.path.join(md_dir, "md.log"), "rb") as file:
+            tag_md_file = os.path.join(md_dir, "tag.md.success")
+            md_log = os.path.join(md_dir, "md.log")
+            if os.path.exists(tag_md_file):
+                continue
+            if not os.path.exists(md_log):
+                return False
+
+            with open(md_log, "rb") as file:
                 file.seek(-2, 2)  # 定位到文件末尾前两个字节
                 while file.read(1) != b'\n':  # 逐字节向前查找换行符
                     file.seek(-2, 1)  # 向前移动两个字节
                 last_line = file.readline().decode().strip()  # 读取最后一行并去除换行符和空白字符
             if "ERROR: there are two atoms" in last_line:
-                with open(os.path.join(md_dir, "tag.md.success"), 'w') as wf:
+                with open(tag_md_file, 'w') as wf:
                     wf.writelines("ERROR: there are two atoms too close")
+                return True
+            elif "Total wall time" in last_line:
+                with open(tag_md_file, 'w') as wf:
+                    wf.writelines("Job Done!")
                 return True
             else:
                 return False
+
+        return True
 
 
 class Mission(object):

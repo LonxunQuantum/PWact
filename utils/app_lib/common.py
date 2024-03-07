@@ -127,6 +127,7 @@ def set_input_script(
         # inp file, cell cood add to inp file
         script = make_cp2k_input_from_external(
             cell=cell,
+            coord_file_name = os.path.join(os.path.basename(config)),
             exinput_path=input_file
             )
         write_to_file(target_file, script, "w")

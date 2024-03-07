@@ -1,5 +1,6 @@
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT, CP2K
+from utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT, CP2K, LAMMPS
+
 class Resource(object):
     # _instance = None
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None) -> None:
@@ -15,21 +16,7 @@ class Resource(object):
             self.train_resource.command = self.train_resource.command.upper()
              
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
-            self.explore_resource.command = "{} > {}".format(self.explore_resource.command, SLURM_OUT.md_out)
-
-            # check explore resource
-            # cmd_type = self.explore_resource.command.split()[3]
-            # cal_num = int(self.explore_resource.command.split()[2])
-            # if cmd_type == LAMMPS_CMD.lmp_mpi_gpu:
-            #     if self.explore_resource.gpu_per_node < cal_num:
-            #         error_log = "Error! the gpus in commond {} is {}, exceeds the 'gpu_per_node' {} in explore"\
-            #             .format(self.explore_resource.command, cal_num, self.explore_resource.gpu_per_node)
-            #         raise Exception(error_log)
-            # check if the gpus in node more than limit
-            # check the node to set to 1
-            # if self.explore_resource.number_node > 1:
-            #     self.explore_resource.number_node = 1
-            #     print("Warining: the resouce of node in explore automatically adjust to 1")
+            self.explore_resource.command = "{} -in {} > {}".format(self.explore_resource.command, LAMMPS.input_lammps, SLURM_OUT.md_out)
 
         # check dft resource
         self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))

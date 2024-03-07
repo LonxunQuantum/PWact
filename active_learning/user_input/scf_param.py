@@ -26,9 +26,13 @@ class SCFParam(object):
         if is_aimd:
             json_aimd = get_required_parameter("aimd_input", json_dict)
             self.aimd_input_list = self.set_input(json_aimd, flag_symm=0)
+            if self.aimd_input_list[0].use_dftb:
+                self.use_dftb = True
         if is_relax:
             json_relax = get_required_parameter("relax_input", json_dict)
             self.relax_input_list = self.set_input(json_relax, flag_symm=3) 
+            if self.relax_input_list[0].use_dftb:
+                self.use_dftb = True
 
         # self.use_dftb = True if self.scf_input_list[0].use_dftb else False
         # set pseudo potential files

@@ -186,7 +186,7 @@ param {*} exinput_path
 return {*}
 author: wuxingxing
 '''
-def make_cp2k_input_from_external(cell, exinput_path):
+def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
    
     # insert the cell information
     # covert cell to cell string
@@ -230,7 +230,7 @@ def make_cp2k_input_from_external(cell, exinput_path):
     temp_exinput = exinput[:start_subsys+1]
     # add coord
     temp_exinput.append("    &COORD\n")
-    temp_exinput.append("        @include coord.xyz\n")
+    temp_exinput.append("        @include {}\n".format(coord_file_name))
     # temp_exinput.append("        COORD_FILE_FORMAT XYZ\n")
     temp_exinput.append("    &END COORD\n")
     #add cell

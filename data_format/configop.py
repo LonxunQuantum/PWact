@@ -33,7 +33,8 @@ author: wuxingxing
 def save_config(config, input_format:str = None, wrap = False, direct = True, sort = True, \
         save_format:str=None, save_path:str=None, save_name:str=None, atom_names: list[str] = None):
     config = Config.read(format=input_format, data_path=config, atom_names=atom_names)
-
+    if isinstance(config, list): # for lammps dump traj, config will be list
+        config = config[0]
     if save_format == PWDATA.cp2k_scf:
         # make coord.xyz used by cp2k for every task 
         config = config._set_cartesian() if config.cartesian is False else config._set_cartesian()
@@ -81,10 +82,7 @@ def read_cp2k_xyz(config_file:str):
 
 def do_super_cell(config, input_format:str=None, supercell_matrix:list[int]=None, pbc:list[int]=[1, 1, 1], direct = True, sort = True, \
                     save_format:str=None, save_path:str=None, save_name:str=None):
-    if isinstance(config, str):
-        input_format = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        save_format  = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        config = Config.read(format=input_format, data_path=config, atom_names=None)
+    config = Config.read(format=input_format, data_path=config, atom_names=None)
     # Make a supercell     
     supercell = make_supercell(config, supercell_matrix, pbc)
     # Write out the structure
@@ -97,10 +95,7 @@ def do_super_cell(config, input_format:str=None, supercell_matrix:list[int]=None
 
 def do_scale(config, input_format:str=None, scale_factor:float=None, 
             direct:bool=True, sort:bool=True, save_format:str=None, save_path:str=None, save_name:str=None):
-    if isinstance(config, str):
-        input_format = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        save_format  = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        config = Config.read(format=input_format, data_path=config)
+    config = Config.read(format=input_format, data_path=config)
     scaled_struct = scale_cell(config, scale_factor)
     scaled_struct.to(output_path = save_path,
                     data_name = save_name,
@@ -112,10 +107,7 @@ def do_scale(config, input_format:str=None, scale_factor:float=None,
 
 def do_pertub(config, input_format:str=None, pert_num:int=None, cell_pert_fraction:float=None, atom_pert_distance:float=None, \
         direct:bool=True, sort:bool=True, save_format:str=None, save_path:str=None, save_name:str=None):
-    if isinstance(config, str):
-        # input_format = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        # save_format  = DFT_STYLE.vasp if input_format == DFT_STYLE.cp2k else input_format
-        config = Config.read(format=input_format, data_path=config)
+    config = Config.read(format=input_format, data_path=config)
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -162,34 +154,41 @@ def extract_pwdata(data_list:list[str],
             datasets_path = os.path.dirname(os.path.join(os.getcwd(), datasets_path))
         else:
             datasets_path = os.path.dirname(datasets_path)
-        multi_data = []
+        image_data = None
         for data_path in data_list:
-            image_data = Config.read(data_format, data_path)
-            multi_data += image_data[::interval]
-        get_all = Config.get(multi_data)
-        Config.save(image_data_dict=get_all, 
-                    datasets_path=datasets_path, 
+            if image_data is not None:
+                tmp_config = Config(data_format, data_path)
+                # if not isinstance(tmp_config, list):
+                #     tmp_config = [tmp_config]
+                image_data.append(tmp_config)
+            else:
+                image_data = Config(data_format, data_path)
+                # if not isinstance(image_data, list):
+                #     image_data = [image_data]
+        image_data.to(
+                    output_path=datasets_path,
+                    save_format=PWDATA.pwmlff_npy,
+                    data_name=data_name,
+                    train_ratio = train_valid_ratio, 
                     train_data_path="train", 
                     valid_data_path="valid", 
-                    train_ratio = train_valid_ratio, 
                     random=data_shuffle,
                     seed = 2024, 
-                    retain_raw = False,
-                    data_name = data_name
+                    retain_raw = False
                     )
     else:
         for data_path in data_list:
             image_data = Config.read(data_format, data_path)
-            get_all = Config.get(image_data)
-            Config.save(image_data_dict=get_all, 
-                        datasets_path=datasets_path,
-                        train_data_path="train", 
-                        valid_data_path="valid", 
-                        train_ratio = train_valid_ratio, 
-                        random=data_shuffle,
-                        seed = 2024, 
-                        retain_raw = False
-                    )
+            image_data.to(
+                output_path=datasets_path,
+                save_format=PWDATA.pwmlff_npy,
+                train_ratio = train_valid_ratio, 
+                train_data_path="train", 
+                valid_data_path="valid", 
+                random=data_shuffle,
+                seed = 2024, 
+                retain_raw = False
+                )
     
 if __name__ == "__main__":
     in_config = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub/0_pertub.config"

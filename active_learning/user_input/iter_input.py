@@ -1,12 +1,12 @@
 import os
 from utils.json_operation import get_parameter, get_required_parameter
-from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, DFT_STYLE
+from utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWDATA
 from active_learning.user_input.train_param.train_param import TrainParam
 from active_learning.user_input.scf_param import SCFParam
 class InputParam(object):
     # _instance = None
     def __init__(self, json_dict: dict) -> None:
-        self.root_dir = get_parameter("work_dir", json_dict, "work_dir")
+        self.root_dir = get_parameter("work_dir", json_dict, "./")
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
         self.record_file = get_parameter("record_file", json_dict, "al.record")
@@ -110,10 +110,10 @@ class ExploreParam(object):
         for sys_config in sys_configs:
             if isinstance(sys_config, str):
                 config = os.path.join(sys_config_prefix, sys_config) if sys_config_prefix is not None else sys_config
-                config_format = DFT_STYLE.pwmat
+                config_format = PWDATA.pwmat_config
             elif isinstance(sys_config, dict):
                 config = os.path.join(sys_config_prefix, sys_config["config"]) if sys_config_prefix is not None else sys_config["config"]
-                config_format = get_parameter("format", sys_config, DFT_STYLE.pwmat)  
+                config_format = get_parameter("format", sys_config, PWDATA.pwmat_config)
             if not os.path.exists:
                 raise Exception("ERROR! The sys_config {} file does not exist!".format(config))
             self.sys_configs.append(SysConfig(config, config_format))

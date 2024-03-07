@@ -55,19 +55,12 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
                     input_scale_config = super_cell_config # config from super cell
                 else:
                     input_scale_config = config_file # config from relax or init config
-                # if not os.path.exists(save_scale_config):
-                    # scale_config(
-                    #     input_scale_config=input_scale_config,
-                    #      scale=scale, 
-                    #      save_scale_config=save_scale_config, 
-                    #      dft_style=resource.dft_style, 
-                    #      source_config_format=config_format)
                 do_scale(config=input_scale_config,
                     input_format = config_format,
                     scale_factor=scale, 
                     direct=True,
                     sort=True, 
-                    save_format=resource.dft_style,
+                    save_format=DFT_STYLE.get_pwdata_format(resource.dft_style),
                     save_path=super_cell_scale_dir, 
                     save_name="{}_{}".format(scale, DFT_STYLE.get_scale_config(resource.dft_style))
                     )

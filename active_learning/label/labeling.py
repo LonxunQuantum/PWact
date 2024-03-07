@@ -145,16 +145,17 @@ class Labeling(object):
     def make_scf_file(self, scf_dir:str, tarj_lmp:str, atom_names:list[str]=None):
         config_index = os.path.basename(tarj_lmp).split('.')[0]
         target_config = save_config(config=tarj_lmp,
-                                    input_format=LAMMPS.traj_format,
+                                    input_format=PWDATA.lammps_dump,
                                     wrap = False, 
                                     direct = True, 
                                     sort = True, 
-                                    save_format=self.resource.dft_style, 
+                                    save_format=DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_cp2k_coord=True),
                                     save_path=scf_dir, 
-                                    save_name="{}{}".format(config_index, DFT_STYLE.get_postfix(self.resource.dft_style)),# for cp2k this param will be set as coord.xzy
+                                    save_name="{}{}".format(config_index, DFT_STYLE.get_normal_config(self.resource.dft_style)),# for cp2k this param will be set as coord.xzy
                                     atom_names=atom_names)
-        #2. from config get atom type
-        atom_type_list, _ = get_atom_type(target_config, self.resource.dft_style)
+
+        #2.
+        atom_type_list = atom_names
         #1. set pseudo files
         if not self.input_param.scf.use_dftb:
             pseudo_names = link_pseudo_by_atom(
@@ -262,23 +263,19 @@ class Labeling(object):
                 target_scf_dir = scf_dir.replace(TEMP_STRUCTURE.tmp_run_iter_dir, "") 
                 copy_dir(scf_dir, target_scf_dir)
             else:
-                # for cp2k, copy all datas
-                if self.resource.dft_style == DFT_STYLE.cp2k:
-                    copy_dir(scf_dir, target_scf_dir)
-                else:
-                    scf_files = os.listdir(scf_dir)
-                    for scf_file in scf_files:
-                        scf_file_path = os.path.join(scf_dir, scf_file)
-                        if scf_file.lower() in DFT_STYLE.get_scf_reserve_list(self.resource.dft_style) \
-                            and scf_file.lower() not in DFT_STYLE.get_scf_del_list():# for pwmat final.config
-                            copy_file(scf_file_path, scf_file_path.replace(TEMP_STRUCTURE.tmp_run_iter_dir, ""))
+                scf_files = os.listdir(scf_dir)
+                for scf_file in scf_files:
+                    scf_file_path = os.path.join(scf_dir, scf_file)
+                    if scf_file.lower() in DFT_STYLE.get_scf_reserve_list(self.resource.dft_style) \
+                        and scf_file.lower() not in DFT_STYLE.get_scf_del_list():# for pwmat final.config
+                        copy_file(scf_file_path, scf_file_path.replace(TEMP_STRUCTURE.tmp_run_iter_dir, ""))
 
         # scf files to pwdata format
         scf_configs = self.collect_scf_configs()
         for scf_md in scf_configs:
             datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
             extract_pwdata(data_list=scf_md,
-                data_format      =DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_dftb=self.input_param.scf.use_dftb),
+                data_format      =DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_cp2k_coord=True, is_dftb=self.input_param.scf.use_dftb),
                 datasets_path    =os.path.join(self.result_dir, datasets_path_name),
                 train_valid_ratio=self.input_param.train.train_valid_ratio, 
                 data_shuffle     =self.input_param.train.data_shuffle, 

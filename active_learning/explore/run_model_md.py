@@ -21,7 +21,7 @@ from active_learning.explore.select_image import select_image
 from active_learning.user_input.resource import Resource
 from active_learning.user_input.iter_input import InputParam, MdDetail
 from utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE
+        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE, PWDATA
 
 from utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
@@ -118,19 +118,22 @@ class Explore(object):
             tag = os.path.join(self.md_dir, tag_name)
             gpu_per_node = None
             cpu_per_node = 1
-            if self.resource.explore_resource.gpu_per_node > 0:
-                if self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
-                    gpu_per_node = 1
-                    cpu_per_node = 1
-                    run_cmd = "mpirun -np {} {} -in {} >> {} ".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
-                else:
-                    cpu_per_node = self.resource.explore_resource.gpu_per_node
-                    gpu_per_node = self.resource.explore_resource.gpu_per_node
-                    run_cmd = "mpirun -np {} {} -in {} >> {} ".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
-            else:
-                cpu_per_node = self.resource.explore_resource.cpu_per_node
-                run_cmd = "mpirun -np {} {} -in {} >> {} ".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPS.input_lammps, SLURM_OUT.md_out)
-                
+
+            # if self.resource.explore_resource.gpu_per_node > 0:
+            #     if self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
+            #         gpu_per_node = 1
+            #         cpu_per_node = 1
+            #         run_cmd = "mpirun -np {} {} -in {} > {} ".format(1, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
+            #     else:
+            #         cpu_per_node = self.resource.explore_resource.gpu_per_node
+            #         gpu_per_node = self.resource.explore_resource.gpu_per_node
+            #         run_cmd = "mpirun -np {} {} -in {} > {} ".format(self.resource.explore_resource.gpu_per_node, LAMMPS_CMD.lmp_mpi_gpu, LAMMPS.input_lammps, SLURM_OUT.md_out)
+            # else:
+            #     cpu_per_node = self.resource.explore_resource.cpu_per_node
+            #     run_cmd = "mpirun -np {} {} -in {} > {} ".format(self.resource.explore_resource.cpu_per_node, LAMMPS_CMD.lmp_mpi, LAMMPS.input_lammps, SLURM_OUT.md_out)
+
+            run_cmd = self.resource.explore_resource.command
+
             group_slurm_script = set_slurm_script_content(
                             gpu_per_node=gpu_per_node, 
                             number_node = self.resource.explore_resource.number_node, #1
@@ -191,7 +194,7 @@ class Explore(object):
                                     wrap = False, 
                                     direct = True, 
                                     sort = True, 
-                                    save_format=DFT_STYLE.lammps, 
+                                    save_format=PWDATA.lammps_lmp, 
                                     save_path=md_dir, 
                                     save_name=LAMMPS.lammps_sys_config)
 

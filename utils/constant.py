@@ -123,6 +123,7 @@ class PWDATA:
     vasp_xml = "vasp/xml"
     cp2k_md = 'cp2k/md'
     cp2k_scf = 'cp2k/scf'
+    pwmlff_npy = "pwmlff/npy"
 
 '''
 description: 
@@ -198,7 +199,10 @@ class DFT_STYLE:
         elif "inp" in file_name.lower() or\
             "xyz" in file_name.lower() or\
                 "cp2k" in file_name.lower():
-            raise Exception()
+            return PWDATA.cp2k_scf
+        elif CP2K.final_config.lower() in file_name.lower():
+            return PWDATA.cp2k_scf
+
         
 
     '''
@@ -257,7 +261,16 @@ class DFT_STYLE:
         elif dft_style == DFT_STYLE.vasp:
             return VASP.outcar
         elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
-            return CP2K.traj_xyz
+            return CP2K.final_config
+
+    @staticmethod
+    def get_aimd_config_format(dft_style:str):
+        if dft_style == DFT_STYLE.pwmat:
+            return PWDATA.pwmat_movement
+        elif dft_style == DFT_STYLE.vasp:
+            return PWDATA.vasp_outcar
+        elif dft_style == DFT_STYLE.cp2k:# for cp2k, convert the output content to poscar format
+            return PWDATA.cp2k_md
 
     @staticmethod
     def get_pertub_config(dft_style:str):
@@ -443,7 +456,7 @@ class CP2K:
     cell_txt = "cell.txt"
     traj_xyz = "traj.xyz"
     final_config = "dft.log" # relaxed result , the cp2k output should be extraced from log
-    scf_reserve_list = [""] # scf reserve file list
+    scf_reserve_list = ["cp2k.inp", "dft.log", "coord.xyz"] # scf reserve file list
 
 class UNCERTAINTY:
     kpu = "KPU"
