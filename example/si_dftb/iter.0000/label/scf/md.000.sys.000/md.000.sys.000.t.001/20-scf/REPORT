@@ -1,0 +1,20 @@
+           1           1
+ USE_DFTB  = T
+DFTB_DETAIL =  1  1  0   500   0.10000E-04  1  1
+ JOB       = SCF
+ IN.SKF= 
+ ./in_skf//                                                                     
+                                                                                
+                                           
+SCC_MAXITER=    500
+SCC_TOLERANCE=    0.10000E-04
+ELEC_TEMP=    300.000
+CHARGE =      0.000
+SPIN =     1
+ RANDOM_SEED=       123456
+ IN.SYMM   =  F
+ IN.KPT    =  F
+ SYMM_PREC =    0.10000E-04
+ MP_N123 =      2      2      2      0      0      0      0
+ NUM_KPT =            8
+ total computation time (sec)=   6.65175830945373     

@@ -50,12 +50,35 @@ class Resource(object):
         custom_flags = get_parameter("custom_flags", json_dict, [])
         source_list = get_parameter("source_list", json_dict, [])
         module_list = get_parameter("module_list", json_dict, [])
-        resource = ResourceDetail(command, group_size, parallel_num, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, source_list, module_list)
+        env_list = get_parameter("env_list", json_dict, [])
+
+        env_script = ""
+        if len(source_list) > 0:
+            for source in source_list:
+                if "source" != source.split()[0].lower():
+                    tmp_source = "source {}\n".format(source)
+                else:
+                    tmp_source = "{}\n".format(source)
+                env_script += tmp_source
+        
+        if len(env_list) > 0:
+            for source in env_list:
+                env_script += source + "\n"
+
+        if len(module_list) > 0:
+            for source in module_list:
+                if "module" != source.split()[0].lower():
+                    tmp_source = "module load {}\n".format(source)
+                else:
+                    tmp_source = "{}\n".format(source)
+                env_script += tmp_source
+
+        resource = ResourceDetail(command, group_size, parallel_num, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, env_script)
         return resource
 
 class ResourceDetail(object):
     def __init__(self, command:str, group_size:int , parallel_num:int, number_node:int , gpu_per_node:int , cpu_per_node:int ,\
-                  queue_name:str, custom_flags:list[str], source_list:list[str], module_list:list[str]) -> None:
+                  queue_name:str, custom_flags:list[str], env_script:str) -> None:
         self.command = command
         self.group_size = group_size
         self.parallel_num = parallel_num
@@ -64,8 +87,7 @@ class ResourceDetail(object):
         self.cpu_per_node = cpu_per_node
         self.queue_name = queue_name
         self.custom_flags = custom_flags
-        self.source_list = source_list
-        self.module_list = module_list
+        self.env_script = env_script
 
         if self.gpu_per_node is None and self.cpu_per_node is None:
             raise Exception("ERROR! Both CPU and GPU resources are not specified!")

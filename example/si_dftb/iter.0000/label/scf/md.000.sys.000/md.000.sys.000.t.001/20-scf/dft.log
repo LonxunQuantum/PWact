@@ -1,0 +1,148 @@
+ 
+ 20231225 1d0f491662d1cf83d0f9eea140ab0c482829a30b
+ 
+
+ ******************************************************************************
+ *                                PWmat                                       *
+ *                       VERSION   :   2.0.0                                  *
+ *                                     By support@pwmat.com, LongXun, Beijing *
+ ******************************************************************************
+ *Please cite one or both following papers:                                   *
+ *Jia, W., Fu, J., Cao, Z., Wang, L., Chi, X., Gao, W., & Wang, L. W. (2013). *
+ *Fast plane wave density functional theory molecular dynamics calculations on*
+ *multi-GPU machines. JCP, 251, 102-115.                                      *
+ *Jia, W., Cao, Z., Wang, L., Fu, J., Chi, X., Gao, W., & Wang, L. W. (2013). *
+ *The analysis of a plane wave pseudopotential density functional theory code *
+ *on a GPU machine. CPC, 184(1), 9-18.                                        *
+ ******************************************************************************
+ LICENCE TO:
+          mcloud-longxun-20220127-1
+
+ 
+ read etot.input 
+ 
+ symmetry infos:
+  pointgroup_number=1
+  n_operations=1
+  pointgroup_symbol=1
+  hall_symbol=P 1
+  hall_number=1
+ generate kpoints with spatial symmetry and time symmetry
+ input kpts in primary cell unit
+ 
+ done read etot.input 
+ 
+|===============================================================================
+|
+|  DFTB+ (Unknown release)
+|
+|  Copyright (C) 2006 - 2023  DFTB+ developers group
+|
+|===============================================================================
+|
+|  When publishing results obtained with DFTB+, please cite the following
+|  reference:
+|
+|  * DFTB+, a software package for efficient approximate density functional
+|    theory based atomistic simulations, J. Chem. Phys. 152, 124101 (2020).
+|    [doi: 10.1063/1.5143190]
+|
+|  You should also cite additional publications crediting the parametrization
+|  data you use. Please consult the documentation of the SK-files for the
+|  references.
+|
+|===============================================================================
+
+Parser version: 14
+
+--------------------------------------------------------------------------------
+Reading SK-files:
+./in_skf/Si-Si.skf
+Done.
+
+
+Processed input in HSD format written to 'dftb_pin.hsd'
+
+Starting initialization...
+--------------------------------------------------------------------------------
+WARNING!
+-> Dipole printed for extended system : value printed is not well defined
+OpenMP threads:              1
+Specified random seed:       123456
+Current stacksize:           unlimited
+Mode:                        Static calculation
+Self consistent charges:     Yes
+SCC-tolerance:                 0.100000E-04
+Max. scc iterations:                    500
+Shell resolved Hubbard:      No
+Spin polarisation:           No
+Nr. of up electrons:           128.000000
+Nr. of down electrons:         128.000000
+Periodic boundaries:         Yes
+Electronic solver:           Divide and Conquer
+Mixer:                       Broyden mixer
+Mixing parameter:                  0.200000
+Maximal SCC-cycles:                     500
+Nr. of chrg. vec. in memory:            500
+Electronic temperature:              0.950045E-03 H      0.258520E-01 eV
+Initial charges:             Set automatically (system chrg:   0.000E+00)
+Included shells:            Si:  s, p
+K-points and weights:           1:  0.000000  0.000000  0.000000     0.125000
+                                2:  0.000000  0.000000  0.282332     0.125000
+                                3:  0.000000  0.276919 -0.007234     0.125000
+                                4:  0.000000  0.276919  0.275098     0.125000
+                                5:  0.283351  0.000397  0.007515     0.125000
+                                6:  0.283351  0.000397  0.289847     0.125000
+                                7:  0.283351  0.277315  0.000281     0.125000
+                                8:  0.283351  0.277315  0.282613     0.125000
+ 
+K-points in absolute space:     1:  0.000000  0.000000  0.000000
+                                2:  0.000000  0.000000  0.013427
+                                3:  0.000000  0.012917 -0.000681
+                                4:  0.000000  0.012917  0.012745
+                                5:  0.013524  0.000037  0.000716
+                                6:  0.013524  0.000037  0.014142
+                                7:  0.013524  0.012954  0.000034
+                                8:  0.013524  0.012954  0.013461
+ 
+Using Lennard-Jones dispersion corrections
+Extra options:
+                             Mulliken analysis
+                             Force calculation
+Force type                   original
+
+--------------------------------------------------------------------------------
+
+***  Geometry step: 0
+
+ iSCC Total electronic   Diff electronic      SCC error    
+    1    0.00000000E+00    0.00000000E+00    0.89102424E-01
+    2   -0.81466679E+02   -0.81466679E+02    0.29300144E-01
+    3   -0.81471654E+02   -0.49741570E-02    0.65619330E-02
+    4   -0.81471979E+02   -0.32578227E-03    0.22678135E-02
+    5   -0.81472016E+02   -0.37009803E-04    0.51056278E-03
+    6   -0.81472020E+02   -0.34870228E-05    0.15231181E-03
+    7   -0.81472020E+02   -0.72456672E-07    0.39539177E-04
+    8   -0.81472020E+02   -0.20533989E-07    0.90115352E-05
+>> Charges saved for restart in charges.bin
+ 
+Total Energy:                      -79.9872178353 H        -2176.5629 eV
+Extrapolated to 0K:                -79.9872960398 H        -2176.5651 eV
+Total Mermin free energy:          -79.9873742442 H        -2176.5672 eV
+Force related energy:              -79.9873742442 H        -2176.5672 eV
+ 
+Volume:                              0.944515E+04 au^3   0.139963E+04 A^3
+Pressure:                           -0.814124E-04 au    -0.239523E+10 Pa
+ 
+--------------------------------------------------------------------------------
+DFTB+ running times                          cpu [s]             wall clock [s]
+--------------------------------------------------------------------------------
+Global initialisation                  +       0.02 (  1.0%)       4.27 ( 70.7%)
+Pre-SCC initialisation                 +       0.04 (  2.0%)       0.04 (  0.6%)
+SCC                                    +       1.61 ( 90.8%)       1.62 ( 26.8%)
+Post-SCC processing                    +       0.11 (  6.2%)       0.11 (  1.8%)
+--------------------------------------------------------------------------------
+Missing                                +       0.00 (  0.0%)       0.00 (  0.0%)
+Total                                  =       1.77 (100.0%)       6.04 (100.0%)
+--------------------------------------------------------------------------------
+ total computation time (sec)=   6.65175830945373     

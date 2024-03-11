@@ -165,18 +165,6 @@ class DFT_STYLE:
             return VASP.poscar
         elif dft_style == DFT_STYLE.cp2k: # coord.xyz, for cp2k, the position of atoms writed in coord.xyz file, the cell is in inp file
             return CP2K.coord_xyz
-
-    @staticmethod
-    def get_scf_config(dft_style:str, is_dftb:bool=False):
-        if is_dftb:
-            return PWMAT.MOVEMENT
-        if dft_style == DFT_STYLE.pwmat:
-            return PWMAT.out_mlmd
-        elif dft_style == DFT_STYLE.vasp:
-            return VASP.outcar
-        elif dft_style == DFT_STYLE.cp2k:
-            return CP2K.final_config
-
     
     @staticmethod
     def get_postfix(dft_style:str):
@@ -192,19 +180,27 @@ class DFT_STYLE:
         if "config" in file_name.lower()\
             or "pwmat" in file_name.lower():
             return PWDATA.pwmat_config
+        elif "movement" in file_name.lower():
+            return PWDATA.pwmat_movement
+        elif "out.mlmd" in file_name.lower():
+            return PWDATA.pwmat_movement
+            
         elif "poscar" in file_name.lower() or\
             "contcor" in file_name.lower() or\
                 "vasp" in file_name.lower():
             return PWDATA.vasp_poscar
+
+        elif "outcar" in file_name.lower():
+            return PWDATA.vasp_outcar
+
         elif "inp" in file_name.lower() or\
             "xyz" in file_name.lower() or\
                 "cp2k" in file_name.lower():
             return PWDATA.cp2k_scf
+
         elif CP2K.final_config.lower() in file_name.lower():
             return PWDATA.cp2k_scf
-
         
-
     '''
     description: 
         for pwmat is final.config
@@ -220,7 +216,19 @@ class DFT_STYLE:
             return VASP.final_config
         elif dft_style == DFT_STYLE.cp2k:
             return CP2K.final_config
-            
+
+
+    @staticmethod
+    def get_scf_config(dft_style:str, is_dftb:bool=False):
+        if is_dftb:
+            return PWMAT.MOVEMENT
+        if dft_style == DFT_STYLE.pwmat:
+            return PWMAT.out_mlmd
+        elif dft_style == DFT_STYLE.vasp:
+            return VASP.outcar
+        elif dft_style == DFT_STYLE.cp2k:
+            return CP2K.final_config
+
     '''
     description: 
         scf files need reserved
@@ -400,6 +408,8 @@ class EXPLORE_FILE_STRUCTURE:
     model_devi = "model_devi.out"
     kpu_model_devi = "kpu_model_devi.out"
     devi_columns = ["devi_force", "config_index", "file_path"]
+
+    iter_select_file = "iter_select.txt"
 
 
 class LABEL_FILE_STRUCTURE:

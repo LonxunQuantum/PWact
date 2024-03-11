@@ -1,0 +1,56 @@
+ Geometry = PwmatFormat {
+   <<< 40atom.config
+ } 
+ Hamiltonian = DFTB {
+   SCC = Yes
+  MaxSCCIterations =        500
+   SCCTolerance =   1.000000000000000E-005
+   Solver = DivideAndConquer{}
+   Filling = Fermi {
+    Temperature [K] =     300.00
+     }
+   SlaterKosterFiles = Type2FileNames {
+     Prefix = ./in_skf/
+     Separator = '-' 
+     Suffix = '.skf'
+     LowerCaseTypeName = No
+   }
+   KPointsAndWeights = {
+     0.00000000     0.00000000     0.00000000     0.12500000
+     0.00000000     0.00000000     0.28579176     0.12500000
+     0.00000000     0.27991971     0.00149404     0.12500000
+     0.00000000     0.27991971     0.28728580     0.12500000
+     0.28216774     0.00542498    -0.00135206     0.12500000
+     0.28216774     0.00542498     0.28443970     0.12500000
+     0.28216774     0.28534468     0.00014198     0.12500000
+     0.28216774     0.28534468     0.28593374     0.12500000
+   }
+   MaxAngularMomentum = {
+    Si= 'p'
+        }
+   Dispersion = LennardJones {
+     Parameters = UFFParameters{}
+     }
+   Differentiation = FiniteDiff {
+     Delta = 1.2207E-004
+     }
+   ForceEvaluation = traditional         
+   Mixer = Broyden { 
+     MixingParameter = 0.2
+    }
+ }
+ Analysis = {
+   MullikenAnalysis = Yes
+   AtomResolvedEnergies = Yes
+   PrintForces = Yes
+ }
+ ParserOptions = {
+   ParserVersion = 14
+   WriteHSDInput = Yes 
+ }
+ Options = {
+   WriteDetailedOut = Yes
+   WriteMOVEMENT= Yes
+   RandomSeed =       123456
+   WriteCharges = Yes
+ }

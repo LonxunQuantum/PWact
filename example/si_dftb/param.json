@@ -1,17 +1,15 @@
 {
-    "work_dir":"/data/home/wuxingxing/datas/al_dir/si_exp_dftb",
-
+    "work_dir": "/data/home/wuxingxing/codespace/al_pwmlff/example/si_dftb",
     "record_file" : "dftb_si.al",
 
     "reserve_work":true,
-    "reserve_feature": false,
-    "reserve_md_traj": false,
-    "reserve_scf_files": false,
+    "reserve_feature": true,
+    "reserve_md_traj": true,
+    "reserve_scf_files": true,
 
     "init_data": [
-        "./init_bulk/collection_v1/init_config_0/PWdata"
+        "./init_bulk/collection/init_config_0/PWdata"
     ],
-    "init_data_only_pretrain":true,
 
     "train": {
         "model_type": "DP",
@@ -67,36 +65,22 @@
     },
 
     "strategy": {
-
         "uncertainty":"committee",
-        "lower_model_deiv_f": 0.05,
-        "upper_model_deiv_f": 0.2,
-        "_strategy":"KPU or committee, if committee: model_num more than 1, 是否采用devi force virial 组合需要讨论",
+        "lower_model_deiv_f": 0.1,
+        "upper_model_deiv_f": 0.5,
         "model_num": 4,
-
-        "base_kpu_max_images":200,
-        "base_kpu_mvm_ratio":0.2,
-        "kpu_lower":0.5,
-        "kpu_upper":1.5,
-        "_kpu":"base_kpu_max_images max select images for kpu, ratio is mvms used in base kpu", 
-
         "max_select": 50,
-        "md_type":2,
-        "_md_type": "1 for libtorch md, 2 for fortran md",
-        "compress": false,
-        "compress_order":3,
-        "Compress_dx":0.01
+        "compress": false
     },
 
     "explore": {
-        "sys_config_prefix": "./init_bulk/collection_v1/init_config_0/init_pertub",
+        "sys_config_prefix": "./init_bulk/collection/init_config_0/relax_pertub",
         "sys_configs": [
+                        "0_pertub.config",
                         "1_pertub.config",
                         "2_pertub.config",
                         "3_pertub.config",
-                        "4_pertub.config",
-                        "5_pertub.config",
-                        "6_pertub.config"
+                        "4_pertub.config"
             ],
         "md_jobs": [
             [{  
@@ -158,9 +142,6 @@
     "DFT": {
             "dft_style": "pwmat",
             "input": "scf_etot.input",
-            "flag_symm":0,
-            "in_skf": "/data/home/wuxingxing/datas/systems/dftb/lisi",
-            "_pseudo" : ["/data/home/wuxingxing/datas/systems/NCPP-SG15-PBE/Si.SG15.PBE.UPF"],
-            "_flag":"1个整数，or scf 0 , aimd 3, 磁性体系2"
+            "in_skf": "./lisi_dftb_pseudo"
     }
 }

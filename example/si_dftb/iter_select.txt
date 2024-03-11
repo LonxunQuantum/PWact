@@ -1,0 +1,6 @@
+iter.0000  Total structures 170    accurate 5 rate 2.94%    selected 0 rate 0.00%    error 165 rate 97.06%
+
+iter.0000  Total structures 170    accurate 5 rate 2.94%    selected 4 rate 2.35%    error 161 rate 94.71%
+
+iter.0001  Total structures 404    accurate 4 rate 0.99%    selected 5 rate 1.24%    error 395 rate 97.77%
+

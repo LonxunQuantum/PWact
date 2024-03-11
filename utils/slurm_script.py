@@ -130,8 +130,7 @@ def set_slurm_script_content(
                             cpu_per_node,
                             queue_name,
                             custom_flags,
-                            source_list,
-                            module_list,
+                            env_script,
                             job_name,
                             run_cmd_template,
                             group:list[str],
@@ -163,13 +162,7 @@ def set_slurm_script_content(
         script += "start=$(date +%s)\n"
 
         # set source_list
-        for source in source_list:
-            script += source + "\n"
-            
-        script += "\n"        
-        # set module_list
-        for module in module_list:
-            script += "module load " + module + "\n"
+        script += env_script
         script += "\n"
         
         job_cmd = ""

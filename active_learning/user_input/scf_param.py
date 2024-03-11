@@ -73,8 +73,8 @@ class SCFParam(object):
         else:
             pass
         # for cp2k
-        self.basis_set_file = get_parameter("basis_set_file_name", json_dict, None)
-        self.potential_file = get_parameter("potential_file_name", json_dict, None)
+        self.basis_set_file = get_parameter("basis_set_file", json_dict, None)
+        self.potential_file = get_parameter("potential_file", json_dict, None)
 
     '''
     description: 

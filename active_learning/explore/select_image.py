@@ -51,4 +51,4 @@ def select_image(save_dir:str, devi_pd:DataFrame, lower:float, higer:float, max_
         format(error_pd.shape[0], EXPLORE_FILE_STRUCTURE.failed)
     
     write_to_file(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
-    return summary_info
+    return summary_info, summary

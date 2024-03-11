@@ -1,0 +1,7 @@
+Total structures 404    accurate 4 rate 0.99%    selected 5 rate 1.24%    error 395 rate 97.77%
+
+Select by model deviation force:
+Accurate configurations: 4, details in file accurate.csv
+        Candidate configurations: 5
+    Select details in file candidate.csv
+Error configurations: 395, details in file fail.csv

@@ -144,14 +144,18 @@ class Labeling(object):
                     
     def make_scf_file(self, scf_dir:str, tarj_lmp:str, atom_names:list[str]=None):
         config_index = os.path.basename(tarj_lmp).split('.')[0]
+        if DFT_STYLE.vasp == self.resource.dft_style: # when do scf, the vasp input file name is 'POSCAR'
+            save_name = VASP.poscar
+        else:
+            save_name="{}{}".format(config_index, DFT_STYLE.get_normal_config(self.resource.dft_style))# for cp2k this param will be set as coord.xzy
         target_config = save_config(config=tarj_lmp,
                                     input_format=PWDATA.lammps_dump,
                                     wrap = False, 
                                     direct = True, 
                                     sort = True, 
+                                    save_name = save_name,
                                     save_format=DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_cp2k_coord=True),
                                     save_path=scf_dir, 
-                                    save_name="{}{}".format(config_index, DFT_STYLE.get_normal_config(self.resource.dft_style)),# for cp2k this param will be set as coord.xzy
                                     atom_names=atom_names)
 
         #2.
@@ -205,8 +209,7 @@ class Labeling(object):
                 cpu_per_node = self.resource.dft_resource.cpu_per_node,
                 queue_name = self.resource.dft_resource.queue_name,
                 custom_flags = self.resource.dft_resource.custom_flags,
-                source_list = self.resource.dft_resource.source_list,
-                module_list = self.resource.dft_resource.module_list,
+                env_script = self.resource.dft_resource.env_script,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
@@ -236,9 +239,6 @@ class Labeling(object):
                 out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style, is_dftb=self.input_param.scf.use_dftb)))
                 # do a sorted?
                 md_sys_mlmd.append(out_mlmd_list)
-            # save_file = os.path.join(md_sys_dir, DFT_STYLE.get_aimd_config(self.resource.dft_style))
-            # merge_files_to_one(out_mlmd_list, save_file)
-            # aimd_list.append(save_file)
         return md_sys_mlmd
 
     def get_aimd_list(self):
@@ -275,7 +275,7 @@ class Labeling(object):
         for scf_md in scf_configs:
             datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
             extract_pwdata(data_list=scf_md,
-                data_format      =DFT_STYLE.get_pwdata_format(dft_style=self.resource.dft_style, is_cp2k_coord=True, is_dftb=self.input_param.scf.use_dftb),
+                data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_md[0])),
                 datasets_path    =os.path.join(self.result_dir, datasets_path_name),
                 train_valid_ratio=self.input_param.train.train_valid_ratio, 
                 data_shuffle     =self.input_param.train.data_shuffle, 

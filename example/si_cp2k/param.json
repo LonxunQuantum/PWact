@@ -124,7 +124,7 @@
     "DFT": {
         "dft_style": "cp2k",
         "input": "/data/home/wuxingxing/datas/al_dir/si_6_cp2k/scf.inp",
-        "basis_set_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/BASIS_MOLOPT",
-        "potential_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/POTENTIAL"
+        "basis_set_file":"/data/home/wuxingxing/datas/systems/cp2k/data/BASIS_MOLOPT",
+        "potential_file":"/data/home/wuxingxing/datas/systems/cp2k/data/POTENTIAL"
     }
 }

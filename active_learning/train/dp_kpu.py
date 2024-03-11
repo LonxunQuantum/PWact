@@ -108,8 +108,7 @@ class ModelKPU(object):
                 cpu_per_node = self.resource.train_resource.cpu_per_node,
                 queue_name = self.resource.train_resource.queue_name,
                 custom_flags = self.resource.train_resource.custom_flags,
-                source_list = self.resource.train_resource.source_list,
-                module_list = self.resource.train_resource.module_list,
+                env_script = self.resource.train_resource.env_script,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
@@ -206,13 +205,13 @@ class ModelKPU(object):
         # 3. select images with lower and upper limitation
         lower = np.mean(base_force_kpu)*self.input_param.strategy.kpu_lower
         higer = lower * self.input_param.strategy.kpu_upper
-        summary_info = select_image(save_dir=self.select_dir, 
+        summary_info, summary = select_image(save_dir=self.select_dir, 
                         devi_pd=devi_pd,
                         lower=lower, 
                         higer=higer, 
                         max_select=self.input_param.strategy.max_select)
         print("Image select result:\n {}".format(summary_info))
-        return summary_info
+        return summary
 
     def get_lower_from_base_kpu(self):
         base_kpu = os.path.join(self.select_dir, TRAIN_FILE_STRUCTUR.base_kpu, TRAIN_FILE_STRUCTUR.kpu_file)

@@ -135,7 +135,7 @@ return {*}
 author: wuxingxing
 '''
 def extract_pwdata(data_list:list[str], 
-                data_format:str="movement", 
+                data_format:str="pwmat/movement", 
                 datasets_path="PWdata", 
                 train_valid_ratio:float=0.8, 
                 data_shuffle:bool=True,

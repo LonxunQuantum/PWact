@@ -1,8 +1,9 @@
+#!/usr/bin/env python
 import os
 import sys
 import json
 import argparse
-from utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE
+from utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE
 from utils.format_input_output import make_iter_name
 from utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from utils.json_operation import convert_keys_to_lowercase
@@ -22,8 +23,12 @@ from data_format.configop import extract_pwdata
 
 
 def run_iter():
-    system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
-    machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
+    system_json = json.load(open(sys.argv[2]))
+    if "work_dir" in system_json.keys():
+        os.chdir(system_json["work_dir"])
+    system_info = convert_keys_to_lowercase(system_json)
+    machine_json = json.load(open(sys.argv[3]))
+    machine_info = convert_keys_to_lowercase(machine_json)
 
     input_param = InputParam(system_info)
     resource = Resource(machine_info, dft_style=input_param.dft_style)
@@ -102,10 +107,13 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
     md.do_md_jobs()
     # 4. select images
     if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
-        md.select_image_by_committee()
+        summary = md.select_image_by_committee()
         # committee: read model deviation file under md file
     elif input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper():
-        uncertainty_analyse_kpu(itername, resource, input_param)
+        summary = uncertainty_analyse_kpu(itername, resource, input_param)
+    summary = "{}  {}\n".format(itername, summary)
+    write_to_file(os.path.join(input_param.root_dir, EXPLORE_FILE_STRUCTURE.iter_select_file), summary, mode='a')
+
     print("config selection done!")
     # 5. do post process after lammps md running
     md.post_process_md()
@@ -118,7 +126,8 @@ def uncertainty_analyse_kpu(itername:str, resource : Resource, input_param: Inpu
     # 2. do kpu job
     mkpu.do_kpu_jobs()
     # 3. post process after kpu calculate: select images
-    mkpu.post_process_kpu()
+    summary = mkpu.post_process_kpu()
+    return summary
 
 def init_bulk():
     system_info = convert_keys_to_lowercase(json.load(open(sys.argv[2])))
@@ -135,7 +144,7 @@ def init_bulk():
 def to_pwdata(input_cmds:list):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
-    parser.add_argument('-f', '--format', help="specify input file format, 'vasp' or pwmat, default is 'movement'", type=str, default="movement")
+    parser.add_argument('-f', '--format', help="specify input file format, 'vasp/outcar' or 'pwmat/movement', default is 'pwmat/movement'", type=str, default="pwmat/movement")
     parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')
     parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
     parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)

@@ -1,10 +1,9 @@
 {
-    "work_dir": "/data/home/wuxingxing/datas/al_dir/si_exp_dftb/init_bulk",
-    "reserve_work": true,
+    "reserve_work": false,
     "data_shuffle":true,
     "train_valid_ratio": 0.8,
     "interval":20,
-    "sys_configs": [{"config":"init_relaxed.config", 
+    "sys_configs": [{"config":"atom.config", 
                     "relax":true, 
                     "relax_input_idx":0, 
                     "perturb":20,
@@ -44,5 +43,5 @@
             "kspacing":0.5,
             "flag_symm":"3"
         }],
-    "in_skf": "/data/home/wuxingxing/datas/systems/dftb/lisi"
+    "in_skf": "../lisi_dftb_pseudo"
 }

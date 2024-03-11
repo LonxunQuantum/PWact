@@ -142,8 +142,7 @@ class Relax(object):
                 cpu_per_node = self.resource.dft_resource.cpu_per_node,
                 queue_name = self.resource.dft_resource.queue_name,
                 custom_flags = self.resource.dft_resource.custom_flags,
-                source_list = self.resource.dft_resource.source_list,
-                module_list = self.resource.dft_resource.module_list,
+                env_script = self.resource.dft_resource.env_script,
                 job_name = jobname,
                 run_cmd_template = run_cmd,
                 group = group,
@@ -182,7 +181,7 @@ class Relax(object):
                         save_path=os.path.dirname(target_config), 
                         save_name=os.path.basename(target_config),
                         save_format=PWDATA.vasp_poscar)
-            else:
+            else:# rename final.config to relaxed.config, or contcar to relaxed.poscar
                 copy_file(final_config, target_config)
                 
         # 2. link relax_dir to relax_real_dir

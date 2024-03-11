@@ -140,8 +140,7 @@ class Explore(object):
                             cpu_per_node = cpu_per_node,
                             queue_name = self.resource.explore_resource.queue_name,
                             custom_flags = self.resource.explore_resource.custom_flags,
-                            source_list = self.resource.explore_resource.source_list,
-                            module_list = self.resource.explore_resource.module_list,
+                            env_script = self.resource.explore_resource.env_script,
                             job_name = jobname,
                             run_cmd_template = run_cmd,
                             group = group,
@@ -323,10 +322,12 @@ class Explore(object):
         devi_pd.reset_index(drop=True, inplace=True)
         devi_pd["config_index"].astype(int)
         #3. select images with lower and upper limitation
-        summary_info = select_image(save_dir=self.select_dir, 
+        summary_info, summary = select_image(save_dir=self.select_dir, 
                         devi_pd=devi_pd, 
                         lower=self.input_param.strategy.lower_model_deiv_f, 
                         higer=self.input_param.strategy.upper_model_deiv_f, 
                         max_select=self.input_param.strategy.max_select)
         print("Image select result:\n {}\n\n".format(summary_info))
+        return summary
+
     
