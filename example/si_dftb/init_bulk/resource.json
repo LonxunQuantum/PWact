@@ -1,6 +1,6 @@
 {
     "DFT": {
-        "command":"/data/home/wuxingxing/datas/systems/dftb/PWmat_dftb_20240306",
+        "command":"PWmat",
         "task_run_num":1,
         "number_node": 1,
         "cpu_per_node": 1,
@@ -13,7 +13,8 @@
             "compiler/2022.0.2",
             "mkl/2022.0.2",
             "mpi/2021.5.1",
-            "cuda/11.6"
+            "cuda/11.6",
+            "pwmat-dftb/2024.01.31-cuda-11.6"
         ],
         "source_list": [
         ],

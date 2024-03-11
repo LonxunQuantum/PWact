@@ -1,5 +1,4 @@
 {
-    "work_dir": "/data/home/wuxingxing/codespace/al_pwmlff/example/si_dftb",
     "record_file" : "dftb_si.al",
 
     "reserve_work":true,
@@ -108,34 +107,7 @@
                 "press": [ 1.0],
                 "taup": 0.5,
                 "boundary":true
-            }],
-            [{  
-                "ensemble": "nvt",
-                "nsteps": 1000,
-                "md_dt": 0.002,
-                "trj_freq": 10,
-                "sys_idx": [0, 1],
-                "_select_sys":[50, 50],
-                "temps": [500, 800],
-                "taut":0.1,
-                "press": [ 1.0],
-                "taup": 0.5,
-                "boundary":true
-            }],
-            [{  
-                "ensemble": "nvt",
-                "nsteps": 1000,
-                "md_dt": 0.002,
-                "trj_freq": 10,
-                "sys_idx": [0, 1],
-                "_select_sys":[50, 50],
-                "temps": [500, 800],
-                "taut":0.1,
-                "press": [ 1.0],
-                "taup": 0.5,
-                "boundary":true
             }]
-            
         ]
    },
 

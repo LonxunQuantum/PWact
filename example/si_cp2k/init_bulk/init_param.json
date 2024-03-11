@@ -1,11 +1,8 @@
 {
-    "work_dir": "/data/home/wuxingxing/codespace/al_pwmlff/al_dir/si_6_cp2k/init_bulk",
     "reserve_work": true,
-    
     "data_shuffle":true,
     "train_valid_ratio": 0.8,
 
-    "sys_config_prefix": "/data/home/wuxingxing/codespace/al_pwmlff/al_dir/si_6_cp2k/init_bulk",
     "sys_configs": [{"config":"atom.config", 
                     "relax":true, 
                     "relax_input_idx":0, 
@@ -27,10 +24,10 @@
                     }],
     
     "dft_style":"cp2k",
-    "basis_set_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/BASIS_MOLOPT",
-    "potential_file_name":"/data/home/wuxingxing/datas/systems/cp2k/data/POTENTIAL",
+    "basis_set_file_name":"../BASIS_MOLOPT",
+    "potential_file_name":"../POTENTIAL",
     
-    "relax_input":"/data/home/wuxingxing/codespace/al_pwmlff/al_dir/si_6_cp2k/init_bulk/relax_cp2k.inp",
-    "aimd_input":"/data/home/wuxingxing/codespace/al_pwmlff/al_dir/si_6_cp2k/init_bulk/aimd_cp2k.inp"
+    "relax_input":"relax_cp2k.inp",
+    "aimd_input":"aimd_cp2k.inp"
     
 }

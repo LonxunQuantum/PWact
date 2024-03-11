@@ -11,7 +11,7 @@
 	    "#SBATCH -x gn18,gn43,gn66,login"
         ],
         "source_list": [
-            "source /data/home/wuxingxing/modulefiles/cp2k/cp2k_2024_1"
+            "~/modulefiles/cp2k/cp2k_2024_1"
         ],
         "module_list": [
             

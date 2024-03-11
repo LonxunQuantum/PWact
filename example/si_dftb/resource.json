@@ -11,12 +11,12 @@
             "#SBATCH -x gn43,gn66,login"
         ],
         "source_list": [
-            "/data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh"
+            "~/anaconda3/etc/profile.d/conda.sh"
         ],
         "env_list": [
             "conda activate torch2_feat",
-            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/bin:$PATH",
-            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/:$PYTHONPATH"
+            "export PATH=~/codespace/PWMLFF_feat/src/bin:$PATH",
+            "export PYTHONPATH=~/codespace/PWMLFF_feat/src/:$PYTHONPATH"
         ],
         "module_list": [
             "cuda/11.6",
@@ -33,7 +33,7 @@
         "custom_flags": [
         ],
         "source_list": [
-            "/data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh"
+            "~/anaconda3/etc/profile.d/conda.sh"
         ],
         "module_list": [
             "cuda/11.6",
@@ -41,14 +41,14 @@
         ],
         "env_list":[
             "conda activate torch2_feat",
-            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/bin:$PATH",
-            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_feat/src/:$PYTHONPATH",
-            "export PATH=/data/home/wuxingxing/codespace/lammps_torch/src:$PATH",
+            "export PATH=~/codespace/PWMLFF_feat/src/bin:$PATH",
+            "export PYTHONPATH=~/codespace/PWMLFF_feat/src/:$PYTHONPATH",
+            "export PATH=~/codespace/lammps_torch/src:$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(python3 -c \"import torch; print(torch.__path__[0])\")/lib:$(dirname $(dirname $(which python3)))/lib:$(dirname $(dirname $(which PWMLFF)))/op/build/lib"
         ]
     },
     "DFT": {
-        "command":"/data/home/wuxingxing/datas/systems/dftb/PWmat_dftb_20240306",
+        "command":"PWmat",
         "number_node": 1,
         "cpu_per_node": 1,
         "gpu_per_node": 1,
@@ -60,8 +60,8 @@
         "module_list": [
             "compiler/2022.0.2",
             "mkl/2022.0.2",
-            "mpi/2021.5.1"
-
+            "mpi/2021.5.1",
+            "pwmat-dftb/2024.01.31-cuda-11.6"
         ],
         "env_list":[
             "module load cuda/11.6"
