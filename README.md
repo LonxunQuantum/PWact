@@ -22,44 +22,47 @@ You can install it through the pip command or the github source code installatio
 
 ### Code Download
 
-    git clone https://github.com/LonxunQuantum/PWMLFF_AL.git
+    git clone https://github.com/LonxunQuantum/PWact.git
 
+Then import environment variable.
+
+```
+export PATH=/data/home/wuxingxing/codespace/al_pwmlff/bin:$PATH
+```
 AL-PWMLFF is developed in Python and supports Python 3.9 and above. It is recommended to use the Python runtime environment provided by PWMLFF.
-
-### Required Libraries
 
 If you need to create a virtual environment for AL-PWMLFF separately, you only need to install the following dependent packages (compatible with your Python version, Python >= 3.9).
 ```bash
-    pip install numpy pandas tqdm pwdata
+pip install numpy pandas tqdm pwdata
 ```
 
     
 # Command List
 
-AL-PWMLFF includes the following commands, which are not case sensitive. The starting command is `PWact`, and you can also write it as `pwact` or `PWACT`.
+AL-PWMLFF includes the following commands, which are not case sensitive. The starting command is `pwact`
 
 ### 1. Display the available command list
 
 ```bash
-PWact  [ -h / --help / help ]
+pwact  [ -h / --help / help ]
 ```
 
 ### 2. Display the parameter list for cmd_name:
 
 ```bash
-PWact cmd_name -h
+pwact cmd_name -h
 ```
 
 ### 3. Initial Training Set Preparation
 
 ```bash
-PWact init_bulk param.json resource.json
+pwact init_bulk param.json resource.json
 ```
 
 ### 4. Active Learning
 
 ```bash
-PWact run param.json resource.json
+pwact run param.json resource.json
 ```
 
 For the 3-th and 4-th command above, the names of the JSON files can be modified by the user, but it is required that the input order of [`param.json`](#paramjson) and [`resouce.json`](#resourcejson) cannot be changed.
@@ -69,11 +72,11 @@ For the 3-th and 4-th command above, the names of the JSON files can be modified
 Convert MOVEMENT or OUTCAR to PWdata format
 
 ```bash
-PWact to_pwdata
+pwact to_pwdata
 ```
 
 Search for labeled datasets in the active learning directory
 
 ```bash
-PWact gather_pwdata
+pwact gather_pwdata
 ```
