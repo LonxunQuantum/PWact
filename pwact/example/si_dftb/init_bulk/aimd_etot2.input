@@ -1,0 +1,20 @@
+1 1
+USE_DFTB= T
+DFTB_DETAIL = 1, 1, 0, 500,  1e-5, 1, 1
+JOB=MD
+MD_DETAIL = 2, 20, 2.0, 300.000000, 300.000000
+
+Ecut = 50
+Ecut2 = 200
+
+E_error = 0
+Rho_error = 1E-5
+
+OUT.WG = F 
+OUT.RHO = F 
+OUT.VR = F 
+OUT.FORCE = T 
+OUT.STRESS = T 
+OUT.MLMD = T
+ENERGY_DECOMP = T, 1
+
