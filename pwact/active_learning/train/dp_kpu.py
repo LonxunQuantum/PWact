@@ -31,11 +31,11 @@ from pwact.active_learning.explore.select_image import select_image
 from pwact.utils.format_input_output import make_train_name, get_iter_from_iter_name, get_sub_md_sys_template_name,\
     get_md_sys_template_name
 from pwact.utils.constant import AL_STRUCTURE, TRAIN_FILE_STRUCTUR, MODEL_CMD, \
-    EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, TEMP_STRUCTURE
+    EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, TEMP_STRUCTURE, UNCERTAINTY
 
 from pwact.utils.file_operation import write_to_file, link_file, search_files
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
-
+from pwact.active_learning.explore.select_image import select_image
 '''
 description: model training method:
 1. go to train data path
@@ -52,12 +52,12 @@ class ModelKPU(object):
         self.itername = itername
         self.resource = resource
         self.input_param = input_param
-
         # train work dir
         self.train_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.train)
 
         # md work dir
         self.iter = get_iter_from_iter_name(self.itername)
+        self.md_job = self.input_param.explore.md_job_list[self.iter]
         self.sys_paths = self.input_param.explore.sys_configs
         # md work dir
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
@@ -70,6 +70,7 @@ class ModelKPU(object):
         self.real_select_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.select)
         self.real_kpu_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
  
+        
     def make_kpu_work(self):
         kpu_list = []
         
@@ -177,43 +178,13 @@ class ModelKPU(object):
     author: wuxingxing
     '''
     def post_process_kpu(self):
-        # 1. find kpu_info.csv files
-        kpu_info_patten =  "{}/{}".format(get_sub_md_sys_template_name(), EXPLORE_FILE_STRUCTURE.kpu_model_devi)
-        kpu_info_files = glob.glob(os.path.join(self.kpu_dir, kpu_info_patten))
-        kpu_info_files = sorted(kpu_info_files)
-        # 2. load datas
-        devi_pd = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
-        base_force_kpu = []
-        # the data format of devi_file example:
-        #     step        etot_kpu      f_kpu_mean       f_kpu_max       f_kpu_min
-        #        0            0.00           36.09          107.61            2.00
-        #        5            0.00          103.58          327.85            2.00
-        # ......
-        for devi_file in kpu_info_files:
-            devi_force = np.loadtxt(devi_file)
-            tmp_pd = pd.DataFrame()
-            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] = devi_force[:, 2]#
-            tmp_len = int(devi_force.shape[0]*0.01)
-            tmp_len = 5 if tmp_len < 5 else tmp_len
-            base_force_kpu.extend(devi_force[:, 2][:tmp_len])
-            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[1]] = devi_force[:, 0]
-            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[2]] = os.path.dirname(devi_file)
-            devi_pd = pd.concat([devi_pd, tmp_pd])
-        devi_pd.reset_index(drop=True, inplace=True)
-        devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[1]].astype(int)
-
-        # 3. select images with lower and upper limitation
-        lower = np.mean(base_force_kpu)*self.input_param.strategy.kpu_lower
-        higer = lower * self.input_param.strategy.kpu_upper
-        summary_info, summary = select_image(save_dir=self.select_dir, 
-                        devi_pd=devi_pd,
-                        lower=lower, 
-                        higer=higer, 
-                        max_select=self.input_param.strategy.max_select)
-        print("Image select result:\n {}".format(summary_info))
+        summary = select_image(
+                md_dir=self.kpu_dir, 
+                save_dir=self.select_dir,
+                md_job=self.md_job,
+                devi_name=EXPLORE_FILE_STRUCTURE.get_devi_name(UNCERTAINTY.kpu),
+                lower=self.input_param.strategy.kpu_lower,  
+                higer=self.input_param.strategy.kpu_upper
+        )
         return summary
 
-    def get_lower_from_base_kpu(self):
-        base_kpu = os.path.join(self.select_dir, TRAIN_FILE_STRUCTUR.base_kpu, TRAIN_FILE_STRUCTUR.kpu_file)
-        base = pd.read_csv(base_kpu)
-        return base["force_kpu"].mean()

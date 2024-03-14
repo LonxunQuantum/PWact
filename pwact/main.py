@@ -21,7 +21,7 @@ from pwact.active_learning.init_bulk.init_bulk_run import init_bulk_run
 from pwact.active_learning.environment import check_envs
 
 from pwact.data_format.configop import extract_pwdata
-
+from pwact.active_learning.explore.select_image import select_image
 
 def run_iter():
     system_json = json.load(open(sys.argv[2]))
@@ -108,7 +108,15 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
     md.do_md_jobs()
     # 4. select images
     if input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
-        summary = md.select_image_by_committee()
+        summary = select_image(
+                md_dir=md.md_dir, 
+                save_dir=md.select_dir,
+                md_job=md.md_job,
+                devi_name=EXPLORE_FILE_STRUCTURE.get_devi_name(UNCERTAINTY.committee),
+                lower=input_param.strategy.lower_model_deiv_f,  
+                higer=input_param.strategy.upper_model_deiv_f
+        )
+        # summary = md.select_image_by_committee()
         # committee: read model deviation file under md file
     elif input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper():
         summary = uncertainty_analyse_kpu(itername, resource, input_param)

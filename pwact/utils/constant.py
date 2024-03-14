@@ -411,6 +411,16 @@ class EXPLORE_FILE_STRUCTURE:
 
     iter_select_file = "iter_select.txt"
 
+    @staticmethod
+    def get_devi_name(data_type:str):
+        if data_type == UNCERTAINTY.committee:
+            devi_name = EXPLORE_FILE_STRUCTURE.model_devi
+        elif data_type == UNCERTAINTY.kpu:
+            devi_name = EXPLORE_FILE_STRUCTURE.kpu_model_devi
+        else:
+            raise Exception("get_devi_name error, the data_type {} not relized".format(data_type))
+        return devi_name
+
 
 class LABEL_FILE_STRUCTURE:
     scf = "scf"

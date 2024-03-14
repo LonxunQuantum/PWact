@@ -29,7 +29,7 @@ class InputParam(object):
             self.train.optimizer_param.opt_name.upper() != "LKF":
             raise Exception("Error! The uncertainty kpu only support the optimizer LKF, please set the 'optimizer/optimizer' in train dict to 'LKF' ")
 
-        self.explore = ExploreParam(json_dict["explore"])
+        self.explore = ExploreParam(json_dict["explore"], self.strategy.max_select)
         self.dft_style = get_required_parameter("dft_style", json_dict["dft"])
         self.scf = SCFParam(json_dict=json_dict["dft"], dft_style=self.dft_style, is_scf=True, root_dir = self.root_dir)
 
@@ -61,7 +61,7 @@ class StrategyParam(object):
     def __init__(self, json_dict) -> None:
         self.md_type = get_parameter("md_type", json_dict, FORCEFILED.libtorch_lmps)
         
-        self.max_select = get_parameter("max_select", json_dict, 200)
+        self.max_select = get_parameter("max_select", json_dict, None)
         self.uncertainty = get_parameter("uncertainty", json_dict, UNCERTAINTY.committee).upper()
         if self.uncertainty.upper() == UNCERTAINTY.kpu:
             self.model_num = 1
@@ -101,7 +101,7 @@ class SysConfig(object):
         self.format = format
 
 class ExploreParam(object):
-    def __init__(self, json_dict) -> None:
+    def __init__(self, json_dict, max_select:int=None) -> None:
         sys_config_prefix = get_parameter("sys_config_prefix", json_dict, None)
         sys_configs = get_required_parameter("sys_configs", json_dict)
         if isinstance(sys_configs, str) or isinstance(sys_configs, dict):
@@ -119,17 +119,17 @@ class ExploreParam(object):
             self.sys_configs.append(SysConfig(config, config_format))
         
         # set md deatils
-        self.md_job_list = self.set_md_details(json_dict["md_jobs"])
+        self.md_job_list = self.set_md_details(json_dict["md_jobs"], max_select)
         self.md_job_num = len(self.md_job_list)
 
-    def set_md_details(self, md_list_dict:list[dict]):
+    def set_md_details(self, md_list_dict:list[dict], max_select):
         iter_md:list[list[MdDetail]] = []
         for iter_index, md_dict in enumerate(md_list_dict): # for each iter
             iter_exp_md:list[MdDetail] = []
             if not isinstance(md_dict, list):
                 md_dict = [md_dict]
             for md_exp_id, md_exp in enumerate(md_dict):
-                iter_exp_md.append(MdDetail(md_exp_id, md_exp))
+                iter_exp_md.append(MdDetail(md_exp_id, md_exp, max_select))
             iter_md.append(iter_exp_md)
         return iter_md
     
@@ -138,7 +138,7 @@ class ExploreParam(object):
         return res
 
 class MdDetail(object):
-    def __init__(self, md_index: int, json_dict:dict) -> None:
+    def __init__(self, md_index: int, json_dict:dict, max_select:int=None) -> None:
         self.md_index = md_index
         self.nsteps = get_required_parameter("nsteps", json_dict)
         self.md_dt = get_parameter("md_dt", json_dict, 0.001) #fs
@@ -159,7 +159,12 @@ class MdDetail(object):
         self.sys_idx = get_required_parameter("sys_idx", json_dict)
         if not isinstance(self.sys_idx, list):
             self.sys_idx = [self.sys_idx]
-        select_sys = get_parameter("select_sys", json_dict, [])
+        select_sys = get_parameter("select_sys", json_dict, None)
+        if select_sys is None:
+            if max_select is None:
+                select_sys = 100 # if the max_select and select_sys are all None, set the select_sys to 100 as default
+            else:
+                select_sys = max_select
         if not isinstance(select_sys, list):
             select_sys = [select_sys]
         self.select_sys = []
@@ -167,8 +172,8 @@ class MdDetail(object):
             if len(select_sys) == 1:
                 for i in range(0, len(self.sys_idx)):
                     self.select_sys.append(select_sys[0])
-            elif len(self.select_sys) == len(self.sys_idx):
-                pass
+            elif len(select_sys) == len(self.sys_idx):
+                self.select_sys = select_sys
             else:
                 raise Exception("The length of the 'select_sys' array needs to be consistent with'sys_idx'" )
         

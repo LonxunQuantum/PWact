@@ -336,4 +336,4 @@ class Explore(object):
         print("Image select result:\n {}\n\n".format(summary_info))
         return summary
 
-    
+        
