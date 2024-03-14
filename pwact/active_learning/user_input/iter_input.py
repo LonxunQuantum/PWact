@@ -159,6 +159,19 @@ class MdDetail(object):
         self.sys_idx = get_required_parameter("sys_idx", json_dict)
         if not isinstance(self.sys_idx, list):
             self.sys_idx = [self.sys_idx]
+        select_sys = get_parameter("select_sys", json_dict, [])
+        if not isinstance(select_sys, list):
+            select_sys = [select_sys]
+        self.select_sys = []
+        if len(select_sys) > 0:
+            if len(select_sys) == 1:
+                for i in range(0, len(self.sys_idx)):
+                    self.select_sys.append(select_sys[0])
+            elif len(self.select_sys) == len(self.sys_idx):
+                pass
+            else:
+                raise Exception("The length of the 'select_sys' array needs to be consistent with'sys_idx'" )
+        
         self.kspacing = get_parameter("temps", json_dict, None)
         self.neigh_modify = get_parameter("neigh_modify", json_dict, 10)
         self.mass = get_parameter("mass",json_dict, None)

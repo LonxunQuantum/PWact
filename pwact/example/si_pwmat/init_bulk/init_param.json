@@ -1,11 +1,12 @@
 {
+    "work_dir": "/data/home/wuxingxing/codespace/al_pwmlff/pwact/example/si_pwmat/init_bulk",
     "reserve_work": false,
     "data_shuffle":true,
     "train_valid_ratio": 0.8,
     "sys_configs": [{"config":"atom.config", 
                     "relax":true, 
                     "relax_input_idx":0, 
-                    "perturb":20,
+                    "perturb":10,
                     "cell_pert_fraction":0.03, 
                     "atom_pert_distance":0.01, 
                     "aimd":true, 

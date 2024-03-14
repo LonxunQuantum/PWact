@@ -52,6 +52,8 @@ class SCFParam(object):
         for pf in pseudo:
             if not os.path.exists(pf):
                 raise Exception("Error! pseduo file {} does not exist!".format(pf))
+            if not os.path.isabs(pf):
+                pf = os.path.abspath(pf)
             # for vasp pseudo files, read the pseduo files and get the atom type in pseduo
             if self.dft_style == DFT_STYLE.vasp:
                 atom_type = get_vasp_pseudo_atom_type(pf)

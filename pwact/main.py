@@ -244,6 +244,9 @@ def main():
 
     elif "init_bulk".upper() == sys.argv[1].upper():
         init_bulk()
+    elif "draw".upper() == sys.argv[1].upper():
+        from pwact.active_learning.draw.draw_pictures import draw_pictures
+        draw_pictures(sys.argv[2:])
 
     elif "int_surface".upper() == sys.argv[1].upper():
         init_surface()

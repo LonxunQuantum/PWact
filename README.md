@@ -80,3 +80,14 @@ Search for labeled datasets in the active learning directory
 ```bash
 pwact gather_pwdata
 ```
+
+### examples download
+from github
+``` 
+https://github.com/LonxunQuantum/PWact/tree/main/pwact/example
+```
+
+from BaiduNetdisk included the calculation results of examples
+```
+https://pan.baidu.com/s/14E0u_7cpntiBZgg-C1S5XA?pwd=pwmt
+```

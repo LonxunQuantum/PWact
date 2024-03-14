@@ -20,4 +20,11 @@ def cmd_infos():
     cmd_info += "gather_pwdata".lower() + "\n"
     cmd_info += "you could use this method to extract pwdatas after active learing done.\nFor more detail for this command, you could use 'PWact gather_pwdata -h'\n\n"
     
+    cmd_info += "\n\n"
+    cmd_info += "examples of pwact are located at the dir 'pwact/example'\n"
+    cmd_info += "you can alse download them from github link:\n"
+    cmd_info += "https://github.com/LonxunQuantum/PWact/tree/main/pwact/example\n\n"
+    cmd_info += "or download from BaiduNetdisk included the calculation results of examples:\n"
+    cmd_info += "https://pan.baidu.com/s/14E0u_7cpntiBZgg-C1S5XA?pwd=pwmt\n\n"
+
     return cmd_info

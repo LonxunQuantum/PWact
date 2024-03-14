@@ -1,15 +1,10 @@
 {
     "DFT": {
         "command":"vasp_gam",
-        "_task_run_num":1,
         "number_node": 1,
-        "cpu_per_node": 12,
-        "_gpu_per_node": 4,
-        "_group_size": 1,
-        "queue_name": "cpu,new3080ti,3080ti,3090",
+        "cpu_per_node": 64,
+        "queue_name": "cpu",
         "custom_flags": [
-        ],
-        "_custom_flags": [
         ],
         "module_list": [
             "vasp/6.4.2"
