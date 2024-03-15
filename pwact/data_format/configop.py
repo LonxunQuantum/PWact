@@ -176,7 +176,7 @@ def extract_pwdata(data_list:list[str],
                     )
     else:
         for data_path in data_list:
-            image_data = Config.read(data_format, data_path)
+            image_data = Config(data_format, data_path)
             image_data.to(
                 output_path=datasets_path,
                 save_format=PWDATA.pwmlff_npy,
