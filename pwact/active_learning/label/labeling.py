@@ -236,7 +236,7 @@ class Labeling(object):
         for md_sys_dir in md_sys_dir_list:
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
-                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style, is_dftb=self.input_param.scf.use_dftb)))
+                out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
                 md_sys_mlmd.append(out_mlmd_list)
         return md_sys_mlmd

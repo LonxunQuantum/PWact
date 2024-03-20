@@ -144,9 +144,7 @@ class DFT_STYLE:
     author: wuxingxing
     '''
     @staticmethod
-    def get_pwdata_format(dft_style:str, is_cp2k_coord:bool=False, is_dftb:bool=False):
-        if is_dftb:
-            return "movement"
+    def get_pwdata_format(dft_style:str, is_cp2k_coord:bool=False):
         if dft_style.lower() == DFT_STYLE.pwmat.lower() : # atom.config
             return PWDATA.pwmat_config
         if dft_style.lower() == DFT_STYLE.vasp.lower(): 
@@ -219,9 +217,7 @@ class DFT_STYLE:
 
 
     @staticmethod
-    def get_scf_config(dft_style:str, is_dftb:bool=False):
-        if is_dftb:
-            return PWMAT.MOVEMENT
+    def get_scf_config(dft_style:str):
         if dft_style == DFT_STYLE.pwmat:
             return PWMAT.out_mlmd
         elif dft_style == DFT_STYLE.vasp:
