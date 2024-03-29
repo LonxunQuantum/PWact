@@ -85,6 +85,8 @@ return {*}
 author: wuxingxing
 '''
 def write_to_file(file_path, line, mode='w'):
+    if not os.path.exists(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
     with open(file_path, mode) as wf:
         wf.write(line)
 
@@ -102,8 +104,8 @@ def merge_files_to_one(file_list:list[str], save_file:str):
             with open(file, 'r') as rf:
                 content = rf.read()
             wf.write(content)
-            if index < len(file_list) - 1:
-                wf.write("\n")
+            # if index < len(file_list) - 1:
+            #     wf.write("\n")
         
 '''
 description: 

@@ -1,4 +1,6 @@
 import os
+import glob
+
 from pwact.utils.json_operation import get_parameter, get_required_parameter
 from pwact.utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWDATA
 from pwact.active_learning.user_input.train_param.train_param import TrainParam
@@ -96,9 +98,22 @@ class StrategyParam(object):
         res["model_num"] = self.model_num
 
 class SysConfig(object):
+    '''
+    description: 
+        for wildcard such as "scale-1.000/00000*/POSCAR"
+    param {*} self
+    param {str} sys_config
+    param {str} format
+    return {*}
+    author: wuxingxing
+    '''    
     def __init__(self, sys_config:str, format:str) -> None:
-        self.sys_config = sys_config
+        # self.sys_config = sys_config
         self.format = format
+        sys_config_list = glob.glob(sys_config)
+        self.sys_config = sorted(sys_config_list)
+
+        
 
 class ExploreParam(object):
     def __init__(self, json_dict, max_select:int=None) -> None:
@@ -107,6 +122,7 @@ class ExploreParam(object):
         if isinstance(sys_configs, str) or isinstance(sys_configs, dict):
             sys_configs = [sys_configs]
         self.sys_configs:list[SysConfig]=[]
+        # self.sys_configs[0] = config files with * and format
         for sys_config in sys_configs:
             if isinstance(sys_config, str):
                 config = os.path.join(sys_config_prefix, sys_config) if sys_config_prefix is not None else sys_config
@@ -129,7 +145,7 @@ class ExploreParam(object):
             if not isinstance(md_dict, list):
                 md_dict = [md_dict]
             for md_exp_id, md_exp in enumerate(md_dict):
-                iter_exp_md.append(MdDetail(md_exp_id, md_exp, max_select))
+                iter_exp_md.append(MdDetail(md_exp_id, md_exp, max_select, self.sys_configs))
             iter_md.append(iter_exp_md)
         return iter_md
     
@@ -138,7 +154,7 @@ class ExploreParam(object):
         return res
 
 class MdDetail(object):
-    def __init__(self, md_index: int, json_dict:dict, max_select:int=None) -> None:
+    def __init__(self, md_index: int, json_dict:dict, max_select:int=None, sys_configs:list[SysConfig]=None) -> None:
         self.md_index = md_index
         self.nsteps = get_required_parameter("nsteps", json_dict)
         self.md_dt = get_parameter("md_dt", json_dict, 0.001) #fs
@@ -156,27 +172,44 @@ class MdDetail(object):
         if not isinstance(self.temp_list, list):
             self.temp_list = [self.temp_list]
             
-        self.sys_idx = get_required_parameter("sys_idx", json_dict)
-        if not isinstance(self.sys_idx, list):
-            self.sys_idx = [self.sys_idx]
-        select_sys = get_parameter("select_sys", json_dict, None)
-        if select_sys is None:
+        sys_idx = get_required_parameter("sys_idx", json_dict)
+
+        if not isinstance(sys_idx, list):
+            self.sys_idx = [sys_idx]
+        _select_sys = get_parameter("select_sys", json_dict, None)
+        if _select_sys is None:
             if max_select is None:
-                select_sys = 100 # if the max_select and select_sys are all None, set the select_sys to 100 as default
+                _select_sys = 100 # if the max_select and select_sys are all None, set the select_sys to 100 as default
             else:
-                select_sys = max_select
-        if not isinstance(select_sys, list):
-            select_sys = [select_sys]
-        self.select_sys = []
-        if len(select_sys) > 0:
-            if len(select_sys) == 1:
-                for i in range(0, len(self.sys_idx)):
-                    self.select_sys.append(select_sys[0])
-            elif len(select_sys) == len(self.sys_idx):
-                self.select_sys = select_sys
+                _select_sys = max_select
+        if not isinstance(_select_sys, list):
+            _select_sys = [_select_sys]
+
+        select_sys = []
+        if len(_select_sys) > 0:
+            if len(_select_sys) == 1:
+                for i in range(0, len(sys_idx)):
+                    select_sys.append(_select_sys[0])
+            elif len(_select_sys) == len(sys_idx):
+                select_sys = _select_sys
             else:
                 raise Exception("The length of the 'select_sys' array needs to be consistent with'sys_idx'" )
-        
+        # reset select_sys and sys_idx by sys_configs
+        self.sys_idx = []
+        self.select_sys = []
+        self.config_file_list = []
+        self.config_file_format = []
+        file_id = 0
+        for index, sys_id in enumerate(sys_idx):
+            systems = sys_configs[sys_id].sys_config
+            system_format = sys_configs[sys_id].format
+            for system in systems:
+                self.config_file_list.append(system)
+                self.config_file_format.append(system_format)
+                self.sys_idx.append(file_id)
+                self.select_sys.append(select_sys[index])
+                file_id += 1
+
         self.kspacing = get_parameter("temps", json_dict, None)
         self.neigh_modify = get_parameter("neigh_modify", json_dict, 10)
         self.mass = get_parameter("mass",json_dict, None)

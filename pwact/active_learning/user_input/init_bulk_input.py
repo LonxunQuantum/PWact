@@ -25,9 +25,12 @@ class InitBulkParam(object):
 
         # set sys_config detail
         self.dft_style = get_required_parameter("dft_style", json_dict).lower()
+        self.scf_style = get_parameter("scf_style", json_dict, None)
+
         self.sys_config:list[Stage] = []
         self.is_relax = False
         self.is_aimd = False
+        self.is_scf = False
         for index, config in enumerate(sys_configs):
             stage = Stage(config, index, sys_config_prefix, self.dft_style)
             self.sys_config.append(stage)
@@ -35,16 +38,22 @@ class InitBulkParam(object):
                 self.is_relax = True
             if stage.aimd:
                 self.is_aimd = True
+            if stage.scf:
+                self.is_scf = True
                 
         # for PWmat: set etot.input files and persudo files
         # for Vasp: set INCAR files and persudo files
-        self.dft_input = SCFParam(json_dict=json_dict, is_relax=self.is_relax, is_aimd=self.is_aimd, root_dir=self.root_dir, dft_style=self.dft_style)
+        self.dft_input = SCFParam(json_dict=json_dict, is_scf=self.is_scf, is_relax=self.is_relax, is_aimd=self.is_aimd, root_dir=self.root_dir, dft_style=self.dft_style, scf_style=self.scf_style)
         # check and set relax etot.input file
         for config in self.sys_config:
             if self.is_relax:
                 if config.relax_input_idx >= len(self.dft_input.relax_input_list):
                     raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
                 config.set_relax_input_file(self.dft_input.relax_input_list[config.relax_input_idx])
+            if self.is_scf:
+                if not os.path.exists(self.dft_input.scf_input_list[0].input_file):
+                    raise Exception("Error! relabel dft input file {} not exisit!".format(self.dft_input.scf_input_list[0].input_file))
+                config.set_scf_input_file(self.dft_input.scf_input_list[0])
         # check and set aimd etot.input file
         for config in self.sys_config:
             if self.is_aimd:
@@ -73,7 +82,9 @@ class Stage(object):
         self.aimd = get_parameter("aimd", json_dict, True)
         self.aimd_input_idx = get_parameter("aimd_input_idx", json_dict, 0)
         self.aimd_input_file = None
-         
+        
+        self.scf = get_parameter("scf", json_dict, False)
+
         super_cell = get_parameter("super_cell", json_dict, [])
         super_cell = str_list_format(super_cell)
         if len(super_cell) > 0:
@@ -96,7 +107,7 @@ class Stage(object):
         else:
             self.scale = None
             
-        self.perturb = get_parameter("perturb", json_dict, 3)
+        self.perturb = get_parameter("perturb", json_dict, 0)
         if self.perturb == 0:
             self.perturb = None
         self.cell_pert_fraction = get_parameter("cell_pert_fraction", json_dict, 0.03)
@@ -106,6 +117,11 @@ class Stage(object):
         self.relax_input_file = input_file.input_file
         self.relax_kspacing = input_file.kspacing 
         self.relax_flag_symm = input_file.flag_symm
+
+    def set_scf_input_file(self, input_file:DFTInput):
+        self.scf_input_file = input_file.input_file
+        self.scf_kspacing = input_file.kspacing 
+        self.scf_flag_symm = input_file.flag_symm
 
     def set_aimd_input_file(self, input_file:DFTInput):
         self.aimd_input_file = input_file.input_file

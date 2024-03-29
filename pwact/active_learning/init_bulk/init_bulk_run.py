@@ -4,6 +4,7 @@ from pwact.active_learning.init_bulk.relax import Relax
 from pwact.active_learning.init_bulk.duplicate_scale import do_pertub_work, do_post_pertub, pertub_done, \
     duplicate_scale_done, duplicate_scale, do_post_duplicate_scale
 from pwact.active_learning.init_bulk.aimd import AIMD
+from pwact.active_learning.init_bulk.relabel import Relabel
 from pwact.active_learning.user_input.init_bulk_input import InitBulkParam
 from pwact.active_learning.user_input.resource import Resource
 
@@ -39,7 +40,14 @@ def init_bulk_run(resource: Resource, input_param:InitBulkParam):
             aimd.make_aimd_work()
             aimd.do_aimd_jobs()
             aimd.do_post_process()
-    # do collection
+
+    # do relabel
+    if input_param.is_scf:
+        relabel = Relabel(resource, input_param)
+        if not relabel.check_work_done():
+            relabel.make_scf_work()
+            relabel.do_scf_jobs()
+            relabel.do_post_process()
     do_collection(resource, input_param)
        
 def do_collection(resource: Resource, input_param:InitBulkParam):
@@ -56,7 +64,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
     real_duplicate_scale_dir = os.path.join(input_param.root_dir, INIT_BULK.super_cell_scale) 
     real_pertub_dir = os.path.join(input_param.root_dir, INIT_BULK.pertub)
     real_aimd_dir = os.path.join(input_param.root_dir, INIT_BULK.aimd)
+
+    relabel_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.scf)
+    real_relabel_dir = os.path.join(input_param.root_dir, INIT_BULK.scf)
     
+        
     for init_config in init_configs:
         init_config_name = "init_config_{}".format(init_config.config_index)
         
@@ -97,7 +109,25 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                     train_valid_ratio=input_param.train_valid_ratio, 
                     data_shuffle=input_param.data_shuffle, 
                     merge_data=True,
-                    interval=input_param.interval
+                    interval=1
+                )
+
+        #6 convert relabel datas
+        if init_config.scf:
+            source_scf = search_files(os.path.join(relabel_dir, init_config_name),\
+                 "*/*/*/{}".format(DFT_STYLE.get_aimd_config(resource.scf_style)))
+                 # init/0-aimd/0-scf/OUTCAR
+            if len(source_aimd) == 0:
+                continue
+            source_scf = sorted(source_scf, key=lambda x:int(os.path.basename(os.path.dirname(x)).split('-')[0]), reverse=False)
+            #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
+            extract_pwdata(data_list=source_scf, 
+                    data_format=DFT_STYLE.get_format_by_postfix(os.path.basename(source_scf[0])),
+                    datasets_path=os.path.join(collection_dir, init_config_name, "scf_pwdata"), 
+                    train_valid_ratio=input_param.train_valid_ratio, 
+                    data_shuffle=input_param.data_shuffle, 
+                    merge_data=True,
+                    interval=1
                 )
 
     # delete link files
@@ -105,6 +135,7 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
     del_file(real_duplicate_scale_dir)
     del_file(real_pertub_dir)
     del_file(real_aimd_dir)
+    del_file(real_relabel_dir)
 
     # copy collection file to target
     copy_dir(collection_dir, real_collection_dir)
@@ -113,7 +144,7 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         temp_work_dir = os.path.join(input_param.root_dir, TEMP_STRUCTURE.tmp_init_bulk_dir)
         del_file_list([temp_work_dir])
 
-    # print the dir of pwdatas
+    # print the dir of pwdatas from aimd
     pwdatas = search_files(real_collection_dir, "*/{}".format(INIT_BULK.npy_format_save_dir))
     if len(pwdatas) > 0:
         pwdatas = sorted(pwdatas)
@@ -122,4 +153,14 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         # result_lines = result_lines[:-1] # Filter the last ','
         result_save_path = os.path.join(real_collection_dir, INIT_BULK.npy_format_name)
         write_to_file(result_save_path, result_lines, mode='w')
-        
+    
+    # print the dir of relabel_pwdatas from relabel
+    relebel_datas = search_files(real_collection_dir, "*/{}".format("scf_pwdata"))
+    if len(relebel_datas) > 0:
+        pwdatas = sorted(relebel_datas)
+        result_lines = ["\"{}\",".format(_) for _ in pwdatas]
+        result_lines = "\n".join(result_lines)
+        # result_lines = result_lines[:-1] # Filter the last ','
+        result_save_path = os.path.join(real_collection_dir, "scf_pwdata")
+        write_to_file(result_save_path, result_lines, mode='w')
+    

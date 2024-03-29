@@ -3,7 +3,8 @@ from pwact.utils.constant import AL_WORK, DFT_STYLE, SLURM_OUT, CP2K, LAMMPS
 
 class Resource(object):
     # _instance = None
-    def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None) -> None:
+    # scf_style for init_bulk relabel
+    def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None, scf_style:str=None) -> None:
         if job_type == AL_WORK.run_iter:
             self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
             if self.train_resource.number_node > 1:
@@ -21,16 +22,29 @@ class Resource(object):
         # check dft resource
         self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
         
+        if "scf" in json_dict.keys():
+            self.scf_resource = self.get_resource(get_parameter("scf", json_dict, None))
+        else:
+            self.scf_resource = None
         # dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
         # if dftb_command is not None:
         #     self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
         self.dft_style = dft_style
+        self.scf_style = scf_style
         if DFT_STYLE.vasp.lower() == dft_style.lower():
             self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
         elif DFT_STYLE.pwmat.lower() == dft_style.lower():
             self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
         elif DFT_STYLE.cp2k.lower() == dft_style.lower():
             self.dft_resource.command = "{} {} > {}".format(self.dft_resource.command, CP2K.cp2k_inp, SLURM_OUT.dft_out)
+        
+        if self.scf_resource is not None and scf_style is not None:
+            if DFT_STYLE.vasp.lower() == scf_style.lower():
+                self.scf_resource.command = "{} > {}".format(self.scf_resource.command, SLURM_OUT.dft_out)
+            elif DFT_STYLE.pwmat.lower() == scf_style.lower():
+                self.scf_resource.command = "{} > {}".format(self.scf_resource.command, SLURM_OUT.dft_out)
+            elif DFT_STYLE.cp2k.lower() == scf_style.lower():
+                self.scf_resource.command = "{} {} > {}".format(self.scf_resource.command, CP2K.cp2k_inp, SLURM_OUT.dft_out)
 
     # @classmethod
     # def get_instance(cls, json_dict:dict = None):

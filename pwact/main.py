@@ -35,7 +35,7 @@ def run_iter():
     resource = Resource(machine_info, dft_style=input_param.dft_style)
     os.chdir(input_param.root_dir)
     print("The work dir change to {}".format(os.getcwd()))
-    record = input_param.record_file
+    record = os.path.abspath(input_param.record_file)
     iter_rec = [0, -1]
     if os.path.isfile(record):
         with open (record) as frec :
@@ -145,7 +145,7 @@ def init_bulk():
         os.chdir(system_json["work_dir"])
     machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
     input_param = InitBulkParam(system_info)
-    resource = Resource(machine_info, job_type=AL_WORK.init_bulk, dft_style=input_param.dft_style)
+    resource = Resource(machine_info, job_type=AL_WORK.init_bulk, dft_style=input_param.dft_style, scf_style=input_param.scf_style)
 
     os.chdir(input_param.root_dir)
     
@@ -155,6 +155,7 @@ def init_bulk():
 
 def to_pwdata(input_cmds:list):
     parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--worktype', help="specify work type, default is 'to_pwdata'", type=str, default='to_pwdata')
     parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
     parser.add_argument('-f', '--format', help="specify input file format, 'vasp/outcar' or 'pwmat/movement', default is 'pwmat/movement'", type=str, default="pwmat/movement")
     parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')

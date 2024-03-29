@@ -12,14 +12,21 @@ param {str} format
 return {*}
 author: wuxingxing
 '''
-def get_atom_type(config_path:str, format:str):
-    image = Config.read(format=format, data_path=config_path, atom_names=None)
+def get_atom_type(config_path, format:str=None):
+    if isinstance(config_path, str):
+        image = Config.read(format=format, data_path=config_path, atom_names=None)
+    else:
+        image = config_path
     atomic_number_list = []
     atomic_name_list = []
     for atom in image.atom_type:
         atomic_name_list.append(ELEMENTTABLE_2[atom])
         atomic_number_list.append(atom)
     return atomic_name_list, atomic_number_list
+
+def load_config(config, format, atom_names=None):
+    config = Config.read(format=format, data_path=config, atom_names=atom_names)
+    return config
 
 '''
 description: 
@@ -30,7 +37,8 @@ author: wuxingxing
 '''
 def save_config(config, input_format:str = None, wrap = False, direct = True, sort = True, \
         save_format:str=None, save_path:str=None, save_name:str=None, atom_names: list[str] = None):
-    config = Config.read(format=input_format, data_path=config, atom_names=atom_names)
+    if isinstance(config, str):
+        config = Config.read(format=input_format, data_path=config, atom_names=atom_names)
     if isinstance(config, list): # for lammps dump traj, config will be list
         config = config[0]
     if save_format == PWDATA.cp2k_scf:
@@ -189,11 +197,11 @@ def extract_pwdata(data_list:list[str],
                 )
     
 if __name__ == "__main__":
-    in_config = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub/0_pertub.config"
-    save_path = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub"
-    image = Config.read(format="pwmat", data_path=in_config)
-    save_config(image, wrap=False, direct=True, sort=True,\
-        save_format="vasp", save_path=save_path, save_name="temp_poscar")
+    # in_config = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub/0_pertub.config"
+    # save_path = "/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/collection/init_config_1/0.9_scale_pertub"
+    # image = Config.read(format="pwmat", data_path=in_config)
+    # save_config(image, wrap=False, direct=True, sort=True,\
+    #     save_format="vasp", save_path=save_path, save_name="temp_poscar")
     # save_config(image, wrap=False, direct=True, sort=True,\
     #     save_format="vasp", save_path=save_path, save_name="temp_poscar")
     
@@ -264,3 +272,21 @@ if __name__ == "__main__":
     #     save_config(traj,  input_format="dump", wrap=False, direct=True, sort=True,\
     #     save_format="pwmat", save_path=save_dir, save_name=save_name)
     #     print("{} to {} done!".format(traj, save_name))
+    import glob
+    data_dir1 = glob.glob(os.path.join("/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/temp_init_bulk_work/scf/init_config_*")) #
+    data_dir2 = glob.glob(os.path.join("/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/temp_init_bulk_work/scf/init_config_*")) 
+    data_dir1.extend(data_dir2)
+    select_list = ["0-scf", "200-scf", "400-scf", "600-scf", "800-scf", "1000-scf"]
+    data_list = []
+    for dir in data_dir1:
+        _outcars = glob.glob(os.path.join(dir, "*/*/*/OUTCAR"))
+        for outcar in _outcars:
+            if os.path.basename(os.path.dirname(outcar)) in select_list:
+                data_list.append(outcar)
+
+    datasets_path = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_data_200"
+    extract_pwdata(data_list=data_list, 
+            data_format="vasp/outcar", 
+            datasets_path=datasets_path,
+            merge_data=True
+            )

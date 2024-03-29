@@ -239,6 +239,7 @@ class TrainParam(object):
         if self.seed is not None:
             params_dict["seed"] = self.seed
         params_dict["model_num"] = self.model_num
+        params_dict["chunk_size"] = self.chunk_size
         # params_dict["E_tolerance"] = self.descriptor.E_tolerance
         # params_dict["Rmax"] = self.descriptor.Rmax
         # params_dict["Rmin"] = self.Rmin

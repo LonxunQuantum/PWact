@@ -350,6 +350,11 @@ class INIT_BULK:
     aimd_tag = "tag.aimd.success"
     aimd_tag_failed ="tag.aimd.failed"
     
+    scf = "scf"
+    scf_job = "scf.job"
+    scf_tag = "tag.scf.success"
+    scf_tag_failed ="tag.scf.failed"
+
     collection = "collection"
     npy_format_save_dir = "PWdata"
     npy_format_name = "pwdata"

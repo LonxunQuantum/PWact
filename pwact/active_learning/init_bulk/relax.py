@@ -105,7 +105,8 @@ class Relax(object):
         else:
             # link in.skf path to aimd dir
             target_dir = os.path.join(relax_path, PWMAT.in_skf)
-            link_file(self.input_param.dft_input.in_skf, target_dir)
+            if self.input_param.dft_input.in_skf is not None:
+                link_file(self.input_param.dft_input.in_skf, target_dir)
             pseudo_names = []
         #3. make input file, for vasp is INCAR, for PWMAT is etot.input, for cp2k is inp file
         set_input_script(

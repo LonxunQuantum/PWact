@@ -48,7 +48,7 @@ class Explore(object):
         self.iter = get_iter_from_iter_name(self.itername)
         self.resource = resource
         self.input_param = input_param
-        self.sys_paths = self.input_param.explore.sys_configs
+        # self.sys_paths = self.input_param.explore.sys_configs
         self.md_job = self.input_param.explore.md_job_list[self.iter]
         # train work dir
         self.train_dir = os.path.join(self.input_param.root_dir, self.itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
@@ -188,15 +188,18 @@ class Explore(object):
                 
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
-        target_config = save_config(config=self.sys_paths[sys_index].sys_config,
-                                    input_format=self.sys_paths[sys_index].format,
-                                    wrap = False, 
-                                    direct = True, 
-                                    sort = True, 
-                                    save_format=PWDATA.lammps_lmp, 
-                                    save_path=md_dir, 
-                                    save_name=LAMMPS.lammps_sys_config)
-
+        # target_config = save_config(config=md_detail.config_file_list[sys_index],
+        #                             input_format=md_detail.config_file_format[sys_index],
+        #                             wrap = False, 
+        #                             direct = True, 
+        #                             sort = True, 
+        #                             save_format=PWDATA.lammps_lmp, 
+        #                             save_path=md_dir, 
+        #                             save_name=LAMMPS.lammps_sys_config)
+        import dpdata
+        _config = dpdata.System(md_detail.config_file_list[sys_index], fmt=md_detail.config_file_format[sys_index])
+        target_config = os.path.join(md_dir, LAMMPS.lammps_sys_config)
+        _config.to("lammps/lmp", target_config, frame_idx=0)
         #2. set forcefiled file
         md_model_paths = self.set_forcefiled_file(md_dir)
         
@@ -204,7 +207,7 @@ class Explore(object):
         input_lammps_file = os.path.join(md_dir, LAMMPS.input_lammps)
         press=md_detail.press_list[press_index] if press_index is not None else None
         # get atom type
-        atom_type_list, atomic_number_list = get_atom_type(self.sys_paths[sys_index].sys_config, self.sys_paths[sys_index].format)
+        atom_type_list, atomic_number_list = get_atom_type(md_detail.config_file_list[sys_index], md_detail.config_file_format[sys_index])
         atom_type_file = os.path.join(md_dir, LAMMPS.atom_type_file)
         write_to_file(atom_type_file, " ".join(atom_type_list), "w")
         restart_file = search_files(md_dir, "lmps.restart.*")

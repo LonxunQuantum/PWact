@@ -320,7 +320,8 @@ def set_etot_input_by_file(
     flag_symm:int=None, 
     atom_config:str=None, 
     pseudo_names:list[str]=None,
-    is_scf = False # if True, job is scf, and 'OUT.MLMD = T' to etot.input
+    is_scf = False, # if True, job is scf, and 'OUT.MLMD = T' to etot.input
+    is_skf_file = False  # if True, set in.skf to etot.input file
     ):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file)
     is_skf = False
@@ -343,9 +344,9 @@ def set_etot_input_by_file(
         else:
             new_etot_lines.append(etot_lines[index])
         index += 1
-    new_etot_lines.append("IN.ATOM = {}\n".format(os.path.basename(atom_config)))
+    new_etot_lines.append("\nIN.ATOM = {}\n".format(os.path.basename(atom_config)))
     # if dftb and need in_skf
-    if is_skf:
+    if is_skf and is_skf_file:
         new_etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
     # is not for dftb, reset the IN.PSP
     if "USE_DFTB" not in key_values.keys() or key_values["USE_DFTB"] is None and key_values["USE_DFTB"] == "F":

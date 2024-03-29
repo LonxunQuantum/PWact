@@ -106,13 +106,15 @@ def set_input_script(
     ):
     if dft_style == DFT_STYLE.pwmat:
         target_file = os.path.join(save_dir, PWMAT.etot_input)
+        is_skf_file = os.path.exists(os.path.join(save_dir, PWMAT.in_skf))
         script = set_etot_input_by_file(    #do pwmat etot.input content check
             etot_input_file=input_file, 
             atom_config=config, 
             kspacing=kspacing, 
             flag_symm=flag_symm, 
             pseudo_names=pseudo_names,
-            is_scf = is_scf
+            is_scf = is_scf,
+            is_skf_file = is_skf_file
             )
         write_to_file(target_file, script, "w")
     elif dft_style == DFT_STYLE.vasp:

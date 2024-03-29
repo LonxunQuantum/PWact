@@ -173,7 +173,8 @@ class Labeling(object):
         else:
             # link in.skf path to aimd dir
             target_dir = os.path.join(scf_dir, PWMAT.in_skf)
-            link_file(self.input_param.scf.in_skf, target_dir)
+            if self.input_param.scf.in_skf is not None:
+                link_file(self.input_param.scf.in_skf, target_dir)
             pseudo_names = []
         #2. make etot.input file
         set_input_script(

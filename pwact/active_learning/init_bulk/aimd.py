@@ -150,7 +150,8 @@ class AIMD(object):
             # link in.skf path to aimd dir
             pseudo_names = []
             target_dir = os.path.join(aimd_dir, PWMAT.in_skf)
-            link_file(in_skf, target_dir)
+            if in_skf is not None:
+                link_file(in_skf, target_dir)
         #3. make dft input file
         set_input_script(
             input_file=input_file,

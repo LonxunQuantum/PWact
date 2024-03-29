@@ -9,7 +9,8 @@ class SCFParam(object):
         is_aimd:bool=False, 
         is_scf:bool=False, 
         root_dir:str=None, 
-        dft_style:str=None) -> None:
+        dft_style:str=None,
+        scf_style:str=None) -> None:# for scf relabel in init_bulk
         
         self.dft_style = dft_style
         self.root_dir = root_dir
@@ -18,11 +19,17 @@ class SCFParam(object):
         self.aimd_input_list = []
         self.scf_input_list = []
         self.pseudo = []
+        self.scf_pseudo = []
         self.use_dftb = False
+
         if is_scf:
-            self.scf_input_list = self.set_input(json_dict, flag_symm=0)
-            if self.scf_input_list[0].use_dftb:
-                self.use_dftb = True
+            if "scf_input" in json_dict.keys(): # for init_bulk relabel
+                json_scf = get_required_parameter("scf_input", json_dict)
+                self.scf_input_list = self.set_input(json_scf, flag_symm=0)
+            else: # for run_iter
+                self.scf_input_list = self.set_input(json_dict, flag_symm=0)
+                if self.scf_input_list[0].use_dftb:
+                    self.use_dftb = True
         if is_aimd:
             json_aimd = get_required_parameter("aimd_input", json_dict)
             self.aimd_input_list = self.set_input(json_aimd, flag_symm=0)
@@ -33,20 +40,33 @@ class SCFParam(object):
             self.relax_input_list = self.set_input(json_relax, flag_symm=3) 
             if self.relax_input_list[0].use_dftb:
                 self.use_dftb = True
-
-        # self.use_dftb = True if self.scf_input_list[0].use_dftb else False
-        # set pseudo potential files
-
-        # for cp2k is some dicts, not used, just read the user input file
-        # self.basis_set_file = get_parameter("basis_set_file_name", json_dict, None)
-        # self.potential_file = get_parameter("potential_file_name", json_dict, None)
-        # self.xc_functional = get_parameter("xc_functional", json_dict, "PBE")
-        # self.potential = get_parameter("potential", json_dict, None)
-        # self.basis_set = get_parameter("basis_set", json_dict, None)
-        
         # for pwmat, use 'pseudo' key
         # for vasp is INCAR file, use 'pseudo' key        
         pseudo = get_parameter("pseudo", json_dict, [])
+        self.pseudo = self._set_pseudo(pseudo, dft_style)
+        
+        if is_scf:
+            scf_pseudo = get_parameter("scf_pseudo", json_dict, [])
+            self.scf_pseudo = self._set_pseudo(scf_pseudo, scf_style)
+
+        # for pwmat-dftb is in_skf, a dir string
+        in_skf = get_parameter("in_skf", json_dict, None)
+        self.in_skf = None
+        if self.use_dftb:
+            if in_skf is not None:
+                self.in_skf = in_skf if os.path.isabs(in_skf) else os.path.abspath(in_skf)
+            #     if not os.path.exists(self.in_skf):
+            #         raise Exception("ERROR! The 'in_skf' dir {} not exsit!".format(self.in_skf))
+            # else:
+            #     raise Exception("ERROR! The 'USE_DFTB' is set in scf.input file, but the 'in_skf' dir not set!")
+        # else:
+        #     pass
+        # for cp2k
+        self.basis_set_file = get_parameter("basis_set_file", json_dict, None)
+        self.potential_file = get_parameter("potential_file", json_dict, None)
+
+    def _set_pseudo(self, pseudo, style:str):
+        res_pseudo = []
         if isinstance(pseudo, str):
             pseudo = list(pseudo)
         for pf in pseudo:
@@ -55,28 +75,13 @@ class SCFParam(object):
             if not os.path.isabs(pf):
                 pf = os.path.abspath(pf)
             # for vasp pseudo files, read the pseduo files and get the atom type in pseduo
-            if self.dft_style == DFT_STYLE.vasp:
+            if style == DFT_STYLE.vasp:
                 atom_type = get_vasp_pseudo_atom_type(pf)
             # for pwmat pseudo files, get the atom type from pseudo file name
-            elif self.dft_style == DFT_STYLE.pwmat:
+            elif style == DFT_STYLE.pwmat:
                 atom_type = os.path.basename(pf).split('.')[0]
-            self.pseudo.append([pf, atom_type])
-
-        # for pwmat-dftb is in_skf, a dir string
-        in_skf = get_parameter("in_skf", json_dict, None)
-        self.in_skf = None
-        if self.use_dftb:
-            if in_skf is not None:
-                self.in_skf = in_skf if os.path.isabs(in_skf) else os.path.abspath(in_skf)
-                if not os.path.exists(self.in_skf):
-                    raise Exception("ERROR! The 'in_skf' dir {} not exsit!".format(self.in_skf))
-            else:
-                raise Exception("ERROR! The 'USE_DFTB' is set in scf.input file, but the 'in_skf' dir not set!")
-        else:
-            pass
-        # for cp2k
-        self.basis_set_file = get_parameter("basis_set_file", json_dict, None)
-        self.potential_file = get_parameter("potential_file", json_dict, None)
+            res_pseudo.append([pf, atom_type])
+        return res_pseudo
 
     '''
     description: 

@@ -58,7 +58,6 @@ class ModelKPU(object):
         # md work dir
         self.iter = get_iter_from_iter_name(self.itername)
         self.md_job = self.input_param.explore.md_job_list[self.iter]
-        self.sys_paths = self.input_param.explore.sys_configs
         # md work dir
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
