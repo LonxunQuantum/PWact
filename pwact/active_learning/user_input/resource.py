@@ -105,3 +105,15 @@ class ResourceDetail(object):
 
         if self.gpu_per_node is None and self.cpu_per_node is None:
             raise Exception("ERROR! Both CPU and GPU resources are not specified!")
+        # check param
+        if "$SLURM_NTASKS".lower() in command.lower():
+            pass
+        else:
+            if "mpirun -np" in command:
+                np_num = command.split()[2]
+                try:
+                    np_num = int(np_num)
+                    if np_num > cpu_per_node:
+                        raise Exception("the 'command' in resource.json {} set error! The nums of np can not be bigger than 'cpu_per_node'!".format(command))
+                except Exception:
+                    raise Exception("the 'command' in resource.json {} set error! The nums of np can not be parsed!".format(command))

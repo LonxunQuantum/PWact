@@ -36,7 +36,33 @@ def _reciprocal_box(box):
     rbox = np.linalg.inv(box)
     rbox = rbox.T
     return rbox
+
+def get_energy_dftb_vasp():
+    aimd_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/temp_init_bulk_work/aimd"#/init_config_0/init/0_aimd
+    scf_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/temp_init_bulk_work/scf"#init_config_0/init/0_aimd/0-scf
+    save_file = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/energy_count.txt"
+    aimd_dir = glob.glob(os.path.join(aimd_dir, "init_config_*"))
+    aimd_dir = sorted(aimd_dir, key=lambda x: int(os.path.basename(x).split('_')[-1]))
+
+    save_text = []
+    for aimd in aimd_dir:
+        mvm_config = Config(format="pwmat/movement", data_path=os.path.join(aimd, "init/0_aimd/MOVEMENT"))
+        scf_list = glob.glob(os.path.join(scf_dir, os.path.basename(aimd), "init/0_aimd/*-scf"))
+        scf_list = sorted(scf_list, key=lambda x: int(os.path.basename(x).split('-')[0]))
+        for scf in scf_list:
+            index = int(os.path.basename(scf).split('-')[0])
+            scf_config = Config(format="vasp/outcar", data_path=os.path.join(scf, "OUTCAR"))
+            if index == 0:
+                base = scf_config.images[0].Ep - mvm_config.images[index].Ep
+            save_text.append("aimd {} index {} dftb_energy {} vasp_energy {} vasp_just {}"\
+                .format(os.path.basename(aimd), index, \
+                    mvm_config.images[index].Ep, scf_config.images[0].Ep,\
+                        scf_config.images[0].Ep - base))
     
+    with open(save_file, 'w') as wf:
+        for line in save_text:
+            wf.write(line)
+            wf.write("\n")
 if __name__=="__main__":
     # parser = argparse.ArgumentParser()
     # parser.add_argument('-i', '--config', help="specify config file path of config", type=str, default='atom.config')
@@ -44,33 +70,6 @@ if __name__=="__main__":
     # parser.add_argument('-k', '--kspacing', help="specify the kspacing, the default 0.5", type=float, default=0.5)
     # args = parser.parse_args()
     # make_kspacing_kpoints(config=args.config, format=args.format, kspacing=args.kspacing)
-    make_kspacing_kpoints(config="/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/temp_init_bulk_work/scf/init_config_0/init/0_aimd/0-scf/POSCAR",
-     format="vasp/poscar", kspacing=0.5)
-
-    # work_dir = "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory"
-    # data_list = [
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_000_2650",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_001_2650",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_002_2650",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_003_2650",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_004_3858",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_005_3860",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_006_3860",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_007_3859",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_008_700",
-    #     "/data/home/wuxingxing/datas/PWMLFF_library_data/HfO2/hfo2_dpgen/HfO2_liutheory/mvms/sys_009_700"]
-    # work_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/baseline_model"
-
-    # train_job = os.path.join(work_dir, "init_model/train.job")
-    # train_json = os.path.join(work_dir, "init_model/train.json")
-
-    # json_dict = json.load(open(train_json))
-    # for data in data_list:
-    #     data_dir = os.path.join(work_dir, os.path.basename(data))
-    #     if os.path.exists(data_dir):
-    #         shutil.rmtree(data_dir)
-    #     os.makedirs(data_dir)
-    #     shutil.copyfile(train_job, os.path.join(data_dir, "train.job"))
-    #     json_dict["datasets_path"].append(data)
-    #     json.dump(json_dict, open(os.path.join(data_dir, "train.json"), "w"), indent=4)
-    
+    # make_kspacing_kpoints(config="/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/temp_init_bulk_work/scf/init_config_0/init/0_aimd/0-scf/POSCAR",
+    #  format="vasp/poscar", kspacing=0.5)
+    get_energy_dftb_vasp()

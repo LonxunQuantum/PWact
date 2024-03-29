@@ -116,8 +116,6 @@ class Explore(object):
             jobname = "md{}".format(g_index)
             tag_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.md_tag)
             tag = os.path.join(self.md_dir, tag_name)
-            gpu_per_node = None
-            cpu_per_node = 1
 
             # if self.resource.explore_resource.gpu_per_node > 0:
             #     if self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.committee.upper():
@@ -135,9 +133,9 @@ class Explore(object):
             run_cmd = self.resource.explore_resource.command
 
             group_slurm_script = set_slurm_script_content(
-                            gpu_per_node=gpu_per_node, 
+                            gpu_per_node=self.resource.explore_resource.gpu_per_node, 
                             number_node = self.resource.explore_resource.number_node, #1
-                            cpu_per_node = cpu_per_node,
+                            cpu_per_node = self.resource.explore_resource.cpu_per_node,
                             queue_name = self.resource.explore_resource.queue_name,
                             custom_flags = self.resource.explore_resource.custom_flags,
                             env_script = self.resource.explore_resource.env_script,
@@ -188,18 +186,18 @@ class Explore(object):
                 
                         
     def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
-        # target_config = save_config(config=md_detail.config_file_list[sys_index],
-        #                             input_format=md_detail.config_file_format[sys_index],
-        #                             wrap = False, 
-        #                             direct = True, 
-        #                             sort = True, 
-        #                             save_format=PWDATA.lammps_lmp, 
-        #                             save_path=md_dir, 
-        #                             save_name=LAMMPS.lammps_sys_config)
-        import dpdata
-        _config = dpdata.System(md_detail.config_file_list[sys_index], fmt=md_detail.config_file_format[sys_index])
-        target_config = os.path.join(md_dir, LAMMPS.lammps_sys_config)
-        _config.to("lammps/lmp", target_config, frame_idx=0)
+        target_config = save_config(config=md_detail.config_file_list[sys_index],
+                                    input_format=md_detail.config_file_format[sys_index],
+                                    wrap = False, 
+                                    direct = True, 
+                                    sort = False, 
+                                    save_format=PWDATA.lammps_lmp, 
+                                    save_path=md_dir, 
+                                    save_name=LAMMPS.lammps_sys_config)
+        # import dpdata
+        # _config = dpdata.System(md_detail.config_file_list[sys_index], fmt=md_detail.config_file_format[sys_index])
+        # target_config = os.path.join(md_dir, LAMMPS.lammps_sys_config)
+        # _config.to("lammps/lmp", target_config, frame_idx=0)
         #2. set forcefiled file
         md_model_paths = self.set_forcefiled_file(md_dir)
         

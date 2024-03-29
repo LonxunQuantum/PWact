@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 from pwact.utils.constant import FORCEFILED
-
+from pwdata.calculators.const import ELEMENTMASSTABLE
 def _sample_sphere():
     while True:
         vv = np.array([np.random.normal(), np.random.normal(), np.random.normal()])
@@ -29,16 +29,27 @@ def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str):
     pair_style += "pair_coeff       * * {}\n".format(atom_names)
     return pair_style
 
-def make_mass(mass):
-    if mass is None:
-        return ""
+# def make_mass(mass):
+#     if mass is None:
+#         return ""
     
+#     mass_str = "\n"
+#     if isinstance(mass, str):
+#         mass_str += "mass       {}\n".format(mass)
+#     else:
+#         for m in mass:
+#             mass_str += "mass       {}\n".format(m)
+#     return mass_str
+
+def make_mass(atom_type:list):
+    if isinstance(atom_type, str):
+        atom_type = [atom_type]
+    if atom_type is None:
+        return ""
     mass_str = "\n"
-    if isinstance(mass, str):
-        mass_str += "mass       {}\n".format(mass)
-    else:
-        for m in mass:
-            mass_str += "mass       {}\n".format(m)
+    
+    for i, atom in enumerate(atom_type):
+        mass_str += "mass   {}    {}\n".format(i+1, ELEMENTMASSTABLE[atom])
     return mass_str
 
 def set_ensemble(ensemble):
@@ -104,7 +115,7 @@ def make_lammps_input(
     )
     md_script += "change_box       all triclinic\n"
     
-    md_script += make_mass(mass)
+    md_script += make_mass(atom_type)
     dump_info = "out_freq ${{DUMP_FREQ}} out_file {} ".format(model_deviation_file)
     md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info)
     #put_freq ${freq} out_file error
