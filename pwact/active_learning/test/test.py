@@ -38,9 +38,9 @@ def _reciprocal_box(box):
     return rbox
 
 def get_energy_dftb_vasp():
-    aimd_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/temp_init_bulk_work/aimd"#/init_config_0/init/0_aimd
-    scf_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/temp_init_bulk_work/scf"#init_config_0/init/0_aimd/0-scf
-    save_file = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2_600k/energy_count.txt"
+    aimd_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/temp_init_bulk_work/aimd"#/init_config_0/init/0_aimd
+    scf_dir = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/temp_init_bulk_work/scf"#init_config_0/init/0_aimd/0-scf
+    save_file = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_bulk_hfo2/energy_count_xtb.txt"
     aimd_dir = glob.glob(os.path.join(aimd_dir, "init_config_*"))
     aimd_dir = sorted(aimd_dir, key=lambda x: int(os.path.basename(x).split('_')[-1]))
 
