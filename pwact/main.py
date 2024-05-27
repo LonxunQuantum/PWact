@@ -160,8 +160,11 @@ def to_pwdata(input_cmds:list):
     parser.add_argument('-f', '--format', help="specify input file format, 'vasp/outcar' or 'pwmat/movement', default is 'pwmat/movement'", type=str, default="pwmat/movement")
     parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')
     parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
-    parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
-    parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
+    # parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
+    # parser.add_argument('-d', '--do_shuffle', help='if -d exits, doing the data shuffling', action='store_false')
+    parser.add_argument('-r', '--data_shuffle', help='Specify whether to do data shuffle operation, -r is True', action='store_true')
+    parser.add_argument('-m', '--merge', help='Specify whether to merge inputs to one, -m is True', action='store_true')
+    # parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
     parser.add_argument('-g', '--gap', help='Trail point interval before and after, default is 1', type=int, default=1)
 
     parser.add_argument('-w', '--work_dir', help='specify work dir, default is current dir', type=str, default='./')
