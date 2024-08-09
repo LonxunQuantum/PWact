@@ -31,7 +31,8 @@ class NetParam(object):
         if "type_" in self.net_type:
             dicts["physical_property"] = self.physical_property
         #dicts["bias"] = self.bias, 
-        #dicts["resnet_dt"] = self. resnet_dt, 
+        # if self.resnet_dt is False:
+        #     dicts["resnet_dt"] = self.resnet_dt
         #dicts["activation"] = self.activation
         return dicts
 
@@ -40,6 +41,7 @@ class ModelParam(object):
         self.type_embedding_net = None
         self.embedding_net = None
         self.fitting_net = None
+        self.nep_param:NetParam = None
 
     '''
     description: 
@@ -75,7 +77,9 @@ class ModelParam(object):
     def set_nn_fitting_net(self, fitting_net_dict:dict):
         # fitting_net_dict = get_parameter("fitting_net",json_input, {})
         network_size = get_parameter("network_size", fitting_net_dict,[15,15,1])
-        if network_size[-1] != 1:
+        if not isinstance(network_size, list):
+            network_size = [network_size]
+        if len(network_size) > 1 and network_size[-1] != 1:
             raise Exception("Error: The last layer of the fitting network should have a size of 1 for etot energy, but the input size is {}!".format(network_size[-1]))
         bias = True # get_parameter("bias", fitting_net_dict, True)
         resnet_dt = False # get_parameter("resnet_dt", fitting_net_dict, False)
@@ -90,5 +94,4 @@ class ModelParam(object):
     #     # if self.fitting_net is not None:
     #     #     dicts[self.fitting_net.net_type] = self.fitting_net.to_dict()
     #     return self.fitting_net.to_dict_std()
-
 

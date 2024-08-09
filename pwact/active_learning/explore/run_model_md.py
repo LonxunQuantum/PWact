@@ -21,7 +21,7 @@ from pwact.active_learning.explore.select_image import select_image
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.iter_input import InputParam, MdDetail
 from pwact.utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRUCTURE, TRAIN_FILE_STRUCTUR, \
-        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE, PWDATA
+        FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE, PWDATA, MODEL_TYPE
 
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
@@ -247,13 +247,16 @@ class Explore(object):
     def set_forcefiled_file(self, md_dir:str):
         model_name = ""
         md_model_paths = []
-        if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
-            model_name += TRAIN_FILE_STRUCTUR.script_dp_name
-        elif self.input_param.strategy.md_type == FORCEFILED.fortran_lmps:
-            if self.input_param.strategy.compress:
-                raise Exception("ERROR! The compress model does not support fortran lammps md! Please change the 'md_type' to 2!")
-            else:
-                model_name += "{}/{}".format(TRAIN_FILE_STRUCTUR.fortran_dp, TRAIN_FILE_STRUCTUR.fortran_dp_name)
+        if self.input_param.train.model_type == MODEL_TYPE.nep:
+            model_name += "{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.nep_model_lmps)
+        elif self.input_param.train.model_type == MODEL_TYPE.dp:
+            if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
+                model_name += "{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name)
+            elif self.input_param.strategy.md_type == FORCEFILED.fortran_lmps:
+                if self.input_param.strategy.compress:
+                    raise Exception("ERROR! The compress model does not support fortran lammps md! Please change the 'md_type' to 2!")
+                else:
+                    model_name += "{}/{}".format(TRAIN_FILE_STRUCTUR.fortran_dp, TRAIN_FILE_STRUCTUR.fortran_dp_name)
 
         for model_index in range(self.input_param.strategy.model_num):
             model_name_i = "{}/{}".format(make_train_name(model_index), model_name)

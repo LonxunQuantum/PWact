@@ -154,31 +154,33 @@ class SlurmJob(object):
     def check_lammps_out_file(self):
         # read last line of md.log file
         md_dirs = self.get_slurm_works_dir()
-        for md_dir in md_dirs:
-            tag_md_file = os.path.join(md_dir, "tag.md.success")
-            md_log = os.path.join(md_dir, "md.log")
-            if os.path.exists(tag_md_file):
-                continue
-            if not os.path.exists(md_log):
-                return False
+        try:
+            for md_dir in md_dirs:
+                tag_md_file = os.path.join(md_dir, "tag.md.success")
+                md_log = os.path.join(md_dir, "md.log")
+                if os.path.exists(tag_md_file):
+                    continue
+                if not os.path.exists(md_log):
+                    return False
 
-            with open(md_log, "rb") as file:
-                file.seek(-2, 2)  # 定位到文件末尾前两个字节
-                while file.read(1) != b'\n':  # 逐字节向前查找换行符
-                    file.seek(-2, 1)  # 向前移动两个字节
-                last_line = file.readline().decode().strip()  # 读取最后一行并去除换行符和空白字符
-            if "ERROR: there are two atoms" in last_line:
-                with open(tag_md_file, 'w') as wf:
-                    wf.writelines("ERROR: there are two atoms too close")
-                return True
-            elif "Total wall time" in last_line:
-                with open(tag_md_file, 'w') as wf:
-                    wf.writelines("Job Done!")
-                return True
-            else:
-                return False
-
-        return True
+                with open(md_log, "rb") as file:
+                    file.seek(-2, 2)  # 定位到文件末尾前两个字节
+                    while file.read(1) != b'\n':  # 逐字节向前查找换行符
+                        file.seek(-2, 1)  # 向前移动两个字节
+                    last_line = file.readline().decode().strip()  # 读取最后一行并去除换行符和空白字符
+                if "ERROR: there are two atoms" in last_line:
+                    with open(tag_md_file, 'w') as wf:
+                        wf.writelines("ERROR: there are two atoms too close")
+                    return True
+                elif "Total wall time" in last_line:
+                    with open(tag_md_file, 'w') as wf:
+                        wf.writelines("Job Done!")
+                    return True
+                else:
+                    return False
+            return True
+        except Exception as e:
+            return False
 
 
 class Mission(object):
@@ -302,7 +304,7 @@ class Mission(object):
         for job in self.job_list:
             if job.status == JobStatus.terminated:
                 if job.submit_num <= JobStatus.submit_limit.value:
-                    print("resubmit job: {}, the time is {}\n".format(job.submit_cmd, job.submit_num))
+                    print("resubmit job {}: {}, the time is {}\n".format(job.jobid, job.submit_cmd, job.submit_num))
                     job.submit()
                 else:
                     job.status = JobStatus.resubmit_failed                    

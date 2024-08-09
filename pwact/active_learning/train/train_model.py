@@ -9,7 +9,7 @@ from pwact.active_learning.user_input.iter_input import InputParam
 
 from pwact.utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
 from pwact.utils.constant import AL_STRUCTURE, UNCERTAINTY, TEMP_STRUCTURE, MODEL_CMD, \
-    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT
+    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT, MODEL_TYPE
 
 from pwact.utils.file_operation import save_json_file, write_to_file, del_dir, search_files, add_postfix_dir, mv_file, copy_dir, del_file_list
 '''
@@ -106,18 +106,20 @@ class ModelTrian(object):
         script = ""
         pwmlff = self.resource.train_resource.command
         script += "{} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.train, TRAIN_FILE_STRUCTUR.train_json, SLURM_OUT.train_out)
-        if self.input_param.strategy.compress:
-            script += "    {} {} {} -d {} -o {} -s {} >> {}\n\n".format(pwmlff, MODEL_CMD.compress, model_path, \
-                self.input_param.strategy.compress_dx, self.input_param.strategy.compress_order, TRAIN_FILE_STRUCTUR.compree_dp_name, SLURM_OUT.train_out)
-            cmp_model_path = "{}".format(TRAIN_FILE_STRUCTUR.compree_dp_name)
+
+        # do nothing for nep model
+        if self.input_param.train.model_type == MODEL_TYPE.dp:
+            if self.input_param.strategy.compress:
+                script += "    {} {} {} -d {} -o {} -s {}/{} >> {}\n\n".format(pwmlff, MODEL_CMD.compress, model_path, \
+                    self.input_param.strategy.compress_dx, self.input_param.strategy.compress_order, TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.compree_dp_name, SLURM_OUT.train_out)
+                cmp_model_path = "{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.compree_dp_name)
             
-        if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
-            if cmp_model_path is None:
-                # script model_record/dp_model.ckpt the torch_script_module.pt will in model_record dir
-                script += "    {} {} {} >> {}\n".format(pwmlff, MODEL_CMD.script, model_path, SLURM_OUT.train_out)
-                script += "    mv ./{}/{} .\n\n".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name)
-            else:
-                script += "    {} {} {} >> {}\n\n".format(pwmlff, MODEL_CMD.script, cmp_model_path, SLURM_OUT.train_out)
+            if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
+                if cmp_model_path is None:
+                    # script model_record/dp_model.ckpt the torch_script_module.pt will in model_record dir
+                    script += "    {} {} {} {}/{} >> {}\n".format(pwmlff, MODEL_CMD.script, model_path, TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name, SLURM_OUT.train_out)
+                else:
+                    script += "    {} {} {} {}/{} >> {}\n\n".format(pwmlff, MODEL_CMD.script, cmp_model_path, TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name, SLURM_OUT.train_out)
         return script
 
     '''

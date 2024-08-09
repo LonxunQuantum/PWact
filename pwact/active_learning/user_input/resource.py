@@ -69,7 +69,10 @@ class Resource(object):
         env_script = ""
         if len(source_list) > 0:
             for source in source_list:
-                if "source" != source.split()[0].lower():
+                if "source" != source.split()[0].lower() and \
+                    "export" != source.split()[0].lower() and \
+                        "module" != source.split()[0].lower() and \
+                            "conda" != source.split()[0].lower():
                     tmp_source = "source {}\n".format(source)
                 else:
                     tmp_source = "{}\n".format(source)

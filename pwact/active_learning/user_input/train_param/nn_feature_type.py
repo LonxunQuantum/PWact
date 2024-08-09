@@ -10,7 +10,10 @@ class Descriptor(object):
         self.Rmax = get_parameter("Rmax", json_input, 6.0)
         self.Rmin = get_parameter("Rmin", json_input, 0.5)
         self.M2 = get_parameter("M2", json_input, 16)
-        self.E_tolerance = get_parameter("E_tolerance", json_input, 9999999.99)
+        self.E_tolerance = get_parameter("E_tolerance", json_input, 9999999.0)
+        self.cheby_order = get_parameter("cheby_order", json_input, 10)
+        self.radial_num1 = get_parameter("radial_num1", json_input, 25)
+        self.radial_num2 = get_parameter("radial_num2", json_input, 4)
         if self.feature_type is not None:   #if feature type specified at first layer of json 
             if "feature_type" in json_input.keys(): # if feature type sepcified at descriptor layer of json
                 if self.feature_type != json_input["feature_type"]: # if this two values are different, show WARNING info.
@@ -63,7 +66,12 @@ class Descriptor(object):
                 self.feature_dict[ftype], self.feature_dict_out[ftype] = self.set_ftype7_para(ftype_dict)
             elif '8' == ftype:
                 self.feature_dict[ftype], self.feature_dict_out[ftype] = self.set_ftype8_para(ftype_dict)
-
+        # for nep param
+        self.cutoff = None
+        self.n_max = None
+        self.basis_size = None
+        self.l_max = None
+        self.type_weight = None
     '''
     description: 
     the return dict is used to assignment for value Ftype1_para in dfault_param.py
@@ -262,10 +270,11 @@ class Descriptor(object):
     
     def to_dict(self):
         dicts = {}
-        dicts["Rmax"] = self.Rmax
-        dicts["Rmin"] = self.Rmin
+
         # dicts["E_tolerance"] = self.E_tolerance
         if self.model_type == "DP".upper():
+            dicts["Rmax"] = self.Rmax
+            dicts["Rmin"] = self.Rmin
             dicts["M2"] = self.M2
             dicts["network_size"] = self.network_size
             dicts["M2"] = self.M2
@@ -273,10 +282,24 @@ class Descriptor(object):
             # dicts["resnet_dt"] = self. resnet_dt 
             # dicts["activation"] = self.activation
         elif self.model_type == "NN".upper() or self.model_type == "Linear".upper():
+            dicts["Rmax"] = self.Rmax
+            dicts["Rmin"] = self.Rmin
             dicts["feature_type"] = self.feature_type
             for feature in self.feature_type:
                 feature = "{}".format(feature)
                 dicts[feature] = self.feature_dict_out[feature]
+        elif self.model_type == "CHEBY".upper():
+            dicts["cheby_order"] = self.cheby_order
+            dicts["radial_num1"] = self.radial_num1
+            dicts["radial_num2"] = self.radial_num2
+        elif self.model_type.upper() == "NEP":
+            dicts["cutoff"] = self.cutoff
+            if self.zbl is not None:
+                dicts["zbl"] = self.zbl
+            dicts["n_max"] = self.n_max
+            dicts["basis_size"] = self.basis_size
+            dicts["l_max"] = self.l_max
+            # dicts["type_weight"] = self.type_weight
         else:
             raise Exception("descriptor to dict: the model type not realized:{}".format(self.model_type))
         
@@ -285,5 +308,5 @@ class Descriptor(object):
             dicts["type_embedding"]["physical_property"] = self.type_physical_property
             if self.type_network_size is not None:
                dicts["type_embedding"]["network_size"] = self.type_network_size[1:]
-               
+           
         return dicts

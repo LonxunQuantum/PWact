@@ -3,7 +3,7 @@ import glob
 
 from pwact.utils.json_operation import get_parameter, get_required_parameter
 from pwact.utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWDATA
-from pwact.active_learning.user_input.train_param.train_param import TrainParam
+from pwact.active_learning.user_input.train_param.train_param import InputParam as TrainParam
 from pwact.active_learning.user_input.scf_param import SCFParam
 class InputParam(object):
     # _instance = None
@@ -12,7 +12,8 @@ class InputParam(object):
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
         self.record_file = get_parameter("record_file", json_dict, "al.record")
-        print("Warning! record_file not provided, automatically set to {}! ".format(self.record_file))
+        if "record_file" not in json_dict.keys():
+            print("Warning! record_file not provided, automatically set to {}! ".format(self.record_file))
         
         self.reserve_work = get_parameter("reserve_work", json_dict, False)
         # self.reserve_feature = get_parameter("reserve_feature", json_dict, False)

@@ -165,7 +165,7 @@ class DFTInput(object):
 
             if "MP_N123" in key_values and self.kspacing is not None:
                 error_info = "ERROR! The 'kspacing' in DFT/input/{} dict and 'MP_N123' in {} file cannot coexist.\n".format(os.path.basename(self.input_file), os.path.basename(self.input_file))
-                error_info += "If 'MP_N123' is not indicated in DFT/input/{}, we will use 'kspacing' param to generate the 'MP_N123' parameter\n".format(os.path.basename(self.input_file))
+                error_info += "If 'MP_N123' is not indicated in DFT/input/{}, the 'kspacing' param will be used to generate the 'MP_N123' parameter\n".format(os.path.basename(self.input_file))
                 raise Exception(error_info)
             elif "MP_N123" not in key_values and self.kspacing is None:
                 self.kspacing  = 0.5

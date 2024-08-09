@@ -102,8 +102,8 @@ return {*}
 author: wuxingxing
 '''
 class FORCEFILED:
-    fortran_lmps = 1 #
-    libtorch_lmps = 2 # default
+    fortran_lmps = 1 # use cpu dp model
+    libtorch_lmps = 2 # default, use jit model or nep cpu/gpu model
     main_md = 3 #
 
 '''
@@ -359,6 +359,10 @@ class INIT_BULK:
     npy_format_save_dir = "PWdata"
     npy_format_name = "pwdata"
 
+class MODEL_TYPE:
+    dp = "DP"
+    nep = "NEP"
+
 class TRAIN_FILE_STRUCTUR:
     work_dir = "work_dir"
     feature_dir = "feature"
@@ -381,12 +385,19 @@ class TRAIN_FILE_STRUCTUR:
     
     movement = "MOVEMENT"
     model_record = "model_record"
+    # dp model
     dp_model_name ="dp_model.ckpt"
-    compree_dp_name = "cmp_cp_model.ckpt"
+    compree_dp_name = "cmp_dp_model.ckpt"
     # cmp_tracing_dp_name = "torch_script_module.pt"
     script_dp_name = "torch_script_module.pt"
+    script_dp_name_cpu = "jit_dp_cpu.pt"
+    script_dp_name_gpu = "jit_dp_gpu.pt"
     fortran_dp = "forcefield"
     fortran_dp_name = "forcefield.ff"
+
+    # nep model
+    nep_model_name ="nep_model.ckpt"
+    nep_model_lmps = "nep_to_lmps.txt"
 
 class EXPLORE_FILE_STRUCTURE:
     kpu= "kpu"
