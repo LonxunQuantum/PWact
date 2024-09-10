@@ -19,12 +19,12 @@ import os
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.init_bulk_input import InitBulkParam, Stage
 
-from pwact.active_learning.slurm import SlurmJob, Mission
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
 from pwact.utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE, PWDATA
 
-from pwact.utils.file_operation import write_to_file, link_file, search_files, mv_file, del_file, copy_file
+from pwact.utils.file_operation import write_to_file, link_file, search_files, mv_file, del_file, copy_file, del_file_list_by_patten
 from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script
 from pwact.data_format.configop import save_config, get_atom_type
 
@@ -125,6 +125,7 @@ class Relax(object):
         )
 
     def make_relax_slurm_job_files(self, relax_sub_list:list[str]):
+        del_file_list_by_patten(self.relax_dir, "*{}".format(INIT_BULK.relax_job))
         group_list = split_job_for_group(self.resource.dft_resource.group_size, relax_sub_list, self.resource.dft_resource.parallel_num)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":

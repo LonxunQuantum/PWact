@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
-
-from pwact.active_learning.slurm import SlurmJob, Mission
+import glob
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission, scancle_job
 from pwact.utils.slurm_script import get_slurm_job_run_info, set_slurm_script_content, split_job_for_group
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.iter_input import InputParam
@@ -11,7 +11,7 @@ from pwact.utils.format_input_output import make_train_name, get_seed_by_time, g
 from pwact.utils.constant import AL_STRUCTURE, UNCERTAINTY, TEMP_STRUCTURE, MODEL_CMD, \
     TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT, MODEL_TYPE
 
-from pwact.utils.file_operation import save_json_file, write_to_file, del_dir, search_files, add_postfix_dir, mv_file, copy_dir, del_file_list
+from pwact.utils.file_operation import save_json_file, write_to_file, del_dir, search_files, add_postfix_dir, mv_file, copy_dir, del_file_list, del_file_list_by_patten
 '''
 description: model training method:
 1. go to train data path
@@ -24,6 +24,11 @@ return {*}
 '''
 
 class ModelTrian(object):
+    @staticmethod
+    def kill_job(root_dir:str, itername:str):
+        train_dir =  os.path.join(root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
+        scancle_job(train_dir)
+
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
         self.resource = resource
@@ -71,6 +76,7 @@ class ModelTrian(object):
     
     def make_train_slurm_job_files(self, train_list:list[str]):
         # make train slurm script
+        del_file_list_by_patten(self.train_dir, "*{}".format(TRAIN_FILE_STRUCTUR.train_job))
         group_list = split_job_for_group(self.resource.train_resource.group_size, train_list, 1)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":
@@ -115,6 +121,8 @@ class ModelTrian(object):
                 cmp_model_path = "{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.compree_dp_name)
             
             if self.input_param.strategy.md_type == FORCEFILED.libtorch_lmps:
+                if self.resource.explore_resource.gpu_per_node is None or self.resource.explore_resource.gpu_per_node == 0:
+                    script += "    export CUDA_VISIBLE_DEVICES=''\n"
                 if cmp_model_path is None:
                     # script model_record/dp_model.ckpt the torch_script_module.pt will in model_record dir
                     script += "    {} {} {} {}/{} >> {}\n".format(pwmlff, MODEL_CMD.script, model_path, TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.script_dp_name, SLURM_OUT.train_out)

@@ -15,7 +15,7 @@
             traj_file_path2 index2
             ...
 """
-from pwact.active_learning.slurm import Mission, SlurmJob
+from pwact.active_learning.slurm.slurm import Mission, SlurmJob, scancle_job
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from pwact.active_learning.explore.select_image import select_image
 from pwact.active_learning.user_input.resource import Resource
@@ -25,11 +25,12 @@ from pwact.utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRU
 
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
-from pwact.utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, mv_file
+from pwact.utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, del_file_list_by_patten, mv_file
 from pwact.utils.app_lib.lammps import make_lammps_input
 from pwact.data_format.configop import save_config, get_atom_type
 
 import os
+import glob
 import pandas as pd
 """
 md_dir:
@@ -43,6 +44,12 @@ kpu_dir:
   f. step d. select cadidate set by limited Delta0 and Delta1
 """
 class Explore(object):
+    @staticmethod
+    def kill_job(root_dir:str, itername:str):
+        explore_dir = os.path.join(root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
+        md_dir = os.path.join(explore_dir, EXPLORE_FILE_STRUCTURE.md)
+        scancle_job(md_dir)
+
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
         self.iter = get_iter_from_iter_name(self.itername)
@@ -109,6 +116,8 @@ class Explore(object):
         self.make_md_slurm_jobs(md_work_list)
              
     def make_md_slurm_jobs(self, md_work_list:list[str]):
+        # delete old job file
+        del_file_list_by_patten(self.md_dir, "*{}".format(EXPLORE_FILE_STRUCTURE.md_job))
         group_list = split_job_for_group(self.resource.explore_resource.group_size, md_work_list, self.resource.explore_resource.parallel_num)
         for g_index, group in enumerate(group_list):
             if group[0] == "NONE":

@@ -1,4 +1,5 @@
 import os
+import glob
 
 from pwact.active_learning.init_bulk.relax import Relax
 from pwact.active_learning.init_bulk.duplicate_scale import do_pertub_work, do_post_pertub, pertub_done, \
@@ -7,7 +8,7 @@ from pwact.active_learning.init_bulk.aimd import AIMD
 from pwact.active_learning.init_bulk.relabel import Relabel
 from pwact.active_learning.user_input.init_bulk_input import InitBulkParam
 from pwact.active_learning.user_input.resource import Resource
-
+from pwact.active_learning.slurm.slurm import scancle_job
 from pwact.utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
 from pwact.utils.file_operation import copy_file, copy_dir, search_files, del_file, del_file_list, write_to_file
 from pwact.data_format.configop import extract_pwdata
@@ -163,4 +164,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         # result_lines = result_lines[:-1] # Filter the last ','
         result_save_path = os.path.join(real_collection_dir, "scf_pwdata")
         write_to_file(result_save_path, result_lines, mode='w')
-    
+
+def scancel_jobs(work_dir):
+    relax_jobs = glob.glob(os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax, "slurm-*.out"))
+    scf_jobs = glob.glob(os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.aimd, "slurm-*.out"))
+    if len(scf_jobs) > 0:
+        scancle_job(scf_jobs)
+    elif len(relax_jobs) > 0:
+        scancle_job(relax_jobs)

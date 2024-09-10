@@ -22,10 +22,10 @@ from pwact.active_learning.user_input.init_bulk_input import InitBulkParam
 from pwact.active_learning.init_bulk.duplicate_scale import get_config_files_with_order
 
 from pwact.utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE
-from pwact.active_learning.slurm import SlurmJob, Mission
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from pwact.utils.file_operation import write_to_file, link_file, search_files
+from pwact.utils.file_operation import write_to_file, link_file, search_files, del_file_list_by_patten
 from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script
 from pwact.data_format.configop import save_config, get_atom_type, load_config
 
@@ -168,6 +168,7 @@ class Relabel(object):
         return scf_lsit
 
     def make_scf_slurm_job_files(self, scf_dir_list:list[str],use_dftb: bool=False):
+        del_file_list_by_patten(self.scf_dir, "*{}".format(INIT_BULK.scf_job))
         group_list = split_job_for_group(self.resource.scf_resource.group_size, scf_dir_list, self.resource.scf_resource.parallel_num)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":

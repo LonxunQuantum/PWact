@@ -7,7 +7,7 @@ from pwact.active_learning.user_input.train_param.optimizer_param import Optimiz
 from pwact.active_learning.user_input.train_param.work_file_param import WorkFileStructure
 
 from pwact.active_learning.user_input.train_param.nep_param import NepParam
-
+from pwact.utils.constant import get_atomic_name_from_str
 '''
 description: 
     covert the input json file to class
@@ -29,7 +29,7 @@ class InputParam(object):
         self.cmd = cmd
         self.inference = True if self.cmd == "test".upper() else False
         self.model_type = get_required_parameter("model_type", json_input).upper()
-        self.atom_type = get_required_parameter("atom_type", json_input)
+        self.atom_type = get_atomic_name_from_str(get_required_parameter("atom_type", json_input))
 
         self.model_num = get_parameter("model_num", json_input, 1)
         self.recover_train = get_parameter("recover_train", json_input, True)

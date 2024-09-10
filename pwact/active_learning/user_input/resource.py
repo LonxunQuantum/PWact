@@ -17,6 +17,8 @@ class Resource(object):
             self.train_resource.command = self.train_resource.command.upper()
              
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+            if "-in" in self.explore_resource.command:
+                self.explore_resource.command = self.explore_resource.command.split('-in')[0].strip()
             self.explore_resource.command = "{} -in {} > {}".format(self.explore_resource.command, LAMMPS.input_lammps, SLURM_OUT.md_out)
 
         # check dft resource
@@ -65,7 +67,10 @@ class Resource(object):
         source_list = get_parameter("source_list", json_dict, [])
         module_list = get_parameter("module_list", json_dict, [])
         env_list = get_parameter("env_list", json_dict, [])
-
+        for i in range(len(custom_flags)):
+            if "#SBATCH".lower() not in custom_flags[i].lower():
+                custom_flags[i] = "#SBATCH {}".format(custom_flags[i])
+            
         env_script = ""
         if len(source_list) > 0:
             for source in source_list:
@@ -77,10 +82,6 @@ class Resource(object):
                 else:
                     tmp_source = "{}\n".format(source)
                 env_script += tmp_source
-        
-        if len(env_list) > 0:
-            for source in env_list:
-                env_script += source + "\n"
 
         if len(module_list) > 0:
             for source in module_list:
@@ -89,6 +90,10 @@ class Resource(object):
                 else:
                     tmp_source = "{}\n".format(source)
                 env_script += tmp_source
+
+        if len(env_list) > 0:
+            for source in env_list:
+                env_script += source + "\n"
 
         resource = ResourceDetail(command, group_size, parallel_num, number_node, gpu_per_node, cpu_per_node, queue_name, custom_flags, env_script)
         return resource

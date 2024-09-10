@@ -11,7 +11,7 @@ class InputParam(object):
         self.root_dir = get_parameter("work_dir", json_dict, "./")
         if not os.path.isabs(self.root_dir):
             self.root_dir = os.path.realpath(self.root_dir)
-        self.record_file = get_parameter("record_file", json_dict, "al.record")
+        self.record_file = "al.record" #get_parameter("record_file", json_dict, "al.record")
         if "record_file" not in json_dict.keys():
             print("Warning! record_file not provided, automatically set to {}! ".format(self.record_file))
         
@@ -41,7 +41,7 @@ class InputParam(object):
         res["work_dir"] = self.root_dir
         res["record_file"] = self.record_file
         
-        res["reserve_feature"] = self.reserve_feature
+        res["reserve_work"] = self.reserve_work
         res["reserve_md_traj"] = self.reserve_md_traj
         res["reserve_scf_files"] = self.reserve_scf_files
         
@@ -161,7 +161,7 @@ class MdDetail(object):
         self.md_dt = get_parameter("md_dt", json_dict, 0.001) #fs
         self.trj_freq = get_parameter("trj_freq", json_dict, 10)
         
-        self.ensemble = get_parameter("ensemble", json_dict, "nvt")
+        self.ensemble = get_parameter("ensemble", json_dict, "nve")
         
         self.press_list = get_parameter("press", json_dict, [])
         self.taup = get_parameter("taup", json_dict, 0.5)

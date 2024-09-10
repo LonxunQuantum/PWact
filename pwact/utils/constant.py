@@ -523,6 +523,7 @@ ELEMENTTABLE_2 = {1: 'H',
     102: 'No', 103: 'Lr', 104: 'Rf', 105: 'Db', 106: 'Sg', 107: 'Bh', 108: 'Hs', 109: 'Mt', 110: 'Ds', 111: 'Rg', 
     112: 'Uub'
     }
+
 ELEMENTMASSTABLE={  1:1.007,2:4.002,3:6.941,4:9.012,5:10.811,6:12.011,
                             7:14.007,8:15.999,9:18.998,10:20.18,11:22.99,12:24.305,
                             13:26.982,14:28.086,15:30.974,16:32.065,17:35.453,
@@ -539,3 +540,28 @@ ELEMENTMASSTABLE={  1:1.007,2:4.002,3:6.941,4:9.012,5:10.811,6:12.011,
                             79:196.967,80:200.59,81:204.383,82:207.2,83:208.98,84:210,85:210,86:222,
                             87:223,88:226,89:227,90:232.038,91:231.036,92:238.029,93:237,94:244,
                             95:243,96:247,97:247,98:251,99:252,100:257,101:258,102:259,103:262,104:261,105:262,106:266}
+
+def get_atomic_number_from_name(atomic_names:list[str]):
+    res = []
+    for name in atomic_names:
+        res.append(ELEMENTTABLE[name])
+    return res
+
+def get_atomic_name_from_number(atomic_number:list[int]):
+    res = []
+    for number in atomic_number:
+        res.append(ELEMENTTABLE_2[number])
+    return res
+
+def get_atomic_name_from_str(atom_strs):
+    try:
+        return [int(_) for _ in atom_strs]
+    except ValueError:
+        return get_atomic_number_from_name(atom_strs)
+
+
+# print(get_atomic_name_from_str([8, 72]))
+
+# print(get_atomic_name_from_str(["8", "72"]))
+
+# print(get_atomic_name_from_str(["O", "Hf"]))

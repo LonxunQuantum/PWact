@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import shutil
-
+from pwact.active_learning.slurm.slurm_tool import get_jobs
 class JobStatus (Enum) :
     unsubmitted = 1 #
     waiting = 2 # PD
@@ -68,15 +68,41 @@ class SlurmJob(object):
 
     def scancel_job(self):
         ret = Popen (["scancel " + self.job_id], shell=True, stdout=PIPE, stderr=PIPE)
+        time.sleep(1)
         stdout, stderr = ret.communicate()
         print("scancel job {}".format(self.job_id))
-        print(str(stderr, encoding='ascii'))
+        # print(str(stderr, encoding='ascii'))
 
     def update_status(self):
         self.status = self.check_status()
         return self.status
 
-    def check_status (self):
+    def check_status_no_tag(self):
+        ret = Popen (["squeue --job " + self.job_id], shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = ret.communicate()
+        if (ret.returncode != 0) :
+            if str("Invalid job id specified") in str(stderr, encoding='ascii') :
+                return JobStatus.finished
+            else :
+                print("status command " + "squeue" + " fails to execute")
+                print("erro info: " + str(stderr, encoding='ascii'))
+                print("return code: " + str(ret.returncode))
+                sys.exit ()
+        status_line = str(stdout, encoding='ascii').split ('\n')[-2]
+        status_word = status_line.split ()[4]
+        if   status_word in ["PD","CF","S"] :
+            return JobStatus.waiting
+        elif status_word in ["R","CG"] :
+            return JobStatus.running
+        elif status_word in ["C","E","K","BF","CA","CD","F","NF","PR","SE","ST","TO"] :
+            return JobStatus.finished
+        elif status_word in ["RH"] : #for job in 'RH' status, scancel the job and return terminated
+            self.scancel_job()
+            return JobStatus.finished
+        else:
+            return JobStatus.unknown
+
+    def check_status(self):
         ret = Popen (["squeue --job " + self.job_id], shell=True, stdout=PIPE, stderr=PIPE)
         stdout, stderr = ret.communicate()
         if (ret.returncode != 0) :
@@ -304,7 +330,7 @@ class Mission(object):
         for job in self.job_list:
             if job.status == JobStatus.terminated:
                 if job.submit_num <= JobStatus.submit_limit.value:
-                    print("resubmit job {}: {}, the time is {}\n".format(job.jobid, job.submit_cmd, job.submit_num))
+                    print("resubmit job {}: {}, the time is {}\n".format(job.job_id, job.submit_cmd, job.submit_num))
                     job.submit()
                 else:
                     job.status = JobStatus.resubmit_failed                    
@@ -329,3 +355,28 @@ class Mission(object):
     def reset_job_state(self):
         for job in self.job_list:
             job.status == JobStatus.unsubmitted
+
+def scancle_job(work_dir:str):
+    job_id_list = get_jobs(work_dir)
+    print("the job to be scancelled is:")
+    print(job_id_list)
+    for job_id in job_id_list:
+        job = SlurmJob(job_id=job_id)
+        status = job.check_status_no_tag()#get status
+        if status == JobStatus.waiting or status == JobStatus.running: # is running 
+            job.scancel_job()
+            # time.sleep(2)
+            # status = job.check_status_no_tag()
+            # if JobStatus.finished == status:
+            #     print("scancel job {} successfully\n\n".format(job_id))
+            # else:
+            #     print("Scancel job {} failed, Please manually check and cancel this task!\n\n".format(job_id))
+    time.sleep(5)
+    for job_id in job_id_list:
+        job = SlurmJob(job_id=job_id)
+        status = job.check_status_no_tag()#get status
+        if JobStatus.finished == status:
+            print("scancel job {} successfully".format(job_id))
+        else:
+            print("Scancel job {} failed, Please manually check and cancel this task!\n".format(job_id))
+

@@ -24,7 +24,7 @@ import glob
 import numpy as np
 import pandas as pd
 
-from pwact.active_learning.slurm import SlurmJob, Mission
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.iter_input import InputParam
 from pwact.active_learning.explore.select_image import select_image
@@ -33,7 +33,7 @@ from pwact.utils.format_input_output import make_train_name, get_iter_from_iter_
 from pwact.utils.constant import AL_STRUCTURE, TRAIN_FILE_STRUCTUR, MODEL_CMD, \
     EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, TEMP_STRUCTURE, UNCERTAINTY
 
-from pwact.utils.file_operation import write_to_file, link_file, search_files
+from pwact.utils.file_operation import write_to_file, link_file, search_files, del_file_list_by_patten
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from pwact.active_learning.explore.select_image import select_image
 '''
@@ -95,6 +95,7 @@ class ModelKPU(object):
         self.make_kpu_slurm_job_files(kpu_list)
 
     def make_kpu_slurm_job_files(self, kpu_list:list[str]):
+        del_file_list_by_patten(self.kpu_dir, "*{}".format(TRAIN_FILE_STRUCTUR.kpu_job))
         group_list = split_job_for_group(self.resource.train_resource.group_size, kpu_list, 1)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":

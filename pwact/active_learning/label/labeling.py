@@ -19,23 +19,29 @@
             ...
 """
 import os
+import glob
 import pandas as pd
 
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.iter_input import InputParam
-from pwact.active_learning.slurm import SlurmJob, Mission
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission, scancle_job
 
 from pwact.utils.constant import DFT_TYPE, VASP, PWDATA, AL_STRUCTURE, TEMP_STRUCTURE,\
     LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, DFT_STYLE, PWMAT
     
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
-from pwact.utils.file_operation import write_to_file, copy_file, copy_dir, search_files, mv_file, add_postfix_dir, del_dir, del_file_list, link_file
+from pwact.utils.file_operation import write_to_file, copy_file, copy_dir, search_files, mv_file, add_postfix_dir, del_dir, del_file_list_by_patten, link_file
 from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script
 
 from pwact.data_format.configop import extract_pwdata, save_config, get_atom_type
-
 class Labeling(object):
+    @staticmethod
+    def kill_job(root_dir:str, itername:str):
+        label_dir = os.path.join(root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.labeling) 
+        scf_dir = os.path.join(label_dir, LABEL_FILE_STRUCTURE.scf)
+        scancle_job(scf_dir)
+
     def __init__(self, itername:str, resource: Resource, input_param:InputParam):
         self.itername = itername
         self.iter = get_iter_from_iter_name(self.itername)
@@ -191,6 +197,7 @@ class Labeling(object):
         )
         
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):
+        del_file_list_by_patten(self.scf_dir, "*{}".format(LABEL_FILE_STRUCTURE.scf_job))
         group_list = split_job_for_group(self.resource.dft_resource.group_size, scf_sub_list, self.resource.dft_resource.parallel_num)
         
         for group_index, group in enumerate(group_list):

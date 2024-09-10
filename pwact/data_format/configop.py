@@ -169,8 +169,17 @@ def extract_pwdata(data_list:list[str],
                 image_data.append(tmp_config)
             else:
                 image_data = Config(data_format, data_path)
+
+            
                 # if not isinstance(image_data, list):
                 #     image_data = [image_data]
+        if interval > 1:
+            tmp = []
+            for i in range(0, len(image_data.images)):
+                if i % interval == 0:
+                    tmp.append(image_data.images[i])
+            image_data.images = tmp
+
         image_data.to(
                     output_path=datasets_path,
                     save_format=PWDATA.pwmlff_npy,
@@ -185,6 +194,12 @@ def extract_pwdata(data_list:list[str],
     else:
         for data_path in data_list:
             image_data = Config(data_format, data_path)
+            if interval > 1:
+                tmp = []
+                for i in range(0, len(image_data.images)):
+                    if i % interval == 0:
+                        tmp.append(image_data.images[i])
+                image_data.images = tmp
             image_data.to(
                 output_path=datasets_path,
                 save_format=PWDATA.pwmlff_npy,

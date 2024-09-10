@@ -22,10 +22,10 @@ from pwact.active_learning.user_input.init_bulk_input import InitBulkParam
 from pwact.active_learning.init_bulk.duplicate_scale import get_config_files_with_order
 
 from pwact.utils.constant import PWMAT, INIT_BULK, TEMP_STRUCTURE, SLURM_OUT, DFT_STYLE
-from pwact.active_learning.slurm import SlurmJob, Mission
+from pwact.active_learning.slurm.slurm import SlurmJob, Mission
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
     
-from pwact.utils.file_operation import write_to_file, link_file
+from pwact.utils.file_operation import write_to_file, link_file, del_file_list_by_patten
 from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script
 from pwact.data_format.configop import save_config, get_atom_type
 
@@ -166,6 +166,7 @@ class AIMD(object):
         )
 
     def make_aimd_slurm_job_files(self, aimd_dir_list:list[str],use_dftb: bool=False):
+        del_file_list_by_patten(self.aimd_dir, "*{}".format(INIT_BULK.aimd_job))
         group_list = split_job_for_group(self.resource.dft_resource.group_size, aimd_dir_list, self.resource.dft_resource.parallel_num)
         for group_index, group in enumerate(group_list):
             if group[0] == "NONE":

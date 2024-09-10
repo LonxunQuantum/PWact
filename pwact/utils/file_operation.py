@@ -186,6 +186,9 @@ def del_file_list(path_list:str):
         if os.path.isdir(_path):
             shutil.rmtree(_path)
         
+def del_file_list_by_patten(del_dir:str, patten:str):
+    file_list = glob.glob(os.path.join(del_dir, "*{}".format(patten)))
+    del_file_list(file_list)
 
 '''
 description: 
