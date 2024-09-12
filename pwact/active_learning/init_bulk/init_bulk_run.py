@@ -166,9 +166,9 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         write_to_file(result_save_path, result_lines, mode='w')
 
 def scancel_jobs(work_dir):
-    relax_jobs = glob.glob(os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax, "slurm-*.out"))
-    scf_jobs = glob.glob(os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.aimd, "slurm-*.out"))
-    if len(scf_jobs) > 0:
-        scancle_job(scf_jobs)
-    elif len(relax_jobs) > 0:
-        scancle_job(relax_jobs)
+    relax_job = os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.relax)
+    scf_job = os.path.join(work_dir, TEMP_STRUCTURE.tmp_init_bulk_dir, INIT_BULK.aimd)
+    print("Cancel aimd task:")
+    scancle_job(scf_job)
+    print("Cancel relax task:")
+    scancle_job(relax_job)
