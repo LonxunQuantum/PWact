@@ -1,0 +1,77 @@
+{
+    "reserve_work": true,
+    "sys_config_prefix": "../../",
+    "sys_configs": [{"config":"./structures/19.config", 
+                    "relax":true, 
+                    "_relax_input_idx":0, 
+                    "super_cell":[1, 1, 2], 
+                    "scale":[0.9,0.95], 
+                    "perturb":3, 
+                    "cell_pert_fraction":0.03, 
+                    "atom_pert_distance":0.01, 
+                    "aimd":true, 
+                    "_aimd_input_idx":0
+                    },
+                    {"config":"./structures/POSCAR", 
+                    "format":"vasp/poscar", 
+                    "relax":false, 
+                    "super_cell":[[1,0,0],[0, 2, 0],[0,0,1]], 
+                    "perturb":2, 
+                    "aimd":true, 
+                    "aimd_input_idx": 1
+                    }
+        ],
+
+    "dft_style":"PWmat",
+    "relax_input":["relax_etot.input", "relax_etot1.input","relax_etot2.input"],
+    "aimd_input": ["aimd_etot1.input", "aimd_etot2.input"],
+    "gaussian_param": {
+        "basis_set_file":"./BASIS_MOLOPT_1",
+        "potential_file":"./POTENTIAL_1",
+        "atom_list":["Si"],
+        "basis_set_list":["SZV-MOLOPT-SR-GTH"],
+        "potential_list":["GTH-PBE-q4"]
+    },
+    
+    "_relax_input":[
+        {
+            "input":"relax_etot.input",
+            "kspacing":0.5,
+            "flag_symm":"0"
+        },
+        {
+            "input":"relax_etot1.input",
+            "kspacing":0.5,
+            "flag_symm":"0"
+        },
+        {
+            "input":"relax_etot2.input",
+            "kspacing":0.5,
+            "flag_symm":"0",
+            "_flag":"1个整数，relax or scf 0 , aimd 3, 磁性体系2"
+        }
+        ],
+
+    "_aimd_input":{
+                "etot_input":"aimd_etot.input",
+                "kspacing":0.5,
+                "flag_symm":"3",
+                "_flag":"1个整数，relax or scf 0 , aimd 3, 磁性体系2"
+    },
+
+    "__aimd_input":[
+        {
+            "input":"aimd_etot1.input",
+            "kspacing":0.5,
+            "flag_symm":"3",
+            "_flag":"1个整数，relax or scf 0 , aimd 3, 磁性体系2"
+        },
+        {
+            "input":"aimd_etot2.input",
+            "kspacing":0.5,
+            "flag_symm":"3",
+            "_flag":"1个整数，relax or scf 0 , aimd 3, 磁性体系2"
+        }
+    ],
+    "_pseudo" : ["Si.SG15.PBE.UPF"]
+}

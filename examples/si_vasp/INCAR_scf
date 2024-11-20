@@ -1,0 +1,11 @@
+Global Parameters  
+ISTART =  0            (从头开始进行自洽计算)  
+ISPIN  =  1            (非自旋极化DFT)  
+LREAL  = Auto       (投影算符: 自动)  
+ENCUT  =  650        (平面波基组的截断能量，单位为eV)  
+PREC   =  Accurate   (精度级别: Normal或Accurate)  
+LWAVE  = .FALSE.        (不写入WAVECAR文件)  
+LCHARG = .FALSE.        (不写入CHGCAR文件)  
+ADDGRID= .TRUE.        (增加网格，有助于GGA收敛)  
+EDIFF = 1E-06  
+NPAR   = 4           (将k网格分成不同的组)

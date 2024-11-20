@@ -1,0 +1,99 @@
+{
+    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/al_dir/si_7_pwmat_gaussian/run_iter",
+
+    "reserve_work":true,
+    "reserve_md_traj": false,
+    "reserve_scf_files": true,
+
+    "init_data": [
+        "../init_bulk/collection/init_config_0/PWdata",
+        "../init_bulk/collection/init_config_1/PWdata"
+    ],
+
+    "train": {
+        "model_type": "DP",
+        "atom_type": [14]
+    },
+
+    "strategy": {
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.05,
+        "upper_model_deiv_f": 0.45,
+        "model_num": 4,
+        "max_select": 10
+    },
+
+    "explore": {
+        "sys_config_prefix": "/data/home/wuxingxing/datas/al_dir/si_example/structures",
+        "sys_configs": [
+                        {"config":"POSCAR", "format":"vasp/poscar"},
+                        "49.config",
+                        "45.config",
+                        "41.config",
+                        "37.config",
+                        "33.config",
+                        "29.config",
+                        "25.config",
+                        "21.config",
+                        "17.config",
+                        "1.config"
+            ],
+        "md_jobs": [
+            [{"sys_idx": [ 1,4],
+            "select_sys":[10,15],
+            "nsteps": 400,
+            "md_dt": 0.001,
+            "trj_freq": 5,
+            "boundary":true,
+            "ensemble": "npt",
+            "press": [100.0, 200.0],
+            "taup": 0.5,
+            "temps": [500,700],
+            "taut":0.1},
+            {"sys_idx": [0, 1],
+            "nsteps": 400,
+            "md_dt": 0.001,
+            "trj_freq": 5,
+            "boundary":true,
+            "ensemble": "nvt",
+            "temps": [500, 700],
+            "taut":0.1}
+            ],
+            [{"sys_idx": [ 1,3,4],
+            "select_sys":[10,15,20],
+            "nsteps": 4000,
+            "md_dt": 0.001,
+            "trj_freq": 5,
+            "boundary":true,
+            "ensemble": "npt",
+            "press": [100.0, 200.0],
+            "taup": 0.5,
+            "temps": [500,700],
+            "taut":0.1},
+            {"sys_idx": [0, 1],
+            "nsteps": 4000,
+            "md_dt": 0.001,
+            "trj_freq": 5,
+            "boundary":true,
+            "ensemble": "nvt",
+            "temps": [500, 700],
+            "taut":0.1}
+            ]
+        ]
+   },
+
+    "DFT": {
+            "dft_style": "pwmat",
+            "input": "scf_etot.input",
+            "kspacing":0.5,
+            "flag_symm":0,
+            "_flag":"1个整数，or scf 0 , aimd 3, 磁性体系2",
+            "gaussian_param": {
+                "basis_set_file":"./BASIS_MOLOPT_1",
+                "potential_file":"./POTENTIAL_1",
+                "atom_list":["Si"],
+                "basis_set_list":["SZV-MOLOPT-SR-GTH"],
+                "potential_list":["GTH-PBE-q4"]
+            }
+    }
+}

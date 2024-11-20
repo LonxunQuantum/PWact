@@ -34,7 +34,7 @@ def  duplicate_scale(resource: Resource, input_param:InitBulkParam):
             super_cell_config = os.path.join(super_cell_scale_dir, DFT_STYLE.get_super_cell_config(resource.dft_style))
 
             if not os.path.exists(super_cell_config):
-                do_super_cell(config=config_file,
+                do_super_cell(config_file=config_file,
                     input_format=config_format,
                     supercell_matrix=init_config.super_cell, 
                     pbc=init_config.pbc, 

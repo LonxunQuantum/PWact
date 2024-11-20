@@ -62,8 +62,25 @@ class SCFParam(object):
         # else:
         #     pass
         # for cp2k
-        self.basis_set_file = get_parameter("basis_set_file", json_dict, None)
-        self.potential_file = get_parameter("potential_file", json_dict, None)
+        gaussian_param = get_parameter("gaussian_param", json_dict, None)
+        if gaussian_param is not None:
+            self.basis_set_file = os.path.abspath(get_parameter("basis_set_file", gaussian_param, None))
+            self.potential_file = os.path.abspath(get_parameter("potential_file", gaussian_param, None))
+            basis_set_list = get_parameter("basis_set_list", gaussian_param, None)
+            potential_list = get_parameter("potential_list", gaussian_param, None)
+            atom_list = get_parameter("atom_list", gaussian_param, None)
+            self.gaussian_base_param = {}
+            self.gaussian_base_param["ELEMENT"] = atom_list
+            self.gaussian_base_param["BASIS_SET"] = basis_set_list
+            self.gaussian_base_param["POTENTIAL"] = potential_list
+            self.gaussian_base_param["BASIS_SET_FILE_NAME"] = os.path.basename(self.basis_set_file)
+            self.gaussian_base_param["POTENTIAL_FILE_NAME"] = os.path.basename(self.potential_file)
+        else:
+            self.basis_set_file = None# os.path.abspath(get_parameter("basis_set_file", json_dict, None))
+            self.potential_file = None#os.path.abspath(get_parameter("potential_file", json_dict, None))
+            self.gaussian_base_param = None
+        # for cp2k and pwmat gaussion
+        
 
     def _set_pseudo(self, pseudo, style:str):
         res_pseudo = []
@@ -158,7 +175,7 @@ class DFTInput(object):
         self.flag_symm = flag_symm
         self.use_dftb = False
         self.use_skf = False
-
+        self.use_gaussion = False
         # check etot input file
         if self.dft_style == DFT_STYLE.pwmat:
             key_values, etot_lines = read_and_check_etot_input(self.input_file)
@@ -177,6 +194,9 @@ class DFTInput(object):
                 if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
                     self.use_skf = True
             
+            if "USE_GAUSSIAN" in key_values.keys() and key_values["USE_GAUSSIAN"]is not None and key_values["USE_GAUSSIAN"] == "T":
+                self.use_gaussion
+
     def get_input_content(self):
         if self.dft_style == DFT_STYLE.pwmat:
             return read_and_check_etot_input(self.input_file)

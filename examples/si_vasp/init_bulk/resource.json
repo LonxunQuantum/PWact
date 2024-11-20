@@ -1,0 +1,13 @@
+{
+    "DFT": {
+        "command":"vasp_gam",
+        "number_node": 1,
+        "cpu_per_node": 64,
+        "queue_name": "cpu",
+        "custom_flags": [
+        ],
+        "module_list": [
+            "vasp/6.4.2"
+        ]
+    }
+}

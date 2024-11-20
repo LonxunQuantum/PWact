@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import subprocess
-from pwact.utils.constant import PWMAT, VASP
+from pwact.utils.constant import PWMAT, VASP, PWDATA, get_atomic_name_from_number
 from pwact.utils.file_operation import del_file, copy_file
+from pwdata import Config
 # '''
 # description: 
 #     lammps dump file to poscar format or pwmat format
@@ -100,16 +101,17 @@ def _reciprocal_box(box):
 #     return ret
 
 def _make_kspacing_kpoints(config, kspacing):
-    with open(config, "r") as fp:
-        lines = fp.read().split("\n")
-    box = []
-    for idx, ii in enumerate(lines):
-        if "LATTICE" in ii.upper():
-            for kk in range(idx + 1, idx + 1 + 3):
-                vector = [float(jj) for jj in lines[kk].split()[0:3]]
-                box.append(vector)
-            box = np.array(box)
-            rbox = _reciprocal_box(box)
+    config = Config(data_path=config, format="pwmat/config")
+    lattice = config.images[0].lattice
+    # box = []
+    # for idx, ii in enumerate(lines):
+    #     if "LATTICE" in ii.upper():
+    #         for kk in range(idx + 1, idx + 1 + 3):
+    #             vector = [float(jj) for jj in lines[kk].split()[0:3]]
+    #             box.append(vector)
+    #         box = np.array(box)
+    #         rbox = _reciprocal_box(box)
+    rbox = _reciprocal_box(lattice)
     kpoints = [
         round(2 * np.pi * np.linalg.norm(ii) / kspacing) for ii in rbox
     ]
@@ -321,13 +323,19 @@ def set_etot_input_by_file(
     atom_config:str=None, 
     pseudo_names:list[str]=None,
     is_scf = False, # if True, job is scf, and 'OUT.MLMD = T' to etot.input
-    is_skf_file = False  # if True, set in.skf to etot.input file
+    is_skf_file = False,  # if True, set in.skf to etot.input file
+    gaussian_base_param:dict=None
     ):
     key_values, etot_lines = read_and_check_etot_input(etot_input_file)
+    is_gaussian = False
+    if "USE_GAUSSIAN" in key_values.keys() and key_values["USE_GAUSSIAN"] is not None and key_values["USE_GAUSSIAN"] == "T":
+        is_gaussian = True
+    
     is_skf = False
     if "USE_DFTB" in key_values.keys() and key_values["USE_DFTB"] is not None and key_values["USE_DFTB"] == "T":
         if key_values["DFTB_DETAIL"].replace(",", " ").split()[0] != "3": # not chardb
             is_skf = True
+    
     index = 0
     new_etot_lines = []
     while index < len(etot_lines):
@@ -340,18 +348,26 @@ def set_etot_input_by_file(
             pass
         elif "IN.PSP" in etot_lines[index].upper(): # to avoid the new_etot_lines add 'IN.PSP' and 'in.skf' 'in.atom' in etot_lines
             pass
+        elif "IN.BASIS" in etot_lines[index].upper(): # to avoid the new_etot_lines add 'IN.BASIS' in etot_lines
+            pass
             # etot_lines.remove(etot_lines[index])
         else:
             new_etot_lines.append(etot_lines[index])
         index += 1
     new_etot_lines.append("\nIN.ATOM = {}\n".format(os.path.basename(atom_config)))
+    atom_type_numbers = Config(format=PWDATA.pwmat_config, data_path=atom_config).images[0].atom_type
+    atom_type_names = get_atomic_name_from_number(atom_type_numbers)
     # if dftb and need in_skf
     if is_skf and is_skf_file:
         new_etot_lines.append("IN.SKF = ./{}/\n".format(PWMAT.in_skf))
     # is not for dftb, reset the IN.PSP
     if "USE_DFTB" not in key_values.keys() or key_values["USE_DFTB"] is None and key_values["USE_DFTB"] == "F":
-        for pseudo_i, pseudo in enumerate(pseudo_names):
-            new_etot_lines.append("IN.PSP{} = {}\n".format(pseudo_i + 1, pseudo))
+        if is_gaussian is False:
+            for pseudo_i, pseudo in enumerate(pseudo_names):
+                new_etot_lines.append("IN.PSP{} = {}\n".format(pseudo_i + 1, pseudo))
+        else: # pwmat gaussian
+            psp_line = set_gassion_psp(atom_type_names, gaussian_base_param)
+            new_etot_lines.append(psp_line)
     key_list = list(key_values)
     # set OUT.MLMD
     if "OUT.MLMD" not in key_list:
@@ -359,11 +375,11 @@ def set_etot_input_by_file(
             new_etot_lines.append("OUT.MLMD = T\n")
     # # set OUT.WG OUT.RHO OUT.VR
     if "OUT.WG" not in key_list:
-        etot_lines.append("OUT.WG = F\n")
+        new_etot_lines.append("OUT.WG = F\n")
     if "OUT.RHO" not in key_list:
-        etot_lines.append("OUT.RHO = F\n")
+        new_etot_lines.append("OUT.RHO = F\n")
     if "OUT.VR" not in key_list:
-        etot_lines.append("OUT.VR = F\n")
+        new_etot_lines.append("OUT.VR = F\n")
     # if MP_N123 is not in etot.input file then using 'kespacing' generates it
     if "MP_N123" not in key_list:
         kspacing = PWMAT.kspacing_default if kspacing is None else kspacing
@@ -378,6 +394,20 @@ def set_etot_input_by_file(
     
     return "".join(new_etot_lines)
 
+def set_gassion_psp(atom_list, gaussian_base_param:dict):
+    psp_num = 1
+    psp_line = "\n"
+    base_line = "\n"
+    for idx, atom in enumerate(gaussian_base_param["ELEMENT"]):
+        if atom not in atom_list:
+            continue
+        psp_line  += "IN.PSP{}   = {} {} {}\n".format(psp_num, atom, gaussian_base_param["POTENTIAL"][idx],  gaussian_base_param["POTENTIAL_FILE_NAME"])
+        base_line += "IN.BASIS{} = {} {} {}\n".format(psp_num, atom, gaussian_base_param["BASIS_SET"][idx],gaussian_base_param["BASIS_SET_FILE_NAME"])
+        psp_num += 1
+    psp_line += base_line
+    return psp_line
+
+       
 def is_alive_atomic_energy(movement_list:list):
     if len(movement_list) < 1:
         return False
@@ -443,7 +473,8 @@ bool_keys=[
     'OUT.MLMD',
     'NUM_BLOCKED_PSI',
     'OUT.RHOATOM',
-    "USE_DFTB"
+    "USE_DFTB",
+    "USE_GAUSSIAN"
     ]
 
 char_keys=['PRECISION',

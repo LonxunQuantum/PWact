@@ -117,8 +117,7 @@ class Relax(object):
             dft_style=self.input_param.dft_style,
             save_dir=relax_path,
             pseudo_names=pseudo_names,
-            basis_set_file_name=self.input_param.dft_input.basis_set_file,# these for cp2k
-            potential_file_name=self.input_param.dft_input.potential_file,
+            gaussian_base_param=self.input_param.dft_input.gaussian_base_param,# these for cp2k
             # xc_functional=self.input_param.dft_input.xc_functional,
             # potential=self.input_param.dft_input.potential,
             # basis_set=self.input_param.dft_input.basis_set

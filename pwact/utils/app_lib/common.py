@@ -46,8 +46,11 @@ def link_pseudo_by_atom(
                     link_file(pseudo_path, os.path.join(target_dir, pseudo_name))
                     pseudo_find.append(pseudo_path)
                     break
-        assert len(pseudo_find) == len(atom_order), "the pwmat pseudo files {} not same as atom type '{}'".format(pseudo_find, atom_order)
-    
+        # assert len(pseudo_find) == len(atom_order), "the pwmat pseudo files {} not same as atom type '{}'".format(pseudo_find, atom_order)
+        if basis_set_file is not None and potential_file is not None: # these 2 files for pwmat gaussian base
+            link_file(basis_set_file, os.path.join(target_dir, os.path.basename(basis_set_file)))
+            link_file(potential_file, os.path.join(target_dir, os.path.basename(potential_file)))
+
     elif dft_style == DFT_STYLE.vasp:
         # merge file to where? to save dir
         for atom_name in atom_order:
@@ -98,8 +101,11 @@ def set_input_script(
     save_dir:str=None,
     pseudo_names:list[str]=None,
     is_scf = False, # if is_scf, the pwmat etot.input will set the 'out.mlmd = T'
-    basis_set_file_name=None,
-    potential_file_name=None,
+    gaussian_base_param = None
+    # basis_set_file_name=None,
+    # potential_file_name=None,
+    # basis_set_list=None,
+    # potential_list=None
     # xc_functional=None,
     # potential=None,
     # basis_set=None
@@ -114,7 +120,8 @@ def set_input_script(
             flag_symm=flag_symm, 
             pseudo_names=pseudo_names,
             is_scf = is_scf,
-            is_skf_file = is_skf_file
+            is_skf_file = is_skf_file,
+            gaussian_base_param=gaussian_base_param
             )
         write_to_file(target_file, script, "w")
     elif dft_style == DFT_STYLE.vasp:
@@ -127,10 +134,13 @@ def set_input_script(
         cell = file_read_last_line(os.path.join(save_dir, CP2K.cell_txt), type_name="float")
         del_file(os.path.join(save_dir, CP2K.cell_txt))
         # inp file, cell cood add to inp file
+        # set kind_dict
+
         script = make_cp2k_input_from_external(
             cell=cell,
-            coord_file_name = os.path.join(os.path.basename(config)),
-            exinput_path=input_file
+            coord_file = config,
+            exinput_path=input_file,
+            gaussian_base_param = gaussian_base_param
             )
         write_to_file(target_file, script, "w")
 

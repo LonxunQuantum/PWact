@@ -191,9 +191,8 @@ class Labeling(object):
             flag_symm=self.input_param.scf.scf_input_list[0].flag_symm, 
             save_dir=scf_dir,
             pseudo_names=pseudo_names,
-            is_scf = True,
-            basis_set_file_name  =self.input_param.scf.basis_set_file,
-            potential_file_name  =self.input_param.scf.potential_file
+            gaussian_base_param=self.input_param.scf.gaussian_base_param,# these for cp2k
+            is_scf = True
         )
         
     def make_scf_slurm_job_files(self, scf_sub_list:list[str]):

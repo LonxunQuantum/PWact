@@ -161,8 +161,7 @@ class Relabel(object):
                 flag_symm=flag_symm, 
                 save_dir = save_dir,
                 pseudo_names=pseudo_names,
-                basis_set_file_name=self.input_param.dft_input.basis_set_file,# these for cp2k
-                potential_file_name=self.input_param.dft_input.potential_file
+                gaussian_base_param=self.input_param.dft_input.gaussian_base_param,# these for cp2k
             )
             scf_lsit.append(save_dir)
         return scf_lsit

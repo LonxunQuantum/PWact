@@ -1,0 +1,17 @@
+## Replace with your own cp2k environment
+#%Module1.0####
+
+module-whatis "cp2k.2024.3"
+
+module load mkl/2022.0.2
+
+module load gcc/9.3.0
+. /data/home/wuxingxing/tools/spack/share/spack/setup-env.sh
+spack load zlib@1.2.13%gcc@9.5.0 openmpi@4.1.4%gcc@9.5.0
+
+source /data/home/wuxingxing/tools/cp2k/cp2k-2024.3/tools/toolchain/install/setup
+
+export LD_LIBRARY_PATH=/data/home/wuxingxing/tools/spack/opt/spack/linux-centos7-broadwell/gcc-9.5.0/zlib-1.2.13-2pjoe5zxsd6ufdunfa6hpq5im34xuknp/lib/:$LD_LIBRARY_PATH
+
+export PATH=$PATH:/data/home/wuxingxing/tools/cp2k/cp2k-2024.3/exe/local
+

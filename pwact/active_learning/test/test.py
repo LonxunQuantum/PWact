@@ -4,7 +4,7 @@ import os
 import shutil
 import glob
 import json
-from pwdata.main import Config
+from pwdata.config import Config
 def make_kspacing_kpoints(config, format, kspacing):
     config = Config(format=format, data_path=config)
     # with open(config, "r") as fp:
@@ -17,7 +17,7 @@ def make_kspacing_kpoints(config, format, kspacing):
     #             box.append(vector)
     #         box = np.array(box)
     #         rbox = _reciprocal_box(box)
-    box = config.images.lattice
+    box = config.images[0].lattice
     rbox = _reciprocal_box(box)
     kpoints = [
         max(1, round(2 * np.pi * np.linalg.norm(ii) / kspacing)) for ii in rbox

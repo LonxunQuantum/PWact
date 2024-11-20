@@ -1,0 +1,22 @@
+{
+    "DFT": {
+        "command":"mpirun -np 4 PWmat",
+        "task_run_num":1,
+        "number_node": 1,
+        "cpu_per_node": 4,
+        "gpu_per_node": 4,
+        "group_size": 1,
+        "queue_name": "1080ti,new3080ti,3080ti,3090",
+        "custom_flags": [
+        ],
+        "_custom_flags": [
+        ],
+        "module_list": [
+            "compiler/2022.0.2",
+            "mkl/2022.0.2",
+            "mpi/2021.5.1",
+            "cuda/11.6",
+            "pwmat"
+        ]
+    }
+}

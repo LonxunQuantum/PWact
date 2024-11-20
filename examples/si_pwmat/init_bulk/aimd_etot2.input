@@ -1,0 +1,19 @@
+4 1
+in.atom = atom.config
+IN.PSP1 = Si.SG15.PBE.UPF
+Ecut = 60
+Ecut2 = 240
+job = md
+md_detail = 2, 20, 2.0, 500.000000, 500.000000
+
+E_error = 0
+Rho_error = 1E-5
+
+OUT.WG = F 
+OUT.RHO = F 
+OUT.VR = F 
+OUT.FORCE = T 
+OUT.STRESS = T 
+OUT.MLMD = T
+ENERGY_DECOMP = T, 1
+

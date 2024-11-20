@@ -6,7 +6,7 @@ description:
 return {*}
 author: wuxingxing
 '''
-
+import os
 import numpy as np
 default_config = {
     "GLOBAL": {"PROJECT": "AL_PWMLFF"},
@@ -186,8 +186,8 @@ param {*} exinput_path
 return {*}
 author: wuxingxing
 '''
-def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
-   
+def make_cp2k_input_from_external(cell, coord_file, exinput_path, gaussian_base_param:dict):
+    coord_file_name = os.path.basename(coord_file)
     # insert the cell information
     # covert cell to cell string
     cell = np.reshape(cell, [3, 3])
@@ -201,10 +201,37 @@ def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
     end_subsys = 0
     start_coord = 0
     end_coord = 0
+    start_kind = -1
+    end_kind = -1
     start_global = 0
     end_global = 0
     print_level_line = -1
+    start_dft = 0
+    end_dft = 0
+    basis_set_file_name = -1
+    potential_file_name = -1
 
+    # delete the BASIS_SET_FILE_NAME and POTENTIAL_FILE_NAME line
+    for line_idx, line in enumerate(exinput):
+        line = line.upper()
+        if "&DFT" in line:
+            start_dft = line_idx
+        if "&END DFT" in line:
+            end_dft = line_idx
+        if "BASIS_SET_FILE_NAME" in line:
+            basis_set_file_name = line_idx
+        if "POTENTIAL_FILE_NAME" in line:
+            potential_file_name = line_idx
+    if start_dft == end_dft:
+        raise Exception("{} extarcted error! Can not find DFT set!".format(exinput_path))
+    basis_set_file_name, potential_file_name = sorted([basis_set_file_name, potential_file_name], reverse=True)
+    if basis_set_file_name != -1:
+        exinput.pop(basis_set_file_name)
+    if potential_file_name != -1:
+        exinput.pop(potential_file_name)
+    exinput.insert(start_dft+1, "    BASIS_SET_FILE_NAME {}\n".format(gaussian_base_param["BASIS_SET_FILE_NAME"]))
+    exinput.insert(start_dft+2, "    POTENTIAL_FILE_NAME {}\n".format(gaussian_base_param["POTENTIAL_FILE_NAME"]))
+    
     for line_idx, line in enumerate(exinput):
         line = line.upper()
         if "&GLOBAL" in line:
@@ -225,8 +252,14 @@ def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
             start_coord = line_idx
         if "&END COORD" in line:
             end_coord = line_idx
+        if "&KIND" in line and start_kind == -1:
+            start_kind = line_idx
+        if "&END KIND" in line:
+            end_kind = line_idx
+
     if start_global == end_global:
         raise Exception("ERROR! the input cp2k inp file does not have 'GLOBAL' block! Please check the file {}\n".format(exinput_path))
+    
     temp_exinput = exinput[:start_subsys+1]
     # add coord
     temp_exinput.append("    &COORD\n")
@@ -241,11 +274,16 @@ def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
     # temp_exinput.append("        PERIODIC XYZ\n")
     temp_exinput.append("    &END CELL\n")
 
+    kind_input = get_kind(coord_file=coord_file, gassion_base_param=gaussian_base_param)
+    temp_exinput.append(kind_input)
+
     del_content_index = []
     if start_cell != end_cell:
         del_content_index.extend(list(range(start_cell, end_cell+1)))
     if start_coord != end_coord:
         del_content_index.extend(list(range(start_coord, end_coord+1)))
+    if start_kind != end_kind:
+        del_content_index.extend(list(range(start_kind, end_kind+1)))
     del_content_index = sorted(del_content_index)
     for index in range(start_subsys+1, end_subsys):
         if index not in del_content_index:
@@ -259,34 +297,63 @@ def make_cp2k_input_from_external(cell, coord_file_name, exinput_path):
         temp_exinput[print_level_line] = "    PRINT_LEVEL medium\n"
     return "".join(temp_exinput)
 
+def get_kind(coord_file:str, gassion_base_param:dict):
+    atom_list = get_atom_type_from_config(coord_file)
+    kind_line = "\n"
+    for idx, atom in enumerate(gassion_base_param["ELEMENT"]):
+        if atom not in atom_list:
+            continue
+        kind_line += "    &KIND {}\n".format(atom)
+        kind_line += "        ELEMENT {}\n".format(atom)
+        kind_line += "        BASIS_SET {}\n".format(gassion_base_param["BASIS_SET"][idx])
+        kind_line += "        POTENTIAL {}\n".format(gassion_base_param["POTENTIAL"][idx])
+        kind_line += "    &END KIND\n"
+    return kind_line
+
+def get_atom_type_from_config(coord_file:str):
+    res = []
+    with open(coord_file, 'r') as rf:
+        lines = rf.readlines()
+    for line in lines:
+        try:
+            atom_type, x, y, z = line.strip().split()
+            x = float(x)
+            y = float(y)
+            z = float(z)
+            if atom_type not in res:
+                res.append(atom_type)
+        except:
+            continue
+    return res
+
 # if __name__=="__main__":
-    # import dpdata
-    # poscar = "/data/home/wuxingxing/datas/al_dir/si_4_vasp/init_bulk/collection/init_config_0/0.9_scale.poscar"
-    # sys_data = dpdata.System(poscar).data
+#     import dpdata
+#     poscar = "/data/home/wuxingxing/datas/al_dir/si_4_vasp/init_bulk/collection/init_config_0/0.9_scale.poscar"
+#     sys_data = dpdata.System(poscar).data
     
-    # from pwdata.main import Configs
-    # from pwdata.calculators.const import ELEMENTTABLE_2
-    # image = Configs.read(format="pwmat", data_path="/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/atom.config")
-    # image = image._set_cartesian() if image.cartesian is False else image._set_cartesian()
-    # potential = {"Si":"GTH-PBE"}
-    # basis_set = {"Si":"DZVP-MOLOPT-SR-GTH-q4"}
-    # atom_types_image = []
-    # for atom in image.atom_types_image:
-    #     atom_types_image.append(ELEMENTTABLE_2[atom])
-    # coord_xyz = make_cp2k_xyz(
-    #     atom_types = atom_types_image,
-    #     coord_list = image.position
-    # )
-    # with open("/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/coord.xyz", "w") as fp:
-    #     fp.write(coord_xyz)
+#     from pwdata.config import Configs
+#     from pwdata.calculators.const import ELEMENTTABLE_2
+#     image = Configs.read(format="pwmat", data_path="/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/atom.config")
+#     image = image._set_cartesian() if image.cartesian is False else image._set_cartesian()
+#     potential = {"Si":"GTH-PBE"}
+#     basis_set = {"Si":"DZVP-MOLOPT-SR-GTH-q4"}
+#     atom_types_image = []
+#     for atom in image.atom_types_image:
+#         atom_types_image.append(ELEMENTTABLE_2[atom])
+#     coord_xyz = make_cp2k_xyz(
+#         atom_types = atom_types_image,
+#         coord_list = image.position
+#     )
+#     with open("/data/home/wuxingxing/datas/al_dir/si_exp/init_bulk/coord.xyz", "w") as fp:
+#         fp.write(coord_xyz)
     
-    # make_cp2k_input(
-    #     cell = image.lattice,
-    #     atom_names=["Si"],
-    #     basis_set_file_name="BASIS_SET_FILE",
-    #     potential_file_name="POTENTIAL_FILE",
-    #     xc_functional="PBE",
-    #     potential=potential,
-    #     basis_set=basis_set,
-    #     coord_content=coord_xyz
-    # )
+#     make_cp2k_input(
+#         cell = image.lattice,
+#         atom_names=["Si"],
+#         basis_set_file_name="BASIS_SET_FILE",
+#         potential_file_name="POTENTIAL_FILE",
+#         xc_functional="PBE",
+#         potential=potential,
+#         basis_set=basis_set,
+#         coord_content=coord_xyz
+#     )

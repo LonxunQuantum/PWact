@@ -1,0 +1,57 @@
+{
+    "train": {
+        "command": "PWMLFF",
+        "group_size": 1,
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+            "/share/app/anaconda3/etc/profile.d/conda.sh"
+        ],
+        "module_list": [
+            "conda/3-2020.07",
+            "pwmlff/2024.5"
+        ],
+        "env_list":[
+            "conda deactivate",
+            "conda activate PWMLFF"
+        ]
+    },
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi_gpu",
+        "_command": "mpirun -np 8 lmp_mpi",
+        "group_size": 2,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+        ],
+        "module_list": [
+            "lammps4pwmlff/2024.5"
+        ]
+    },
+    "DFT": {
+        "command":"mpirun -np $SLURM_NTASKS cp2k.popt",
+        "task_run_num":1,
+        "number_node": 1,
+        "cpu_per_node": 64,
+        "gpu_per_node": 0,
+        "group_size": 3,
+        "queue_name": "cpu",
+        "custom_flags": [
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/modulefiles/cp2k/cp2k_2024_3"
+        ],
+        "module_list": [
+            
+        ]
+    }
+}

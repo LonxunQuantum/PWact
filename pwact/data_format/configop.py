@@ -2,7 +2,7 @@ import os
 from pwact.utils.constant import ELEMENTTABLE, DFT_STYLE, ELEMENTTABLE_2, CP2K, PWDATA
 from pwact.utils.app_lib.cp2k import make_cp2k_xyz
 from pwact.utils.file_operation import write_to_file
-from pwdata.main import Config
+from pwdata.config import Config
 from pwdata import perturb_structure, make_supercell, scale_cell
 '''
 description: 
@@ -14,7 +14,7 @@ author: wuxingxing
 '''
 def get_atom_type(config_path, format:str=None):
     if isinstance(config_path, str):
-        image = Config.read(format=format, data_path=config_path, atom_names=None)
+        image = Config(format=format, data_path=config_path, atom_names=None).images[0]
     else:
         image = config_path
     atomic_number_list = []
@@ -25,7 +25,7 @@ def get_atom_type(config_path, format:str=None):
     return atomic_name_list, atomic_number_list
 
 def load_config(config, format, atom_names=None):
-    config = Config.read(format=format, data_path=config, atom_names=atom_names)
+    config = Config(format=format, data_path=config, atom_names=atom_names)
     return config
 
 '''
@@ -38,9 +38,7 @@ author: wuxingxing
 def save_config(config, input_format:str = None, wrap = False, direct = True, sort = True, \
         save_format:str=None, save_path:str=None, save_name:str=None, atom_names: list[str] = None):
     if isinstance(config, str):
-        config = Config.read(format=input_format, data_path=config, atom_names=atom_names)
-    if isinstance(config, list): # for lammps dump traj, config will be list
-        config = config[0]
+        config = Config(format=input_format, data_path=config, atom_names=atom_names).images[0]
     if save_format == PWDATA.cp2k_scf:
         # make coord.xyz used by cp2k for every task 
         config = config._set_cartesian() if config.cartesian is False else config._set_cartesian()
@@ -86,9 +84,9 @@ def read_cp2k_xyz(config_file:str):
         coord.appnd([float(elements[1]), float(elements[2]), float(elements[3])])
     return atom_type_name, atom_names, coord
 
-def do_super_cell(config, input_format:str=None, supercell_matrix:list[int]=None, pbc:list[int]=[1, 1, 1], direct = True, sort = True, \
+def do_super_cell(config_file, input_format:str=None, supercell_matrix:list[int]=None, pbc:list[int]=[1, 1, 1], direct = True, sort = True, \
                     save_format:str=None, save_path:str=None, save_name:str=None):
-    config = Config.read(format=input_format, data_path=config, atom_names=None)
+    config = Config(format=input_format, data_path=config_file, atom_names=None)
     # Make a supercell     
     supercell = make_supercell(config, supercell_matrix, pbc)
     # Write out the structure
@@ -101,7 +99,7 @@ def do_super_cell(config, input_format:str=None, supercell_matrix:list[int]=None
 
 def do_scale(config, input_format:str=None, scale_factor:float=None, 
             direct:bool=True, sort:bool=True, save_format:str=None, save_path:str=None, save_name:str=None):
-    config = Config.read(format=input_format, data_path=config)
+    config = Config(format=input_format, data_path=config)
     scaled_struct = scale_cell(config, scale_factor)
     scaled_struct.to(output_path = save_path,
                     data_name = save_name,
@@ -113,7 +111,7 @@ def do_scale(config, input_format:str=None, scale_factor:float=None,
 
 def do_pertub(config, input_format:str=None, pert_num:int=None, cell_pert_fraction:float=None, atom_pert_distance:float=None, \
         direct:bool=True, sort:bool=True, save_format:str=None, save_path:str=None, save_name:str=None):
-    config = Config.read(format=input_format, data_path=config)
+    config = Config(format=input_format, data_path=config)
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -166,10 +164,12 @@ def extract_pwdata(data_list:list[str],
                 tmp_config = Config(data_format, data_path)
                 # if not isinstance(tmp_config, list):
                 #     tmp_config = [tmp_config]
-                image_data.append(tmp_config)
+                image_data.images.extend(tmp_config.images)
             else:
                 image_data = Config(data_format, data_path)
-
+                
+                if not isinstance(image_data.images, list):
+                    image_data.images = [image_data.images]
             
                 # if not isinstance(image_data, list):
                 #     image_data = [image_data]

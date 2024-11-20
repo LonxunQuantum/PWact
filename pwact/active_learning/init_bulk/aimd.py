@@ -161,8 +161,7 @@ class AIMD(object):
             flag_symm=flag_symm, 
             save_dir = aimd_dir,
             pseudo_names=pseudo_names,
-            basis_set_file_name=self.input_param.dft_input.basis_set_file,# these for cp2k
-            potential_file_name=self.input_param.dft_input.potential_file
+            gaussian_base_param = self.input_param.dft_input.gaussian_base_param
         )
 
     def make_aimd_slurm_job_files(self, aimd_dir_list:list[str],use_dftb: bool=False):

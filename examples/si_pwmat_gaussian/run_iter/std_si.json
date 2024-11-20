@@ -1,0 +1,9 @@
+{
+    "atom_type": [
+        14
+    ],
+    "maxNeighborNum": 100,
+    "model_type": "DP",
+    "compress": false,
+    "type_embedding":false
+}
