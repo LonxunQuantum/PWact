@@ -1,4 +1,6 @@
 {
+    "_commit" : "The following settings are used for the PWMLFF and lammps inferface environment for self installation",
+
     "train": {
         "command": "PWMLFF",
         "group_size": 1,
@@ -19,8 +21,8 @@
         ],
         "env_list": [
             "conda activate pwmlff-2024.5",
-            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_optnep/src:$PYTHONPATH",
-            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_optnep/src/bin:$PATH"
+            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_grad/src:$PYTHONPATH",
+            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_grad/src/bin:$PATH"
         ]
     },
     "explore": {
@@ -40,8 +42,8 @@
         ],
         "env_list": [
             "conda activate pwmlff-2024.5",
-            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_optnep/src:$PYTHONPATH",
-            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_optnep/src/bin:$PATH",
+            "export PYTHONPATH=/data/home/wuxingxing/codespace/PWMLFF_grad/src:$PYTHONPATH",
+            "export PATH=/data/home/wuxingxing/codespace/PWMLFF_grad/src/bin:$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(python3 -c 'import torch; print(torch.__path__[0])')/lib:$(dirname $(dirname $(which python3)))/lib:$(dirname $(dirname $(which PWMLFF)))/op/build/lib",
             "export PATH=/data/home/wuxingxing/codespace/lammps_gpu/src:$PATH",
             "export LD_LIBRARY_PATH=/data/home/wuxingxing/codespace/lammps_gpu/src:$LD_LIBRARY_PATH"

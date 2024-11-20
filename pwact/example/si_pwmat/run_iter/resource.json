@@ -1,4 +1,5 @@
 {
+    "_commit" : "The following settings are used for the PWMLFF and lammps inferface environment installed in Mcloud",
     "train": {
         "command": "PWMLFF",
         "group_size": 1,
@@ -10,17 +11,12 @@
         "custom_flags": [
         ],
         "source_list": [
-            "/share/app/anaconda3/etc/profile.d/conda.sh"
+            "/share/app/PWMLFF/PWMLFF2024.5/env.sh"
         ],
         "module_list": [
-            "conda/3-2020.07",
-            "pwmlff/2024.5"
         ],
         "env_list":[
-            "conda deactivate",
-            "conda activate PWMLFF"
-        ],
-        "_note":"This PWMLFF is pre installed from Mcloud. Please refer to the 'pwact/example/si_pwmat_gaussian/run_iter/resource.json' for custom installation"
+        ]
     },
     "explore": {
         "command": "mpirun -np 1 lmp_mpi_gpu",
@@ -36,8 +32,7 @@
         ],
         "module_list": [
             "lammps4pwmlff/2024.5"
-        ],
-        "_note":"This Lammps is pre installed from Mcloud. Please refer to the 'pwact/example/si_pwmat_gaussian/run_iter/resource.json' for custom installation"
+        ]
     },
     "DFT": {
         "command":"mpirun -np 4 PWmat",

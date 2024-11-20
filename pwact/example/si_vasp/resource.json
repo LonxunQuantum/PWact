@@ -1,4 +1,6 @@
 {
+    "_commit" : "The following settings are used for the PWMLFF and lammps inferface environment installed in Mcloud",
+
     "train": {
         "command": "PWMLFF",
         "group_size": 1,
@@ -11,15 +13,11 @@
             
         ],
         "source_list": [
-            
+            "/share/app/PWMLFF/PWMLFF2024.5/env.sh"
         ],
         "env_list": [
-            "module load pwmlff",
-            "source /share/app/anaconda3/etc/profile.d/conda.sh",
-            "conda activate PWMLFF"
         ],
         "module_list": [
-
         ]
     },
     "explore": {
@@ -36,7 +34,7 @@
 
         ],
         "module_list": [
-            "lammps4pwmlff"
+            "lammps4pwmlff/2024.5"
         ],
         "env_list":[
 
