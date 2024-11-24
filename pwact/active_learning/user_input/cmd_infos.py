@@ -39,6 +39,8 @@ def cmd_infos(cmd_type=None):
         cmd_info = cmd_info_run_iter()
     elif cmd_type == "kill":
         cmd_info = cmd_info_kill()
+    elif cmd_type == "filter":
+        cmd_info = cmd_info_filter()
     print(cmd_info)
 
 
@@ -64,3 +66,10 @@ def cmd_info_kill():
     cmd_info += "'pwact kill init_bulk' for 'init_bulk' tasks\n"
     cmd_info += "'pwact kill run' for 'run' tasks\n\n"
     return cmd_info
+
+def cmd_info_filter():
+    cmd_info = ""
+    cmd_info += "filter" + "\n"
+    cmd_info += "you could use this method to test the selection results corresponding to the upper and lower limit settings\n"
+    cmd_info += "example:\n"
+    cmd_info += "'pwact filter -i iter.0000/explore/select -l 0.01 -h 0.02 -s filter_test_result'\n\n"

@@ -5,8 +5,8 @@
     "reserve_scf_files": false,
 
     "init_data": [
-        "../init_bulk/collection/init_config_0/PWdata",
-        "../init_bulk/collection/init_config_1/PWdata"
+        "../init_bulk/collection/init_config_0/Si64",
+        "../init_bulk/collection/init_config_1/Si128"
     ],
 
     "train": {
@@ -42,7 +42,7 @@
         },
         "optimizer": {
             "optimizer": "LKF",
-            "epochs": 30,
+            "epochs": 10,
             "batch_size": 4,
             "print_freq": 10,
             "block_size": 5120,
@@ -97,7 +97,21 @@
                 "press": [ 1.0],
                 "taup": 0.5,
                 "boundary":true
-            } ],
+            },
+            {  
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [0, 1],
+                "_select_sys":[10, 30],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            }
+        ],
             [{
                 "ensemble": "nvt",
                 "nsteps": 1000,

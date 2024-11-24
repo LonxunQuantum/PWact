@@ -23,7 +23,7 @@ from pwact.active_learning.init_bulk.init_bulk_run import init_bulk_run, scancel
 from pwact.active_learning.environment import check_envs
 
 from pwact.data_format.configop import extract_pwdata
-from pwact.active_learning.explore.select_image import select_image
+from pwact.active_learning.explore.select_image import select_image, print_select_image
 from pwact.utils.process_tool import kill_process
 def run_iter():
     system_json = json.load(open(sys.argv[2]))
@@ -299,6 +299,26 @@ def kill_job():
         
     # for run iters jobs
 
+def filter_test(input_cmds):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--md_dir', help="specify input dir such as 'iter.0000/temp_run_iter_work/explore/md'", type=str, required=True)
+    parser.add_argument('-l', '--lower', help="specify lower limit value", type=float, required=True)
+    parser.add_argument('-u', '--upper', help="specify upper limit value", type=float, required=True)
+    parser.add_argument('-s', '--save', action='store_true', help="if '-s' is set, save the detailed information of the selected configs to CSV files")
+    
+    args = parser.parse_args(input_cmds)
+    if not os.path.exists(args.md_dir):
+        raise Exception("ERROR! The input md_dir {} not found!".format(args.md_dir))
+
+    save_dir = os.path.join(os.getcwd(), "filter_test_result") if args.save else None
+    summary = print_select_image(
+                md_dir=args.md_dir, 
+                save_dir=save_dir,
+                devi_name=EXPLORE_FILE_STRUCTURE.get_devi_name(UNCERTAINTY.committee),
+                lower=args.lower,  
+                higer=args.upper
+        )
+
 def main():
     environment_check()
     if len(sys.argv) == 1 or "-h".upper() == sys.argv[1].upper() or \
@@ -343,7 +363,14 @@ def main():
             cmd_infos("kill")
         else:
             kill_job()
-        
+    
+    elif "filter_test".upper() == sys.argv[1].upper() or "filter".upper() == sys.argv[1].upper():
+        if len(sys.argv) == 2 or "-h".upper() == sys.argv[2].upper() or \
+            "help".upper() == sys.argv[2].upper() or "-help".upper() == sys.argv[2].upper() or "--help".upper() == sys.argv[2].upper():
+            cmd_infos("filter")
+        else:
+            filter_test(sys.argv[2:])
+
     else:
         print("ERROR! The input cmd {} can not be recognized, please check.".format(sys.argv[1]))
         print("\n\n\nYou can enter the following command.\n\n\n")

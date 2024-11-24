@@ -118,7 +118,51 @@ def select_image(
     print("Image select result:\n {}\n\n".format(summary_info))
     return summary
 
-        
+def print_select_image(
+    md_dir:str, 
+    save_dir:str,
+    devi_name:str,
+    lower:float, 
+    higer:float
+):
+    #1. get model_deviation file
+    model_deviation_patten = "{}/{}".format(get_sub_md_sys_template_name(), devi_name)
+    model_devi_files = search_files(md_dir, model_deviation_patten)
+    model_devi_files = sorted(model_devi_files)
+    md_sys_dict = sort_model_devi_files(model_devi_files)
+    
+    error_pd =None
+    accurate_pd =None
+    rand_candi =None
+    remove_candi =None
+
+    for md in md_sys_dict.keys():
+        sys_dict = md_sys_dict[md]
+        for sys_idx, sys in enumerate(sys_dict.keys()):
+            devi_files = sys_dict[sys]
+            tmp_devi_pd, _base_kpu = read_pd_files(devi_files)
+            if len(_base_kpu) > 0: # for kpu upper and lower
+                _lower = np.mean(_base_kpu)*lower
+                _higer = _lower * higer
+            else:
+                _lower = lower
+                _higer = higer
+            tmp_error_pd, tmp_accurate_pd, tmp_rand_candi, tmp_remove_candi = select_pd(tmp_devi_pd, _lower, _higer, 10000000)
+            error_pd = pd.concat([error_pd, tmp_error_pd]) if error_pd is not None else tmp_error_pd
+            accurate_pd = pd.concat([accurate_pd, tmp_accurate_pd]) if error_pd is not None else tmp_accurate_pd
+            rand_candi = pd.concat([rand_candi, tmp_rand_candi]) if error_pd is not None else tmp_rand_candi
+            remove_candi = pd.concat([remove_candi, tmp_remove_candi]) if error_pd is not None else tmp_remove_candi
+    summary_info, summary = count_info(save_dir, error_pd, accurate_pd, rand_candi, remove_candi)
+    
+    # summary_info, summary = select_image(save_dir=self.select_dir, 
+    #                 devi_pd=devi_pd, 
+    #                 lower=self.input_param.strategy.lower_model_deiv_f, 
+    #                 higer=self.input_param.strategy.upper_model_deiv_f, 
+    #                 max_select=self.input_param.strategy.max_select)
+    print("Image select result (lower {} upper {}):\n {}\n\n".format(lower, higer, summary_info))
+    return summary
+
+
 def select_pd(devi_pd:DataFrame, lower:float, higer:float, max_select:float):
     accurate_pd  = devi_pd[devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] < lower]
     candidate_pd = devi_pd[(devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] >= lower) & (devi_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] < higer)]
@@ -169,41 +213,39 @@ def read_pd_files(model_devi_files:list[str]):
 
 def count_info(save_dir, error_pd, accurate_pd, rand_candi, remove_candi):
     #5. save select info
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
     total_num = error_pd.shape[0] + accurate_pd.shape[0] + rand_candi.shape[0] + remove_candi.shape[0]
     cand_num = rand_candi.shape[0] + remove_candi.shape[0]
     summary = "Total structures {}    accurate {} rate {:.2f}%    selected {} rate {:.2f}%    error {} rate {:.2f}%\n"\
         .format(total_num, accurate_pd.shape[0], accurate_pd.shape[0]/total_num*100, \
                     cand_num, cand_num/total_num*100, \
                         error_pd.shape[0], error_pd.shape[0]/total_num*100)
-
-    accurate_pd.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.accurate))
     candi_info = ""
-    rand_candi.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.candidate))
-    
     if remove_candi.shape[0] == 0:
         candi_info += "Candidate configurations: {}\n        Select details in file {}\n".format(
             cand_num, EXPLORE_FILE_STRUCTURE.candidate)
     else:
-        remove_candi.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.candidate_delete))
         candi_info += "Candidate configurations: {}, randomly select {}, delete {}\n        Select details in file {}\n        Delete details in file {}.\n".format(
             cand_num, rand_candi.shape[0], remove_candi.shape[0],\
             EXPLORE_FILE_STRUCTURE.candidate, EXPLORE_FILE_STRUCTURE.candidate_delete)
-
-    error_pd.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.failed))
-    
     summary_info = ""
-
     summary_info += summary
     summary_info += "\nSelect by model deviation force:\n"
     summary_info += "Accurate configurations: {}, details in file {}\n".\
         format(accurate_pd.shape[0], EXPLORE_FILE_STRUCTURE.accurate)
-        
     summary_info += candi_info
-        
     summary_info += "Error configurations: {}, details in file {}\n".\
         format(error_pd.shape[0], EXPLORE_FILE_STRUCTURE.failed)
-    
-    write_to_file(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
-    return summary_info, summary    
+
+    if save_dir is not None:
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        accurate_pd.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.accurate))
+        rand_candi.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.candidate))
+        if remove_candi.shape[0] > 0:
+            remove_candi.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.candidate_delete))
+        error_pd.to_csv(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.failed))
+        write_to_file(os.path.join(save_dir, EXPLORE_FILE_STRUCTURE.select_summary), summary_info, "w")
+        
+    return summary_info, summary
+
+

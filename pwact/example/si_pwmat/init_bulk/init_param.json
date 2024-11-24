@@ -1,6 +1,7 @@
 {
+    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat/init_bulk",
     "sys_configs": [{"config":"../../structures/atom.config", 
-                    "relax":true, 
+                    "relax":false, 
                     "relax_input_idx":0, 
                     "perturb":10,
                     "cell_pert_fraction":0.03, 
@@ -9,7 +10,7 @@
                     "aimd_input_idx":0
                     },
                     {"config":"../../structures/POSCAR", 
-                    "format": "vasp",
+                    "format": "vasp/poscar",
                     "relax":false, 
                     "super_cell":[1, 2, 1], 
                     "scale":[0.9,0.95], 
