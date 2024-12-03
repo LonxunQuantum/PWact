@@ -150,57 +150,32 @@ def extract_pwdata(data_list:list[str],
     # if data_format == DFT_STYLE.cp2k:
     #     raise Exception("not relized cp2k pwdata convert")
 
-    data_name = None
-    if merge_data:
-        data_name = os.path.basename(datasets_path)
-        if not os.path.isabs(datasets_path):
-            # data_name = datasets_path
-            datasets_path = os.path.dirname(os.path.join(os.getcwd(), datasets_path))
+    if not os.path.isabs(datasets_path):
+        # data_name = datasets_path
+        datasets_path = os.path.join(os.getcwd(), datasets_path)
+    image_data = None
+    for data_path in data_list:
+        if image_data is not None:
+            tmp_config = Config(data_format, data_path)
+            # if not isinstance(tmp_config, list):
+            #     tmp_config = [tmp_config]
+            image_data.images.extend(tmp_config.images)
         else:
-            datasets_path = os.path.dirname(datasets_path)
-        image_data = None
-        for data_path in data_list:
-            if image_data is not None:
-                tmp_config = Config(data_format, data_path)
-                # if not isinstance(tmp_config, list):
-                #     tmp_config = [tmp_config]
-                image_data.images.extend(tmp_config.images)
-            else:
-                image_data = Config(data_format, data_path)
-                
-                if not isinstance(image_data.images, list):
-                    image_data.images = [image_data.images]
-            
-                # if not isinstance(image_data, list):
-                #     image_data = [image_data]
-        if interval > 1:
-            tmp = []
-            for i in range(0, len(image_data.images)):
-                if i % interval == 0:
-                    tmp.append(image_data.images[i])
-            image_data.images = tmp
-
-        image_data.to(
-                    output_path=datasets_path,
-                    save_format=PWDATA.pwmlff_npy,
-                    data_name=data_name,
-                    train_ratio = train_valid_ratio, 
-                    train_data_path="train", 
-                    valid_data_path="valid", 
-                    random=data_shuffle,
-                    seed = 2024, 
-                    retain_raw = False
-                    )
-    else:
-        for data_path in data_list:
             image_data = Config(data_format, data_path)
-            if interval > 1:
-                tmp = []
-                for i in range(0, len(image_data.images)):
-                    if i % interval == 0:
-                        tmp.append(image_data.images[i])
-                image_data.images = tmp
-            image_data.to(
+            
+            if not isinstance(image_data.images, list):
+                image_data.images = [image_data.images]
+        
+            # if not isinstance(image_data, list):
+            #     image_data = [image_data]
+    if interval > 1:
+        tmp = []
+        for i in range(0, len(image_data.images)):
+            if i % interval == 0:
+                tmp.append(image_data.images[i])
+        image_data.images = tmp
+
+    image_data.to(
                 output_path=datasets_path,
                 save_format=PWDATA.pwmlff_npy,
                 train_ratio = train_valid_ratio, 

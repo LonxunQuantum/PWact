@@ -179,7 +179,7 @@ def select_pd(devi_pd:DataFrame, lower:float, higer:float, max_select:float):
     return error_pd, accurate_pd, cand_rand_candi, cand_remove_candi
 
 def read_pd_files(model_devi_files:list[str]):
-    devi_pd = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
+    devi_pd = pd.DataFrame()#columns=EXPLORE_FILE_STRUCTURE.devi_columns
     base_force_kpu = []
     if os.path.basename(model_devi_files[0]) == EXPLORE_FILE_STRUCTURE.kpu_model_devi:
         for devi_file in model_devi_files:

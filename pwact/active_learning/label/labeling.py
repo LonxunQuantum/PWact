@@ -245,7 +245,7 @@ class Labeling(object):
             for sub_md_sys in sub_md_sys_dir_list:
                 out_mlmd_list =search_files(sub_md_sys, "*-{}/{}".format(LABEL_FILE_STRUCTURE.scf, DFT_STYLE.get_scf_config(self.resource.dft_style)))
                 # do a sorted?
-                md_sys_mlmd.append(out_mlmd_list)
+                md_sys_mlmd.extend(out_mlmd_list)
         return md_sys_mlmd
 
     def get_aimd_list(self):
@@ -279,14 +279,23 @@ class Labeling(object):
 
         # scf files to pwdata format
         scf_configs = self.collect_scf_configs()
-        for scf_md in scf_configs:
-            datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
-            extract_pwdata(data_list=scf_md,
-                data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_md[0])),
-                datasets_path    =os.path.join(self.result_dir, datasets_path_name),
+
+        extract_pwdata(data_list=scf_configs,
+                data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_configs[0])),
+                datasets_path    =self.result_dir,
                 train_valid_ratio=self.input_param.train.train_valid_ratio, 
                 data_shuffle     =self.input_param.train.data_shuffle, 
                 merge_data       =True
-            )
+        )
+
+        # for id, scf_md in enumerate(scf_configs):
+        #     datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
+        #     extract_pwdata(data_list=scf_md,
+        #         data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_md[0])),
+        #         datasets_path    =os.path.join(self.result_dir, "{}-{}".format(id, datasets_path_name)),
+        #         train_valid_ratio=self.input_param.train.train_valid_ratio, 
+        #         data_shuffle     =self.input_param.train.data_shuffle, 
+        #         merge_data       =True
+        #     )
         # copy to main dir
         copy_dir(self.result_dir, self.real_result_dir)

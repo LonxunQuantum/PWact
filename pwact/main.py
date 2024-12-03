@@ -301,7 +301,7 @@ def kill_job():
 
 def filter_test(input_cmds):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--md_dir', help="specify input dir such as 'iter.0000/temp_run_iter_work/explore/md'", type=str, required=True)
+    parser.add_argument('-i', '--md_dir', help="specify the md dir such as 'iter.0000/temp_run_iter_work/explore/md' or iter.0000/explore/md", type=str, required=True)
     parser.add_argument('-l', '--lower', help="specify lower limit value", type=float, required=True)
     parser.add_argument('-u', '--upper', help="specify upper limit value", type=float, required=True)
     parser.add_argument('-s', '--save', action='store_true', help="if '-s' is set, save the detailed information of the selected configs to CSV files")
@@ -348,6 +348,7 @@ def main():
         gather_pwmata(sys.argv[2:])
 
     elif "to_pwdata".upper() == sys.argv[1].upper():#these function may use pwdata command
+        print("\n\nWarning! This method has been abandoned, new conversion methods refer to the pwdata documentation http://doc.lonxun.com/PWMLFF/Appendix-2/\n\n")
         to_pwdata(sys.argv[2:])
  
     elif "run".upper() == sys.argv[1].upper():

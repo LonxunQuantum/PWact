@@ -21,18 +21,23 @@ def cmd_infos(cmd_type=None):
         cmd_info += "'pwact kill init_bulk' for 'init_bulk' tasks\n"
         cmd_info += "'pwact kill run' for 'run' tasks\n\n"
 
-        cmd_info += "to_pwdata".lower() + "\n"
-        cmd_info += "you could use this method to change outcars or movements to pwdata format.\nFor more detail for this command, you could use 'PWact to_pwdata -h'\n\n"
-
         cmd_info += "gather_pwdata".lower() + "\n"
-        cmd_info += "you could use this method to extract pwdatas after active learing done.\nFor more detail for this command, you could use 'PWact gather_pwdata -h'\n\n"
-        
+        cmd_info += "you could use this method to extract pwdatas after active learing done.\nFor more detail for this command, you could use 'pwact gather_pwdata -h'\n\n"
+
+        cmd_info += "filter" + "\n"
+        cmd_info += "you could use this method to test the selection results corresponding to the upper and lower limit settings,  you could use 'pwact filter -h'\n"
+
+        cmd_info += "to_pwdata".lower() + "\n"
+        cmd_info += "(This method has been abandoned, new conversion methods refer to the pwdata documentation http://doc.lonxun.com/PWMLFF/Appendix-2/)\n\n"
+        cmd_info += "you could use this method to change outcars or movements to pwdata format.\nFor more detail for this command, you could use 'pwact to_pwdata -h'\n\n"
+
         cmd_info += "\n\n"
         cmd_info += "examples of pwact are located at the dir 'pwact/example'\n"
         cmd_info += "you can alse download them from github link:\n"
         cmd_info += "https://github.com/LonxunQuantum/PWact/tree/main/pwact/example\n\n"
         cmd_info += "or download from BaiduNetdisk included the calculation results of examples:\n"
         cmd_info += "https://pan.baidu.com/s/14E0u_7cpntiBZgg-C1S5XA?pwd=pwmt\n\n"
+
     elif cmd_type == "init_bulk":
         cmd_info = cmd_info_init_bulk()
     elif cmd_type == "run":
@@ -72,4 +77,5 @@ def cmd_info_filter():
     cmd_info += "filter" + "\n"
     cmd_info += "you could use this method to test the selection results corresponding to the upper and lower limit settings\n"
     cmd_info += "example:\n"
-    cmd_info += "'pwact filter -i iter.0000/explore/select -l 0.01 -h 0.02 -s filter_test_result'\n\n"
+    cmd_info += "'pwact filter -i iter.0000/explore/md -l 0.01 -u 0.02 -s'\n\n"
+    return cmd_info
