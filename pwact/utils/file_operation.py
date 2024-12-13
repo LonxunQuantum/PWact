@@ -65,7 +65,12 @@ def file_read_lines(file_path, data_type="float"):
 
 '''
 description: 
-    load txt data
+    load txt data: the content as :
+#    step       avg_devi_f       min_devi_f       max_devi_f       avg_devi_e       min_devi_e       max_devi_e
+        0      0.016176053      0.000004773      0.023921006      0.494110683      0.007786004      0.680908664
+       10      0.020843630      0.000576891      0.033193308      0.481147298      0.001424875      0.696843965
+       20      0.020738273      0.001127881      0.031809715      0.478043120      0.001433802      0.703810561
+        ...
 param {str} file_path
 param {*} skiprows
 return {*}

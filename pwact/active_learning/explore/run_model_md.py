@@ -26,6 +26,7 @@ from pwact.utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRU
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
     make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
 from pwact.utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, del_file_list_by_patten, mv_file
+from pwact.utils.draw.hist_model_devi import draw_hist_list
 from pwact.utils.app_lib.lammps import make_lammps_input
 from pwact.data_format.configop import save_config, get_atom_type
 
@@ -288,7 +289,16 @@ class Explore(object):
     '''    
     def post_process_md(self):
         md_sys_dir_list = search_files(self.md_dir, get_md_sys_template_name())
+        # draw model deviation
         is_kpu = self.input_param.strategy.uncertainty.upper() == UNCERTAINTY.kpu.upper()
+        if is_kpu is False:
+            for md_sys_dir in md_sys_dir_list:
+                draw_hist_list(file_path=[md_sys_dir], 
+                                legend_label=["{}-{}".format(self.itername, os.path.basename(md_sys_dir))], 
+                                save_path = os.path.join(md_sys_dir, "model_devi_distribution.png"),
+                                low=self.input_param.strategy.lower_model_deiv_f, 
+                                high=self.input_param.strategy.upper_model_deiv_f)
+
         for md_sys_dir in md_sys_dir_list:
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
             for sub_md_sys in sub_md_sys_dir_list:
@@ -313,6 +323,13 @@ class Explore(object):
                     copy_file(file, os.path.join(self.real_md_dir, os.path.basename(file)))
                 for file in md_slurm_scripts:
                     copy_file(file, os.path.join(self.real_md_dir, os.path.basename(file)))
+            if os.path.exists(os.path.join(md_sys_dir, "model_devi_distribution.png")):
+                copy_file(os.path.join(md_sys_dir, "model_devi_distribution.png"),
+                    os.path.join(self.real_md_dir, os.path.basename(md_sys_dir), "model_devi_distribution.png"))
+                link_file(
+                    os.path.join(self.real_md_dir, os.path.basename(md_sys_dir), "model_devi_distribution.png"),
+                    os.path.join(self.select_dir, "model_devi_distribution-{}.png".format(os.path.basename(md_sys_dir)))
+                )
         copy_dir(self.select_dir, self.real_select_dir)
     
     '''

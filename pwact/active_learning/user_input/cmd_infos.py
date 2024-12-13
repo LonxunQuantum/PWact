@@ -25,7 +25,7 @@ def cmd_infos(cmd_type=None):
         cmd_info += "you could use this method to extract pwdatas after active learing done.\nFor more detail for this command, you could use 'pwact gather_pwdata -h'\n\n"
 
         cmd_info += "filter" + "\n"
-        cmd_info += "you could use this method to test the selection results corresponding to the upper and lower limit settings,  you could use 'pwact filter -h'\n"
+        cmd_info += "you could use this method to test the selection results corresponding to the upper and lower limit settings,  you could use 'pwact filter -h'\n\n"
 
         cmd_info += "to_pwdata".lower() + "\n"
         cmd_info += "(This method has been abandoned, new conversion methods refer to the pwdata documentation http://doc.lonxun.com/PWMLFF/Appendix-2/)\n\n"

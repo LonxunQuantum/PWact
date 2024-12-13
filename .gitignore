@@ -8,3 +8,5 @@ al_dir
 build
 dist
 pwact.egg-info
+pwact/utils/tmp.py
+
