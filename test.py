@@ -163,35 +163,6 @@ def init_bulk():
     init_bulk_run(resource, input_param)
     print("Init Bulk Work Done!")
 
-def to_pwdata(input_cmds:list):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--worktype', help="specify work type, default is 'to_pwdata'", type=str, default='to_pwdata')
-    parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
-    parser.add_argument('-f', '--format', help="specify input file format, 'vasp/outcar' or 'pwmat/movement', default is 'pwmat/movement'", type=str, default="pwmat/movement")
-    parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')
-    parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
-    # parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
-    # parser.add_argument('-d', '--do_shuffle', help='if -d exits, doing the data shuffling', action='store_false')
-    parser.add_argument('-r', '--data_shuffle', help='Specify whether to do data shuffle operation, -r is True', action='store_true')
-    parser.add_argument('-m', '--merge', help='Specify whether to merge inputs to one, -m is True', action='store_true')
-    # parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
-    parser.add_argument('-g', '--gap', help='Trail point interval before and after, default is 1', type=int, default=1)
-
-    parser.add_argument('-w', '--work_dir', help='specify work dir, default is current dir', type=str, default='./')
-    args = parser.parse_args(input_cmds)
-    print(args.work_dir)
-    os.chdir(args.work_dir)
-
-    extract_pwdata(data_list=args.input, 
-                data_format=args.format, 
-                datasets_path=args.savepath, 
-                train_valid_ratio=args.train_valid_ratio, 
-                data_shuffle=args.data_shuffle,
-                merge_data=args.merge,
-                interval = args.gap
-                )
-    
-
 def gather_pwmata(input_cmds):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input_dir', help="specify the dir above the iterations, the default dir is current dir './'\nthe result could be found in './final_pwdata'", type=str, default='./')
@@ -326,9 +297,6 @@ def main():
     
     elif "gather_pwdata".upper() == sys.argv[1].upper():
         gather_pwmata(sys.argv[2:])
-
-    elif "to_pwdata".upper() == sys.argv[1].upper():#these function may use pwdata command
-        to_pwdata(sys.argv[2:])
  
     elif "run".upper() == sys.argv[1].upper():
         if len(sys.argv) == 2 or "-h".upper() == sys.argv[2].upper() or \

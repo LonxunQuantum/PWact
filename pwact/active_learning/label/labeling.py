@@ -27,7 +27,7 @@ from pwact.active_learning.user_input.iter_input import InputParam
 from pwact.active_learning.slurm.slurm import SlurmJob, Mission, scancle_job
 
 from pwact.utils.constant import DFT_TYPE, VASP, PWDATA, AL_STRUCTURE, TEMP_STRUCTURE,\
-    LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, DFT_STYLE, PWMAT
+    LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, LAMMPS, SLURM_OUT, DFT_STYLE, PWMAT, INIT_BULK
     
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
@@ -280,22 +280,12 @@ class Labeling(object):
         # scf files to pwdata format
         scf_configs = self.collect_scf_configs()
 
-        extract_pwdata(data_list=scf_configs,
-                data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_configs[0])),
-                datasets_path    =self.result_dir,
-                train_valid_ratio=self.input_param.train.train_valid_ratio, 
-                data_shuffle     =self.input_param.train.data_shuffle, 
-                merge_data       =True
+        extract_pwdata(input_data_list=scf_configs,
+                intput_data_format =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_configs[0])),
+                save_data_path =self.result_dir,
+                save_data_name = INIT_BULK.get_save_format(self.input_param.data_format),
+                save_data_format = self.input_param.data_format,
+                data_shuffle     =self.input_param.train.data_shuffle
         )
-
-        # for id, scf_md in enumerate(scf_configs):
-        #     datasets_path_name = os.path.basename(os.path.dirname(os.path.dirname(scf_md[0])))#md.001.sys.001.t.000.p.000
-        #     extract_pwdata(data_list=scf_md,
-        #         data_format      =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_md[0])),
-        #         datasets_path    =os.path.join(self.result_dir, "{}-{}".format(id, datasets_path_name)),
-        #         train_valid_ratio=self.input_param.train.train_valid_ratio, 
-        #         data_shuffle     =self.input_param.train.data_shuffle, 
-        #         merge_data       =True
-        #     )
         # copy to main dir
         copy_dir(self.result_dir, self.real_result_dir)

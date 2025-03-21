@@ -24,7 +24,7 @@ def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str):
         pair_names = ""
         for fi in forcefiled:
             pair_names += "{} ".format(os.path.basename(fi))
-        pair_style = "pair_style   pwmlff   {} {} {}\n".format(len(forcefiled), pair_names, dump_info)
+        pair_style = "pair_style   matpl  {} {}\n".format(pair_names, dump_info)
     atom_names = " ".join(map(str, atom_type))
     pair_style += "pair_coeff       * * {}\n".format(atom_names)
     return pair_style

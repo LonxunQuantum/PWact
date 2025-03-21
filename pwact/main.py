@@ -24,14 +24,14 @@ from pwact.active_learning.environment import check_envs
 
 from pwact.data_format.configop import extract_pwdata
 from pwact.active_learning.explore.select_image import select_image, print_select_image
-from pwact.utils.process_tool import kill_process
+from pwact.utils.process_tool import kill_process, get_pid
 def run_iter():
     system_json = json.load(open(sys.argv[2]))
     if "work_dir" in system_json.keys():
         os.chdir(system_json["work_dir"])
-    pid = os.getpid()
+    pid = get_pid()
     with open("./PID", 'w') as wf:
-        wf.write(str(pid))
+        wf.write(pid)
 
     system_info = convert_keys_to_lowercase(system_json)
     machine_json = json.load(open(sys.argv[3]))
@@ -149,9 +149,9 @@ def init_bulk():
     system_info = convert_keys_to_lowercase(system_json)
     if "work_dir" in system_json.keys():
         os.chdir(system_json["work_dir"])
-    pid = os.getpid()
+    pid = get_pid()
     with open("./PID", 'w') as wf:
-        wf.write(str(pid))
+        wf.write(pid)
 
     machine_info = convert_keys_to_lowercase(json.load(open(sys.argv[3])))
     input_param = InitBulkParam(system_info)
@@ -162,35 +162,6 @@ def init_bulk():
     print("The work dir change to {}".format(os.getcwd()))
     init_bulk_run(resource, input_param)
     print("Init Bulk Work Done!")
-
-def to_pwdata(input_cmds:list):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--worktype', help="specify work type, default is 'to_pwdata'", type=str, default='to_pwdata')
-    parser.add_argument('-i', '--input', help='specify input outcars or movement files', nargs='+', type=str, default=None)
-    parser.add_argument('-f', '--format', help="specify input file format, 'vasp/outcar' or 'pwmat/movement', default is 'pwmat/movement'", type=str, default="pwmat/movement")
-    parser.add_argument('-s', '--savepath', help="specify stored directory, default is 'PWdata'", type=str, default='PWdata')
-    parser.add_argument('-o', '--train_valid_ratio', help='specify stored directory, default=0.8', type=float, default=0.8)
-    # parser.add_argument('-r', '--data_shuffle', help='specify stored directory, default is True', type=bool, required=False, default=True)
-    # parser.add_argument('-d', '--do_shuffle', help='if -d exits, doing the data shuffling', action='store_false')
-    parser.add_argument('-r', '--data_shuffle', help='Specify whether to do data shuffle operation, -r is True', action='store_true')
-    parser.add_argument('-m', '--merge', help='Specify whether to merge inputs to one, -m is True', action='store_true')
-    # parser.add_argument('-m', '--merge', help='merge inputs to one, default is False', type=bool, required=False, default=False)
-    parser.add_argument('-g', '--gap', help='Trail point interval before and after, default is 1', type=int, default=1)
-
-    parser.add_argument('-w', '--work_dir', help='specify work dir, default is current dir', type=str, default='./')
-    args = parser.parse_args(input_cmds)
-    print(args.work_dir)
-    os.chdir(args.work_dir)
-
-    extract_pwdata(data_list=args.input, 
-                data_format=args.format, 
-                datasets_path=args.savepath, 
-                train_valid_ratio=args.train_valid_ratio, 
-                data_shuffle=args.data_shuffle,
-                merge_data=args.merge,
-                interval = args.gap
-                )
-    
 
 def gather_pwmata(input_cmds):
     parser = argparse.ArgumentParser()
@@ -267,10 +238,12 @@ def kill_job():
     #     os.chdir(system_json["work_dir"])
     try:
         with open("./PID", 'r') as rf:
-            pid = rf.readline()
-    except:
+            pid_str_info = rf.readline().split()
+            pid = pid_str_info[1]
+            jobid = pid_str_info[3] if "job" in pid_str_info else None
+    except :
         raise Exception("Error parsing PID file !")
-    kill_process(int(pid))
+    kill_process(pid, jobid)
     if sys.argv[2].lower() == "init_bulk":
         # search all jobs
         init_scancel_jobs(os.getcwd())
@@ -349,7 +322,7 @@ def main():
 
     elif "to_pwdata".upper() == sys.argv[1].upper():#these function may use pwdata command
         print("\n\nWarning! This method has been abandoned, new conversion methods refer to the pwdata documentation http://doc.lonxun.com/PWMLFF/Appendix-2/\n\n")
-        to_pwdata(sys.argv[2:])
+        # to_pwdata(sys.argv[2:])
  
     elif "run".upper() == sys.argv[1].upper():
         if len(sys.argv) == 2 or "-h".upper() == sys.argv[2].upper() or \

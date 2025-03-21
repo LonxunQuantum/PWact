@@ -9,7 +9,7 @@ from pwact.active_learning.user_input.iter_input import InputParam
 
 from pwact.utils.format_input_output import make_train_name, get_seed_by_time, get_iter_from_iter_name, make_iter_name
 from pwact.utils.constant import AL_STRUCTURE, UNCERTAINTY, TEMP_STRUCTURE, MODEL_CMD, \
-    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT, MODEL_TYPE
+    TRAIN_INPUT_PARAM, TRAIN_FILE_STRUCTUR, FORCEFILED, LABEL_FILE_STRUCTURE, SLURM_OUT, MODEL_TYPE, PWDATA, INIT_BULK
 
 from pwact.utils.file_operation import save_json_file, write_to_file, del_dir, search_files, add_postfix_dir, mv_file, copy_dir, del_file_list, del_file_list_by_patten
 '''
@@ -68,7 +68,7 @@ class ModelTrian(object):
             if not os.path.exists(model_i_dir):
                 os.makedirs(model_i_dir)
             # make train.json file
-            train_dict = self.set_train_input_dict(work_dir=model_i_dir)
+            train_dict = self.set_train_input_dict(work_dir=model_i_dir, model_index = model_index)
             train_json_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_json)
             save_json_file(train_dict, train_json_file_path)
             train_list.append(model_i_dir)
@@ -139,33 +139,46 @@ class ModelTrian(object):
     return {*}
     author: wuxingxing
     '''
-    def set_train_input_dict(self, work_dir:str=None):
+    def set_train_input_dict(self, work_dir:str=None, model_index=None):
         train_json = self.input_param.train.to_dict()
-        train_feature_path = []
-        if self.input_param.init_data_only_pretrain and self.iter > 0:
+        if self.iter == 0 and len(self.input_param.init_model_list) > 0: 
+            train_json[TRAIN_INPUT_PARAM.recover_train] = True
+            train_json[TRAIN_INPUT_PARAM.model_load_file] = self.input_param.init_model_list[model_index]
+            train_json[TRAIN_INPUT_PARAM.optimizer][TRAIN_INPUT_PARAM.reset_epoch] = True            
+        if self.iter > 0 and self.input_param.use_pre_model:
             # use old model param iter.*/train/train.000/model_record/dp_model.ckpt
             pre_model = os.path.join(self.input_param.root_dir, make_iter_name(self.iter-1), \
                 AL_STRUCTURE.train, make_train_name(0), TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
             train_json[TRAIN_INPUT_PARAM.recover_train] = True
             train_json[TRAIN_INPUT_PARAM.model_load_file] = pre_model
             train_json[TRAIN_INPUT_PARAM.optimizer][TRAIN_INPUT_PARAM.reset_epoch] = True
-        else:
-            for _data in self.input_param.init_data:
-                train_feature_path.append(_data)
+        train_feature_path = []
+        for _data in self.input_param.init_data:
+            train_feature_path.append(_data)
         # search train_feature_path in iter*/label/result/*/PWdata/*
         iter_index = get_iter_from_iter_name(self.itername)
         start_iter = 0
         while start_iter < iter_index:
-            iter_pwdata = search_files(self.input_param.root_dir, 
-                                    "{}/{}/{}/*".format(make_iter_name(start_iter), AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result))
-            if len(iter_pwdata) > 0:
-                train_feature_path.extend(iter_pwdata)
+            if self.input_param.data_format == PWDATA.extxyz: # result/train.xyz
+                iter_data_list = search_files(self.input_param.root_dir, 
+                                    "{}/{}/{}/{}".format(make_iter_name(start_iter),
+                                         AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result, INIT_BULK.get_save_format(self.input_param.data_format)))
+            else:#pwmlff/npy 'iter.***/label/result/*/*' -> result/PWdata/dir
+                iter_data_list = search_files(self.input_param.root_dir, 
+                                    "{}/{}/{}/*/*".format(make_iter_name(start_iter),
+                                         AL_STRUCTURE.labeling, LABEL_FILE_STRUCTURE.result))
+
+            if len(iter_data_list) > 0:
+                train_feature_path.extend(iter_data_list)
             start_iter += 1
         
         # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
         train_json[TRAIN_INPUT_PARAM.raw_files] = []
-        train_json[TRAIN_INPUT_PARAM.datasets_path] = train_feature_path
+        train_json[TRAIN_INPUT_PARAM.train_data] = train_feature_path
+        # set valid data
+        train_json[TRAIN_INPUT_PARAM.valid_data] = self.input_param.valid_data
+        train_json[TRAIN_INPUT_PARAM.format] = self.input_param.data_format
         if self.input_param.strategy.uncertainty == UNCERTAINTY.kpu:
             train_json[TRAIN_INPUT_PARAM.save_p_matrix] = True
         return train_json

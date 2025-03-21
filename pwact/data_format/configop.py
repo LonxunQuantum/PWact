@@ -58,9 +58,9 @@ def save_config(config, input_format:str = None, wrap = False, direct = True, so
         write_to_file(os.path.join(save_path, CP2K.cell_txt), lattice_line, 'w')
 
     else:
-        config.to(output_path=save_path, 
+        config.to(data_path  =save_path, 
                 data_name    =save_name, 
-                save_format  =save_format, 
+                format       =save_format, 
                 direct       =direct, 
                 sort         =sort, 
                 wrap         =wrap
@@ -90,9 +90,9 @@ def do_super_cell(config_file, input_format:str=None, supercell_matrix:list[int]
     # Make a supercell     
     supercell = make_supercell(config, supercell_matrix, pbc)
     # Write out the structure
-    supercell.to(output_path = save_path,
-                data_name = save_name,
-                save_format = save_format,
+    supercell.to(data_path = save_path,
+                data_name  = save_name,
+                format     = save_format,
                 direct = direct,
                 sort = sort)
     return os.path.join(save_path, save_name)
@@ -101,9 +101,9 @@ def do_scale(config, input_format:str=None, scale_factor:float=None,
             direct:bool=True, sort:bool=True, save_format:str=None, save_path:str=None, save_name:str=None):
     config = Config(format=input_format, data_path=config)
     scaled_struct = scale_cell(config, scale_factor)
-    scaled_struct.to(output_path = save_path,
-                    data_name = save_name,
-                    save_format = save_format,
+    scaled_struct.to(data_path = save_path,
+                    data_name  = save_name,
+                    format     = save_format,
                     direct = direct,
                     sort = sort)
      
@@ -123,9 +123,9 @@ def do_pertub(config, input_format:str=None, pert_num:int=None, cell_pert_fracti
             atom_pert_distance = atom_pert_distance)
 
     for tmp_perturbed_idx, tmp_pertubed_struct in enumerate(perturbed_structs):
-        tmp_pertubed_struct.to(output_path = save_path,
+        tmp_pertubed_struct.to(data_path  = save_path,
                                 data_name = "{}_{}".format(tmp_perturbed_idx, save_name),
-                                save_format = save_format,
+                                format    = save_format,
                                 direct = direct,
                                 sort = sort)
 
@@ -133,35 +133,33 @@ def do_pertub(config, input_format:str=None, pert_num:int=None, cell_pert_fracti
 
 '''
 description: 
-    if merge is ture, save pwdata to datasets_path/data_name ...
-    else:
-        save pwdata to datasets_path/data_name/train or valid
+    save the inputfiles to pwmlff/npy format data
 return {*}
 author: wuxingxing
 '''
-def extract_pwdata(data_list:list[str], 
-                data_format:str="pwmat/movement", 
-                datasets_path="PWdata", 
-                train_valid_ratio:float=0.8, 
-                data_shuffle:bool=True,
-                merge_data:bool=False,
+def extract_pwdata(input_data_list:list[str], 
+                intput_data_format:str="pwmat/movement", 
+                save_data_path:str="./",
+                save_data_name="PWdata", 
+                save_data_format="extxyz",
+                data_shuffle:bool=False,
                 interval:int=1
                 ):
     # if data_format == DFT_STYLE.cp2k:
     #     raise Exception("not relized cp2k pwdata convert")
 
-    if not os.path.isabs(datasets_path):
+    if not os.path.isabs(save_data_path):
         # data_name = datasets_path
-        datasets_path = os.path.join(os.getcwd(), datasets_path)
+        save_data_path = os.path.join(os.getcwd(), save_data_path)
     image_data = None
-    for data_path in data_list:
+    for dir in input_data_list:
         if image_data is not None:
-            tmp_config = Config(data_format, data_path)
+            tmp_config = Config(format=intput_data_format, data_path=dir)
             # if not isinstance(tmp_config, list):
             #     tmp_config = [tmp_config]
             image_data.images.extend(tmp_config.images)
         else:
-            image_data = Config(data_format, data_path)
+            image_data = Config(format=intput_data_format, data_path=dir)
             
             if not isinstance(image_data.images, list):
                 image_data.images = [image_data.images]
@@ -176,14 +174,10 @@ def extract_pwdata(data_list:list[str],
         image_data.images = tmp
 
     image_data.to(
-                output_path=datasets_path,
-                save_format=PWDATA.pwmlff_npy,
-                train_ratio = train_valid_ratio, 
-                train_data_path="train", 
-                valid_data_path="valid", 
-                random=data_shuffle,
-                seed = 2024, 
-                retain_raw = False
+                data_path  =save_data_path,
+                data_name  =save_data_name,
+                format     =save_data_format,
+                random=data_shuffle
                 )
     
 if __name__ == "__main__":
@@ -275,8 +269,7 @@ if __name__ == "__main__":
                 data_list.append(outcar)
 
     datasets_path = "/data/home/wuxingxing/datas/al_dir/HfO2/dftb/init_data_200"
-    extract_pwdata(data_list=data_list, 
-            data_format="vasp/outcar", 
-            datasets_path=datasets_path,
-            merge_data=True
+    extract_pwdata(input_data_list=data_list, 
+            intput_data_format="vasp/outcar", 
+            save_data_path=datasets_path
             )

@@ -1,6 +1,6 @@
 import os
 import glob
-
+from pwact.utils.file_operation import check_model_type
 from pwact.utils.json_operation import get_parameter, get_required_parameter
 from pwact.utils.constant import MODEL_CMD, FORCEFILED, UNCERTAINTY, PWDATA
 from pwact.active_learning.user_input.train_param.train_param import InputParam as TrainParam
@@ -20,13 +20,28 @@ class InputParam(object):
         self.reserve_md_traj = get_parameter("reserve_md_traj", json_dict, False)   #
         self.reserve_scf_files = get_parameter("reserve_scf_files", json_dict, False) # not used
 
+        self.data_format = get_parameter("data_format", json_dict, "extxyz")
         init_data = get_parameter("init_data", json_dict, [])
         self.init_data = self.get_init_data(init_data)
+        init_valid_data= get_parameter("valid_data", json_dict, [])
+        self.valid_data = self.get_init_data(init_valid_data)
         # the init data for pretraining
-        self.init_data_only_pretrain = get_parameter("init_data_only_pretrain", json_dict, False)
-        
+        # self.init_data_only_pretrain = get_parameter("init_data_only_pretrain", json_dict, False)
         self.train = TrainParam(json_input=json_dict["train"], cmd=MODEL_CMD.train)
+        self.use_pre_model = get_parameter("use_pre_model", json_dict, True)
         self.strategy = StrategyParam(json_dict["strategy"])
+        #check_model_type: check type and nums
+        self.init_model_list = get_parameter("init_model_list", json_dict, [])
+        if len(self.init_model_list) > 0:
+            if len(self.init_model_list) != self.strategy.model_num:
+                raise Exception("Error! The number of input models needs to be consistent with model_num {} in 'strategy'".format(self.strategy.model_num))
+            for _model_file in self.init_model_list:
+                if not os.path.exists(_model_file):
+                    raise Exception("Error! The model in init_model_list {} does not exist".format(_model_file)) 
+                _model_type = check_model_type(_model_file)
+                if _model_type != self.train.model_type:
+                    raise Exception("Error! The model type in init_model_list is {}, should be consistent with model_type {} in 'train'".format(_model_type, self.train.model_type)) 
+            self.init_model_list = [os.path.abspath(_) for _ in self.init_model_list]
 
         if self.strategy.uncertainty == UNCERTAINTY.kpu and \
             self.train.optimizer_param.opt_name.upper() != "LKF":
@@ -63,7 +78,7 @@ class InputParam(object):
 class StrategyParam(object):
     def __init__(self, json_dict) -> None:
         self.md_type = get_parameter("md_type", json_dict, FORCEFILED.libtorch_lmps)
-        
+        self.lmps_tolerance = get_parameter("lmps_tolerance", json_dict, True)
         self.max_select = get_parameter("max_select", json_dict, None)
         self.uncertainty = get_parameter("uncertainty", json_dict, UNCERTAINTY.committee).upper()
         if self.uncertainty.upper() == UNCERTAINTY.kpu:

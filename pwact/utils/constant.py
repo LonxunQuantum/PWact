@@ -66,7 +66,9 @@ author: wuxingxing
 class TRAIN_INPUT_PARAM:
     save_p_matrix = "save_p_matrix" # for kpu
     raw_files = "raw_files"
-    datasets_path = "datasets_path"
+    valid_data = "valid_data"
+    train_data = "train_data"
+    format = "format"
     test_mvm_files = "test_movement_file"
     reserve_feature = "reserve_feature" #False
     reserve_work_dir = "reserve_work_dir" #False
@@ -357,7 +359,15 @@ class INIT_BULK:
 
     collection = "collection"
     npy_format_save_dir = "PWdata"
-    npy_format_name = "pwdata"
+    npy_format_name = "datapath.txt"
+
+    def get_save_format(save_format:str):
+        if save_format == PWDATA.pwmlff_npy:
+            return INIT_BULK.npy_format_save_dir
+        elif save_format==PWDATA.extxyz:
+            return "train.xyz"
+        else:
+            raise Exception("Error! The data_format only support ")
 
 class MODEL_TYPE:
     dp = "DP"
@@ -397,7 +407,7 @@ class TRAIN_FILE_STRUCTUR:
 
     # nep model
     nep_model_name ="nep_model.ckpt"
-    nep_model_lmps = "nep_to_lmps.txt"
+    nep_model_lmps = "nep5.txt"
 
 class EXPLORE_FILE_STRUCTURE:
     kpu= "kpu"
@@ -418,6 +428,7 @@ class EXPLORE_FILE_STRUCTURE:
     
     # for committee and kpu method 
     model_devi = "model_devi.out"
+    md_traj_error_record="error_traj.log"
     kpu_model_devi = "kpu_model_devi.out"
     devi_columns = ["devi_force", "config_index", "file_path"]
 

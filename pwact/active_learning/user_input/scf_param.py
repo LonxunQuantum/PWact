@@ -70,6 +70,7 @@ class SCFParam(object):
             potential_list = get_parameter("potential_list", gaussian_param, None)
             atom_list = get_parameter("atom_list", gaussian_param, None)
             self.gaussian_base_param = {}
+            self.gaussian_base_param["KSPACING"] = get_parameter("kspacing", gaussian_param, None)
             self.gaussian_base_param["ELEMENT"] = atom_list
             self.gaussian_base_param["BASIS_SET"] = basis_set_list
             self.gaussian_base_param["POTENTIAL"] = potential_list
@@ -79,6 +80,7 @@ class SCFParam(object):
             self.basis_set_file = None# os.path.abspath(get_parameter("basis_set_file", json_dict, None))
             self.potential_file = None#os.path.abspath(get_parameter("potential_file", json_dict, None))
             self.gaussian_base_param = None
+            self.kspacing = None
         # for cp2k and pwmat gaussion
         
 

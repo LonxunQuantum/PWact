@@ -4,6 +4,8 @@ import os
 import sys
 import time
 import shutil
+import numpy as np
+from pwact.utils.constant import EXPLORE_FILE_STRUCTURE
 from pwact.active_learning.slurm.slurm_tool import get_jobs
 class JobStatus (Enum) :
     unsubmitted = 1 #
@@ -20,7 +22,7 @@ def get_slurm_sbatch_cmd(job_dir:str, job_name:str):
     return cmd
 
 class SlurmJob(object):
-    def __init__(self, job_id=None, status=JobStatus.unsubmitted, user=None, name=None, nodes=None, nodelist=None, partition=None) -> None:
+    def __init__(self, job_id=None, status=JobStatus.unsubmitted, user=None, name=None, nodes=None, nodelist=None, partition=None, lmps_tolerance:bool=True) -> None:
         self.job_id = job_id
         self.status = status
         self.user = user
@@ -29,6 +31,7 @@ class SlurmJob(object):
         self.nodes = nodes
         self.nodelist = nodelist
         self.submit_num = 0
+        self.lmps_tolerance = True
         
     def set_cmd(self, script_path:str):
         #such as "sbatch main_MD_test.sh"
@@ -186,24 +189,36 @@ class SlurmJob(object):
                 md_log = os.path.join(md_dir, "md.log")
                 if os.path.exists(tag_md_file):
                     continue
-                if not os.path.exists(md_log):
-                    return False
 
+                # check if has error
                 with open(md_log, "rb") as file:
                     file.seek(-2, 2)  # 定位到文件末尾前两个字节
                     while file.read(1) != b'\n':  # 逐字节向前查找换行符
                         file.seek(-2, 1)  # 向前移动两个字节
                     last_line = file.readline().decode().strip()  # 读取最后一行并去除换行符和空白字符
-                if "ERROR: there are two atoms" in last_line:
-                    with open(tag_md_file, 'w') as wf:
-                        wf.writelines("ERROR: there are two atoms too close")
-                    return True
-                elif "Total wall time" in last_line:
+                if "Total wall time" in last_line: #md 正常结束
                     with open(tag_md_file, 'w') as wf:
                         wf.writelines("Job Done!")
                     return True
-                else:
+
+                if os.path.exists(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.model_devi)):
+                    devi = np.loadtxt(os.path.join(md_dir, EXPLORE_FILE_STRUCTURE.model_devi))
+                    if self.lmps_tolerance and devi.shape[0] > 0:
+                        with open(tag_md_file, 'w') as wf:
+                            wf.writelines("Job Done!")
+                        return True
+                    else:
+                        return False
+                else: # md运行中非正常结束
                     return False
+
+                # check model_devi.out
+                # elif "ERROR: there are two atoms" in last_line:
+                #     with open(tag_md_file, 'w') as wf:
+                #         wf.writelines("ERROR: there are two atoms too close")
+                #     return True
+                # else:
+                #     return False
             return True
         except Exception as e:
             return False
@@ -379,4 +394,17 @@ def scancle_job(work_dir:str):
             print("scancel job {} successfully".format(job_id))
         else:
             print("Scancel job {} failed, Please manually check and cancel this task!\n".format(job_id))
+
+def scancle_byjobid(job_id):
+    job = SlurmJob(job_id=job_id)
+    status = job.check_status_no_tag()#get status
+    if status == JobStatus.waiting or status == JobStatus.running: # is running 
+        job.scancel_job()
+    time.sleep(5)
+    job = SlurmJob(job_id=job_id)
+    status = job.check_status_no_tag()#get status
+    if JobStatus.finished == status:
+        print("scancel job {} successfully".format(job_id))
+    else:
+        print("Scancel job {} failed, Please manually check and cancel this task!\n".format(job_id))
 

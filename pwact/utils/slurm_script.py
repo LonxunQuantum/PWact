@@ -1,4 +1,5 @@
 import glob
+import re
 import os
 from math import ceil
 from pwact.utils.constant import DFT_STYLE
@@ -8,7 +9,6 @@ GPU_SCRIPT_HEAD = \
 #SBATCH --nodes={}\n\
 #SBATCH --ntasks-per-node={}\n\
 #SBATCH --gres=gpu:{}\n\
-#SBATCH --gpus-per-task={}\n\
 #SBATCH --partition={}\n\
 \
 "
@@ -21,20 +21,6 @@ CPU_SCRIPT_HEAD = \
 #SBATCH --partition={}\n\
 \
 "
-
-CONDA_ENV = '__conda_setup="$(\'/data/home/wuxingxing/anaconda3/bin/conda\' \'shell.bash\' \'hook\' 2> /dev/null)"\n' \
-       'if [ $? -eq 0 ]; then\n' \
-       '    eval "$__conda_setup"\n' \
-       'else\n' \
-       '    if [ -f "/data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh" ]; then\n' \
-       '        . "/data/home/wuxingxing/anaconda3/etc/profile.d/conda.sh"\n' \
-       '    else\n' \
-       '        export PATH="/data/home/wuxingxing/anaconda3/bin:$PATH"\n' \
-       '    fi\n' \
-       'fi\n' \
-       'unset __conda_setup\n' \
-       '# <<< conda initialize <<<\n' \
-       'conda activate torch2_feat\n\n'
 
 '''
 Description: 
@@ -71,6 +57,24 @@ def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.
             
     return slurm_failed, slurm_success
 
+def recheck_slurm_by_jobtag(slurm_files:list[str], tag):
+    remain_job = []
+    for slurm_file in slurm_files:
+        with open(slurm_file, 'r') as f:
+            content = f.read()
+        cd_pattern = r'cd\s+([^\n]+)'
+        directories = re.findall(cd_pattern, content)        
+        if not directories:
+            raise Exception("Error! There is no task in the slurm.job file {}".format(slurm_file))
+        for directory in directories:
+            directory = directory.strip()
+            success_file = os.path.join(directory, tag)
+            if os.path.exists(success_file):
+                continue
+            else:
+                remain_job.append(slurm_file)
+                break
+    return remain_job
 
 '''
 description: 
@@ -146,14 +150,13 @@ def set_slurm_script_content(
             script += CPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, queue_name)
             script += "export CUDA_VISIBLE_DEVICES=''\n"
         else:
-            script += GPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, gpu_per_node, 1, queue_name)
+            script += GPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, gpu_per_node, queue_name)
         
         for custom_flag in custom_flags:
             script += custom_flag + "\n"
         
         # set conda env
         script += "\n"
-        # script += CONDA_ENV
         # script += "\n"
 
         script += "echo \"SLURM_SUBMIT_DIR is $SLURM_SUBMIT_DIR\"\n\n"

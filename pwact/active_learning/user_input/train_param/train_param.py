@@ -29,23 +29,26 @@ class InputParam(object):
         self.cmd = cmd
         self.inference = True if self.cmd == "test".upper() else False
         self.model_type = get_required_parameter("model_type", json_input).upper()
+        # self.atom_type = get_required_parameter("atom_type", json_input)
         self.atom_type = get_atomic_name_from_str(get_required_parameter("atom_type", json_input))
-
         self.model_num = get_parameter("model_num", json_input, 1)
         self.recover_train = get_parameter("recover_train", json_input, True)
         self.max_neigh_num = get_parameter("max_neigh_num", json_input, 100)
-        
         self.profiling = get_parameter("profiling", json_input, False)#not realized
 
         self.set_feature_params(json_input)
         self.set_workdir_structures(json_input)
+        if self.inference and self.model_type in ["NN", "LINEAR"]:
+            self.file_paths.nn_work = os.path.join(self.file_paths.json_dir, "work_test_dir")
 
         if self.model_type in ["DP", "NN", "NEP", "LINEAR", "CHEBY"]:
             self.set_model_init_params(json_input)
             self.set_default_multi_gpu_info(json_input)
             # set optimizer
             self.set_optimizer(json_input)
-
+            if self.model_type in ["NN", "LINEAR"]:
+                self.optimizer_param.batch_size = 1
+                print("Warning! NN and Linear models only support single batch, automatically adjust batch_size=1.")
         # elif self.model_type in ["NEP"]:
         #     self.set_nep_in_params(json_input)
             
@@ -195,11 +198,8 @@ class InputParam(object):
         # set feature related params
         self.valid_shuffle = get_parameter("valid_shuffle", json_input, False)
         self.data_shuffle = get_parameter("data_shuffle", json_input, True)
-        self.train_valid_ratio = get_parameter("train_valid_ratio", json_input, 0.8)
         self.seed = get_parameter("seed", json_input, 2023)
         self.precision = get_parameter("precision", json_input, "float64")
-        self.chunk_size = get_parameter("chunk_size", json_input, 10)
-        self.format = get_parameter("format", json_input, "pwmat/movement")
 
     '''
     description: 
@@ -211,9 +211,6 @@ class InputParam(object):
     '''
     def set_workdir_structures(self, json_input:dict):
         # set file structures
-        work_dir = get_parameter("work_dir", json_input, None)
-        if work_dir is None:
-            work_dir = os.getcwd()
         self.file_paths = WorkFileStructure(json_dir=os.getcwd(), 
                             reserve_work_dir=get_parameter("reserve_work_dir", json_input, False), 
                             reserve_feature = get_parameter("reserve_feature", json_input, False), 
@@ -233,9 +230,7 @@ class InputParam(object):
         self.recover_train = True
         self.optimizer_param.batch_size = 1     # set batch size to 1, so that each image inference info will be saved
         self.data_shuffle = False
-        self.train_valid_ratio = 1
         self.valid_shuffle = False
-        self.format = get_parameter("format", json_input, "pwmat/movement")
         self.file_paths.set_inference_paths(json_input,is_nep_txt = is_nep_txt)
     
     '''
@@ -267,14 +262,14 @@ class InputParam(object):
     author: wuxingxing
     '''    
     def get_data_file_dict(self):
-        data_file_dict = self.file_paths.get_data_file_structure()
+        data_file_dict = {}
+        # data_file_dict = self.file_paths.get_data_file_structure()
         data_file_dict["M2"] = self.descriptor.M2
         data_file_dict["maxNeighborNum"] = self.max_neigh_num
         data_file_dict["atomType"]=self.atom_type_dict
         data_file_dict["Rc_M"] = self.descriptor.Rmax
         data_file_dict["E_tolerance"] = self.descriptor.E_tolerance
         data_file_dict["train_egroup"] = self.optimizer_param.train_egroup
-        data_file_dict["ratio"] = self.train_valid_ratio
 
         return data_file_dict
     
@@ -282,7 +277,8 @@ class InputParam(object):
         params_dict = {}
         params_dict["model_type"] = self.model_type
         params_dict["atom_type"] = self.atom_type
-        params_dict["max_neigh_num"] = self.max_neigh_num
+        if self.model_type !="NEP":
+            params_dict["max_neigh_num"] = self.max_neigh_num
         if self.seed is not None:
             params_dict["seed"] = self.seed
         if self.model_num > 1 :
@@ -336,6 +332,17 @@ class InputParam(object):
         print(params_dict)
         
 def help_info():
-    print("train: do model training")
-    print("test: do dp model inference")
-    
+    # 使用双线边框和加粗标题
+    print("\n\033[1;36m╔" + "=" * 48 + "╗\033[0m")  # 双线上边框
+    print("\033[1;36m║" + " " * 10 + "\033[1;35m PWMLFF Basic Information \033[0m" + " " * 12 + "\033[1;36m║\033[0m")  # 标题
+    print("\033[1;36m╚" + "=" * 48 + "╝\033[0m")  # 双线下边框
+    print(f"\033[1;32mVersion:\033[0m 2025.02")
+    print(f"\033[1;32mCompatible pwdata:\033[0m >= 0.4.8")
+    print(f"\033[1;32mCompatible pwact:\033[0m >= 0.2.1")
+    print(f"\033[1;32mLast Commit:\033[0m 2025.03.05")
+    print(f"\033[1;32mGit Hash:\033[0m 7bdaa90da15a5bfca6a831e739ebdd67fca22299")
+    print(f"\033[1;32mContact:\033[0m support@pwmat.com")
+    print(f"\033[1;32mCitation:\033[0m https://github.com/LonxunQuantum/PWMLFF")
+    print(f"\033[1;32mManual online:\033[0m http://doc.lonxun.com/PWMLFF/")
+    print("\033[1;36m" + "=" * 50 + "\033[0m")  # 青色分隔线
+    print("\n\n")

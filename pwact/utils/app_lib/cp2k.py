@@ -194,6 +194,7 @@ def make_cp2k_input_from_external(cell, coord_file, exinput_path, gaussian_base_
     # read the input content as string
     with open(exinput_path) as f:
         exinput = f.readlines()
+    exinput = [line.upper() for line in exinput]
     # replace the cell string
     start_cell = 0
     end_cell = 0
@@ -210,7 +211,9 @@ def make_cp2k_input_from_external(cell, coord_file, exinput_path, gaussian_base_
     end_dft = 0
     basis_set_file_name = -1
     potential_file_name = -1
-
+    start_kpoint = -1
+    end_kpoint = -1
+    kpoint_line = 0
     # delete the BASIS_SET_FILE_NAME and POTENTIAL_FILE_NAME line
     for line_idx, line in enumerate(exinput):
         line = line.upper()
@@ -222,15 +225,50 @@ def make_cp2k_input_from_external(cell, coord_file, exinput_path, gaussian_base_
             basis_set_file_name = line_idx
         if "POTENTIAL_FILE_NAME" in line:
             potential_file_name = line_idx
+        if "&KPOINTS" in line:
+            start_kpoint = line_idx
+        if "&END KPOINTS" in line:
+            end_kpoint = line_idx
+        if "MONKHORST-PACK" in line:
+            kpoint_line = line_idx
+    
     if start_dft == end_dft:
         raise Exception("{} extarcted error! Can not find DFT set!".format(exinput_path))
+    
+    # set kspacing and pseudo file
+    if gaussian_base_param["KSPACING"] is not None and kpoint_line > 0:
+        raise Exception("The 'kspacing' in 'gaussian_param' and 'KPOINTS' in {} file cannot be set set simultaneously!".format(os.path.basename(exinput_path)))
+    elif gaussian_base_param["KSPACING"] is None and kpoint_line == 0:
+        kspacing_content = make_kspacing_kpoints(cell, 0.5)
+    elif gaussian_base_param["KSPACING"] is not None:
+        kspacing_content = make_kspacing_kpoints(cell, gaussian_base_param["KSPACING"])
+    else:
+        kspacing_content = "\n".join(exinput[start_kpoint:end_kpoint+1])
     basis_set_file_name, potential_file_name = sorted([basis_set_file_name, potential_file_name], reverse=True)
-    if basis_set_file_name != -1:
-        exinput.pop(basis_set_file_name)
-    if potential_file_name != -1:
-        exinput.pop(potential_file_name)
+    if kpoint_line > 0:
+        if start_kpoint > basis_set_file_name:
+            for del_idx in list(range(end_kpoint, start_kpoint-1, -1)):
+                exinput.pop(del_idx)
+            if basis_set_file_name != -1:
+                exinput.pop(basis_set_file_name)
+            if potential_file_name != -1:
+                exinput.pop(potential_file_name)
+        else:
+            if basis_set_file_name != -1:
+                exinput.pop(basis_set_file_name)
+            if potential_file_name != -1:
+                exinput.pop(potential_file_name)
+            for del_idx in list(range(end_kpoint, start_kpoint-1, -1)):
+                exinput.pop(del_idx)
+    else:
+        if basis_set_file_name != -1:
+            exinput.pop(basis_set_file_name)
+        if potential_file_name != -1:
+            exinput.pop(potential_file_name)
+    
     exinput.insert(start_dft+1, "    BASIS_SET_FILE_NAME {}\n".format(gaussian_base_param["BASIS_SET_FILE_NAME"]))
     exinput.insert(start_dft+2, "    POTENTIAL_FILE_NAME {}\n".format(gaussian_base_param["POTENTIAL_FILE_NAME"]))
+    exinput.insert(start_dft+3, kspacing_content)
     
     for line_idx, line in enumerate(exinput):
         line = line.upper()
@@ -325,6 +363,25 @@ def get_atom_type_from_config(coord_file:str):
         except:
             continue
     return res
+
+def _reciprocal_box(box):
+    rbox = np.linalg.inv(box)
+    rbox = rbox.T
+    return rbox
+
+def make_kspacing_kpoints(lattice, kspacing):
+    rbox = _reciprocal_box(lattice)
+    kpoints = [
+        round(2 * np.pi * np.linalg.norm(ii) / kspacing) for ii in rbox
+    ]
+    kpoints[0] = 1 if kpoints[0] == 0 else kpoints[0]
+    kpoints[1] = 1 if kpoints[1] == 0 else kpoints[1]
+    kpoints[2] = 1 if kpoints[2] == 0 else kpoints[2]
+    ret = "    &KPOINTS\n"
+    ret += "        SCHEME MONKHORST-PACK %d %d %d\n" % (kpoints[0], kpoints[1], kpoints[2])
+    ret += "    &END KPOINTS\n"
+    return ret
+    # ret = _make_pwmat_kp_mp(kpoints)
 
 # if __name__=="__main__":
 #     import dpdata

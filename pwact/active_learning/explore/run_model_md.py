@@ -16,7 +16,7 @@
             ...
 """
 from pwact.active_learning.slurm.slurm import Mission, SlurmJob, scancle_job
-from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
+from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content, recheck_slurm_by_jobtag
 from pwact.active_learning.explore.select_image import select_image
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.user_input.iter_input import InputParam, MdDetail
@@ -175,14 +175,17 @@ class Explore(object):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.md_dir, \
             job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
             tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
+        # for slurm remain, check if tags done
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done is False:
+            slurm_remain = recheck_slurm_by_jobtag(slurm_remain, EXPLORE_FILE_STRUCTURE.md_tag)
+        if len(slurm_remain) > 0:
             #recover slurm jobs
             if len(slurm_remain) > 0:
                 print("Run these MD Jobs:\n")
                 print(slurm_remain)
                 for i, script_path in enumerate(slurm_remain):
-                    slurm_job = SlurmJob()
+                    slurm_job = SlurmJob(lmps_tolerance = self.input_param.strategy.lmps_tolerance)
                     tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), EXPLORE_FILE_STRUCTURE.md_tag)
                     tag = os.path.join(os.path.dirname(script_path),tag_name)
                     slurm_job.set_tag(tag, job_type=SLURM_JOB_TYPE.lammps)

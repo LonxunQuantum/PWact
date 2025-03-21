@@ -9,7 +9,7 @@ from pwact.active_learning.init_bulk.relabel import Relabel
 from pwact.active_learning.user_input.init_bulk_input import InitBulkParam
 from pwact.active_learning.user_input.resource import Resource
 from pwact.active_learning.slurm.slurm import scancle_job
-from pwact.utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
+from pwact.utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE, PWDATA
 from pwact.utils.file_operation import copy_file, copy_dir, search_files, del_file, del_file_list, write_to_file
 from pwact.data_format.configop import extract_pwdata
 
@@ -104,13 +104,13 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                 continue
             source_aimd = sorted(source_aimd)
             #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
-            extract_pwdata(data_list=source_aimd, 
-                    data_format=DFT_STYLE.get_aimd_config_format(resource.dft_style),
-                    datasets_path=os.path.join(collection_dir, init_config_name, INIT_BULK.npy_format_save_dir), 
-                    train_valid_ratio=input_param.train_valid_ratio, 
-                    data_shuffle=input_param.data_shuffle, 
-                    merge_data=True,
-                    interval=1
+            extract_pwdata(input_data_list=source_aimd, 
+                            intput_data_format= DFT_STYLE.get_aimd_config_format(resource.dft_style),
+                            save_data_path  = os.path.join(collection_dir, init_config_name),
+                            save_data_name  = INIT_BULK.get_save_format(input_param.data_format), 
+                            save_data_format= input_param.data_format,
+                            data_shuffle=input_param.data_shuffle, 
+                            interval=1
                 )
 
         #6 convert relabel datas
@@ -122,12 +122,12 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
                 continue
             source_scf = sorted(source_scf, key=lambda x:int(os.path.basename(os.path.dirname(x)).split('-')[0]), reverse=False)
             #5. convert the aimd files (for vasp is outcar, for pwmat is movement) to npy format
-            extract_pwdata(data_list=source_scf, 
-                    data_format=DFT_STYLE.get_format_by_postfix(os.path.basename(source_scf[0])),
-                    datasets_path=os.path.join(collection_dir, init_config_name, "scf_pwdata"), 
-                    train_valid_ratio=input_param.train_valid_ratio, 
+            extract_pwdata(input_data_list=source_scf, 
+                    intput_data_format= DFT_STYLE.get_format_by_postfix(os.path.basename(source_scf[0])),
+                    save_data_path  = os.path.join(collection_dir, init_config_name), 
+                    save_data_name  = INIT_BULK.get_save_format(input_param.data_format), 
+                    save_data_format= input_param.data_format,
                     data_shuffle=input_param.data_shuffle, 
-                    merge_data=True,
                     interval=1
                 )
 
@@ -146,7 +146,11 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         del_file_list([temp_work_dir])
 
     # print the dir of pwdatas from aimd
-    pwdatas = search_files(real_collection_dir, "*/{}".format(INIT_BULK.npy_format_save_dir))
+    if input_param.data_format == PWDATA.extxyz:
+        pwdatas = search_files(real_collection_dir, "*/{}".format(INIT_BULK.get_save_format(input_param.data_format)))
+    elif input_param.data_format == PWDATA.pwmlff_npy: # */PWdata/*.npy
+        tmp = search_files(real_collection_dir, "*/{}/*/position.npy".format(INIT_BULK.get_save_format(input_param.data_format)))
+        pwdatas = [os.path.dirname(_) for _ in tmp]
     if len(pwdatas) > 0:
         pwdatas = sorted(pwdatas)
         result_lines = ["\"{}\",".format(_) for _ in pwdatas]
