@@ -1,5 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmatgaussion_bigmodel_direct/run_iter_pwmat",
 
     "reserve_work":true,
     "reserve_md_traj": false,
@@ -51,15 +50,15 @@
         "sys_configs": [
                         {"config":"POSCAR", "format":"vasp/poscar"},
                         "49.config",
-                        "45.config",
-                        "41.config",
-                        "37.config",
-                        "33.config",
-                        "29.config",
-                        "25.config",
-                        "21.config",
+                        "0.config",
+                        "11.config",
                         "17.config",
-                        "1.config"
+                        "13.config",
+                        "19.config",
+                        "15.config",
+                        "12.config",
+                        "14.config",
+                        "10.config"
             ],
         "md_jobs": [
             [{"sys_idx": [ 1,4],

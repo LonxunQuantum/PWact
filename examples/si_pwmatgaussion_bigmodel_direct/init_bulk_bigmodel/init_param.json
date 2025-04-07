@@ -1,5 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmatgaussion_bigmodel_direct/init_bulk_bigmodel",
     "reserve_work": true,
     "data_format" :"pwmlff/npy",
     "sys_config_prefix": "../../structures",
