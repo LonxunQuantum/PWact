@@ -1,0 +1,17 @@
+4 1
+in.atom = atom.config
+Ecut = 50
+Ecut2 = 200
+job = scf
+xcfunctional = GGA
+E_error = 0
+Rho_error = 1E-5
+
+OUT.WG = F 
+OUT.RHO = F 
+OUT.VR = F 
+OUT.FORCE = T 
+#OUT.STRESS = T 
+OUT.MLMD = T
+
+USE_GAUSSIAN = T

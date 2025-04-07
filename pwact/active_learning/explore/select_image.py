@@ -90,6 +90,11 @@ def select_image(
     accurate_pd =None
     rand_candi =None
     remove_candi =None
+    
+    error_pd = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
+    accurate_pd = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
+    rand_candi = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
+    remove_candi = pd.DataFrame(columns=EXPLORE_FILE_STRUCTURE.devi_columns)
 
     for md in md_sys_dict.keys():
         sys_dict = md_sys_dict[md]
@@ -104,10 +109,10 @@ def select_image(
                 _lower = lower
                 _higer = higer
             tmp_error_pd, tmp_accurate_pd, tmp_rand_candi, tmp_remove_candi = select_pd(tmp_devi_pd, _lower, _higer, select_num)
-            error_pd = pd.concat([error_pd, tmp_error_pd]) if error_pd is not None else tmp_error_pd
-            accurate_pd = pd.concat([accurate_pd, tmp_accurate_pd]) if error_pd is not None else tmp_accurate_pd
-            rand_candi = pd.concat([rand_candi, tmp_rand_candi]) if error_pd is not None else tmp_rand_candi
-            remove_candi = pd.concat([remove_candi, tmp_remove_candi]) if error_pd is not None else tmp_remove_candi
+            error_pd = pd.concat([error_pd, tmp_error_pd])
+            accurate_pd = pd.concat([accurate_pd, tmp_accurate_pd])
+            rand_candi = pd.concat([rand_candi, tmp_rand_candi])
+            remove_candi = pd.concat([remove_candi, tmp_remove_candi])
     right_md, error_md = count_mdstop_info(model_devi_files)
     md_run_info = "A total of {} MD trajectories were run. with {} trajectories correctly executed and {} trajectories normally completed. \nFor detailed information, refer to File {}.".format(len(right_md) + len(error_md), len(right_md), len(error_md), EXPLORE_FILE_STRUCTURE.md_traj_error_record)
     
@@ -245,7 +250,7 @@ def count_info(save_dir, error_pd, accurate_pd, rand_candi, remove_candi, md_run
         format(error_pd.shape[0], EXPLORE_FILE_STRUCTURE.failed)
     if md_run_info is not None:
         summary_info += md_run_info
-        summary_info += "\n\n"
+        summary_info += "\n"
 
         summary += md_run_info 
         summary += "\n"

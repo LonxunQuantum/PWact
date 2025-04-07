@@ -26,13 +26,15 @@ class InitBulkParam(object):
             sys_configs = [sys_configs]
 
         # set sys_config detail
-        self.dft_style = get_required_parameter("dft_style", json_dict).lower()
+        self.dft_style = get_parameter("dft_style", json_dict, "PWMAT").lower()
         self.scf_style = get_parameter("scf_style", json_dict, None)
 
         self.sys_config:list[Stage] = []
         self.is_relax = False
         self.is_aimd = False
         self.is_scf = False
+        self.is_bigmodel=False
+        self.is_direct = False
         for index, config in enumerate(sys_configs):
             stage = Stage(config, index, sys_config_prefix, self.dft_style)
             self.sys_config.append(stage)
@@ -42,22 +44,46 @@ class InitBulkParam(object):
                 self.is_aimd = True
             if stage.scf:
                 self.is_scf = True
+            if stage.bigmodel:
+                self.is_bigmodel = True
+            if stage.direct:
+                self.is_direct = True
                 
         # for PWmat: set etot.input files and persudo files
         # for Vasp: set INCAR files and persudo files
-        self.dft_input = SCFParam(json_dict=json_dict, is_scf=self.is_scf, is_relax=self.is_relax, is_aimd=self.is_aimd, root_dir=self.root_dir, dft_style=self.dft_style, scf_style=self.scf_style)
+        self.dft_input = SCFParam(json_dict=json_dict, 
+                                    is_scf=self.is_scf, 
+                                    is_relax=self.is_relax, 
+                                    is_aimd=self.is_aimd, 
+                                    root_dir=self.root_dir, 
+                                    dft_style=self.dft_style, 
+                                    scf_style=self.scf_style,
+                                    is_bigmodel=self.is_bigmodel,
+                                    is_direct=self.is_direct)
+        
         # check and set relax etot.input file
         for config in self.sys_config:
             if self.is_relax:
                 if config.relax_input_idx >= len(self.dft_input.relax_input_list):
                     raise Exception("Error! for config '{}' 'relax_input_idx' {} not in 'relax_input'!".format(os.path.basename(config.config_file), config.relax_input_idx))
                 config.set_relax_input_file(self.dft_input.relax_input_list[config.relax_input_idx])
+            
             if self.is_scf:
                 if not os.path.exists(self.dft_input.scf_input_list[0].input_file):
                     raise Exception("Error! relabel dft input file {} not exisit!".format(self.dft_input.scf_input_list[0].input_file))
                 config.set_scf_input_file(self.dft_input.scf_input_list[0])
-        # check and set aimd etot.input file
-        for config in self.sys_config:
+            
+            if self.is_bigmodel:
+                if config.bigmodel_input_idx >= len(self.dft_input.bigmodel_input_list):
+                    raise Exception("Error! for script '{}' 'bigmodel_input_idx' {} not in 'bigmodel_input'!".format(os.path.basename(config.config_file), config.bigmodel_input_idx))
+                config.set_bigmodel_input_file(self.dft_input.bigmodel_input_list[config.bigmodel_input_idx])
+
+            if self.is_direct:
+                if config.direct_input_idx >= len(self.dft_input.direct_input_list):
+                    raise Exception("Error! for script '{}' 'direct_input_idx' {} not in 'direct_input'!".format(os.path.basename(config.config_file), config.direct_input_idx))
+                config.set_direct_input_file(self.dft_input.direct_input_list[config.direct_input_idx])
+
+            # check and set aimd etot.input file
             if self.is_aimd:
                 if config.aimd_input_idx >= len(self.dft_input.aimd_input_list):
                     raise Exception("Error! for config '{}' 'aimd_input_idx' {} not in 'aimd_input'!".format(os.path.basename(config.config_file), config.aimd_input_idx))
@@ -77,16 +103,29 @@ class Stage(object):
         self.format = get_parameter("format", json_dict, PWDATA.pwmat_config).lower()
         self.pbc = get_parameter("pbc", json_dict, [1,1,1])
         # extract config file to Config object, then use it
-        self.relax = get_parameter("relax", json_dict, True)
+        self.relax = get_parameter("relax", json_dict, False)
         self.relax_input_idx = get_parameter("relax_input_idx", json_dict, 0)
         self.relax_input_file = None
         
-        self.aimd = get_parameter("aimd", json_dict, True)
+        self.aimd = get_parameter("aimd", json_dict, False)
         self.aimd_input_idx = get_parameter("aimd_input_idx", json_dict, 0)
         self.aimd_input_file = None
         
         self.scf = get_parameter("scf", json_dict, False)
+        self.scf_input_idx = get_parameter("scf_input_idx", json_dict, 0)
+        self.scf_input_file = None
 
+        self.bigmodel = get_parameter("bigmodel", json_dict, False)
+        self.bigmodel_input_idx = get_parameter("bigmodel_input_idx", json_dict, 0)
+        self.bigmodel_script = None
+
+        self.direct = get_parameter("direct", json_dict, False)
+        self.direct_input_idx = get_parameter("direct_input_idx", json_dict, 0)
+        self.direct_script = None
+        
+        if self.bigmodel and self.aimd:
+            raise Exception("ERROR! The 'aimd' and 'bigmodel' cannot be set simultaneously!")
+        
         super_cell = get_parameter("super_cell", json_dict, [])
         super_cell = str_list_format(super_cell)
         if len(super_cell) > 0:
@@ -131,3 +170,13 @@ class Stage(object):
         self.aimd_flag_symm = input_file.flag_symm
         self.use_dftb = input_file.use_dftb
         self.use_skf = input_file.use_skf
+
+    def set_bigmodel_input_file(self, input_file:DFTInput):
+        self.bigmodel_input_file = input_file.input_file
+        self.bigmodel_kspacing = input_file.kspacing 
+        self.bigmodel_flag_symm = input_file.flag_symm
+
+    def set_direct_input_file(self, input_file:DFTInput):
+        self.direct_input_file = input_file.input_file
+        self.direct_kspacing = input_file.kspacing 
+        self.direct_flag_symm = input_file.flag_symm

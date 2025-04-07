@@ -1,0 +1,71 @@
+{
+    "train": {
+        "command": "MatPL",
+        "group_size": 1,
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+        "/share/app/MATPL/MatPL-2025.3/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    },
+    
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi -in in.lammps",
+        "group_size": 1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti",
+        "custom_flags": [],
+        "source_list": [
+        ],
+        "module_list": [
+        "lammps4matpl/2025.3"
+        ],
+        "env_list": [
+        ]
+    },
+
+    "direct": {
+        "command": "python direct.py",
+        "group_size": 1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti",
+        "custom_flags": [],
+        "source_list": [
+            "/share/app/anaconda3/envs/m3gnet/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    },
+
+    "DFT": {
+        "command": "python eqv2_label.py",
+        "group_size": 1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti",
+        "custom_flags": [],
+        "source_list": [
+            "/share/app/anaconda3/envs/fair-chem/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    }
+}

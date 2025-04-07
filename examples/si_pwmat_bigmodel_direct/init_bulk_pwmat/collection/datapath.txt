@@ -1,0 +1,1 @@
+"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_pwmat/collection/scf/PWdata/Si128",

@@ -318,8 +318,15 @@ def get_file_extension(file_name:str, split_char = "."):
 @Author       :wuxingxing
 """
 
-def get_random_nums(start, end, n):
-    numsArray = set()
-    while len(numsArray) < n:
-        numsArray.add(random.randint(start, end-1))
-    return list(numsArray)
+def get_random_nums(start, end, n, seed=None):
+    if seed is not None:
+        local_random = random.Random(seed)  # 独立的随机实例
+        numsArray = set()
+        while len(numsArray) < n:
+            numsArray.add(local_random.randint(start, end-1))
+        return list(numsArray)
+    else:
+        numsArray = set()
+        while len(numsArray) < n:
+            numsArray.add(random.randint(start, end-1))
+        return list(numsArray)        

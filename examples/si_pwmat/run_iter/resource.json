@@ -1,17 +1,16 @@
 {
-    "_commit" : "The following settings are used for the PWMLFF and lammps inferface environment installed in Mcloud",
     "train": {
-        "command": "PWMLFF",
+        "command": "MatPL",
         "group_size": 1,
         "_parallel_num":1,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
-        "queue_name": "new3080ti,3080ti,3090",
+        "queue_name": "3080ti,3090",
         "custom_flags": [
         ],
         "source_list": [
-            "/share/app/PWMLFF/PWMLFF2024.5/env.sh"
+            "/share/app/MATPL/MatPL-2025.3/env.sh"
         ],
         "module_list": [
         ],
@@ -19,28 +18,27 @@
         ]
     },
     "explore": {
-        "command": "mpirun -np 1 lmp_mpi_gpu",
-        "_command": "mpirun -np 8 lmp_mpi",
+        "command": "mpirun -np 1 lmp_mpi",
         "group_size": 2,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
-        "queue_name": "new3080ti,3080ti,3090",
+        "queue_name": "3080ti",
         "custom_flags": [
         ],
         "source_list": [
         ],
         "module_list": [
-            "lammps4pwmlff/2024.5"
+            "lammps4matpl/2025.3"
         ]
     },
     "DFT": {
-        "command":"mpirun -np 4 PWmat",
+        "command":"mpirun -np 1 PWmat",
         "number_node": 1,
         "cpu_per_node": 1,
         "gpu_per_node": 1,
         "group_size": 1,
-        "queue_name": "1080ti,3080ti,new3080ti,1080ti,3090",
+        "queue_name": "3080ti",
         "custom_flags": [
         "#SBATCH -x gn18,gn17"
         ],

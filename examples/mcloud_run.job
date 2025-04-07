@@ -1,0 +1,14 @@
+#!/bin/sh
+#SBATCH --partition=cpu
+#SBATCH --job-name=pwact
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+source /share/app/MATPL/MatPL-2025.3/env.sh
+
+# for run_iter
+pwact run param.json resource.json
+
+
+
+

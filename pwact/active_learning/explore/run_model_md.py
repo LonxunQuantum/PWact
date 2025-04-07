@@ -30,8 +30,10 @@ from pwact.utils.draw.hist_model_devi import draw_hist_list
 from pwact.utils.app_lib.lammps import make_lammps_input
 from pwact.data_format.configop import save_config, get_atom_type
 
+from pwdata import Config
 import os
 import glob
+import numpy as np
 import pandas as pd
 """
 md_dir:
@@ -66,11 +68,13 @@ class Explore(object):
         self.explore_dir = os.path.join(self.input_param.root_dir, itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.explore)
         self.md_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.select_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.select)
+        self.direct_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.direct)
         self.kpu_dir = os.path.join(self.explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
        
         self.real_explore_dir = os.path.join(self.input_param.root_dir, itername, AL_STRUCTURE.explore)
         self.real_md_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.md)
         self.real_select_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.select)
+        self.real_direct_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.direct)
         self.real_kpu_dir = os.path.join(self.real_explore_dir, EXPLORE_FILE_STRUCTURE.kpu) # for kpu calculate
 
     def back_explore(self):
@@ -334,6 +338,14 @@ class Explore(object):
                     os.path.join(self.select_dir, "model_devi_distribution-{}.png".format(os.path.basename(md_sys_dir)))
                 )
         copy_dir(self.select_dir, self.real_select_dir)
+        if self.input_param.strategy.direct:
+            # delete nouse files
+            del_file_list_by_patten(self.direct_dir, "slurm-*")
+            del_file_list_by_patten(self.direct_dir, "*tag*")
+            # copy direct dir
+            copy_dir(source_dir=self.direct_dir,
+                    target_dir=self.real_direct_dir)
+            
     
     '''
     description: 
@@ -369,4 +381,102 @@ class Explore(object):
         print("Image select result:\n {}\n\n".format(summary_info))
         return summary
 
+    
+    def make_drct_work(self):
+        md_work_list = []
+        # read candidate.csv
+        candidate = pd.read_csv(os.path.join(self.select_dir, EXPLORE_FILE_STRUCTURE.candidate))
+        # make scf work dir
+        image_list = None
+        for index, row in candidate.iterrows():
+            config_index    = int(row["config_index"])
+            sub_md_sys_path = row["file_path"]
+            atom_names = None
+            with open(os.path.join(sub_md_sys_path, LAMMPS.atom_type_file), 'r') as rf:
+                line = rf.readline()
+                atom_names = line.split()
+            if image_list is None:
+                image_list = Config(data_path=os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.traj, "{}{}".format(config_index, LAMMPS.traj_postfix)), 
+                                    format=PWDATA.lammps_dump, atom_names=atom_names)
+            else:
+                image_list.append(Config(data_path=os.path.join(sub_md_sys_path, EXPLORE_FILE_STRUCTURE.traj, "{}{}".format(config_index, LAMMPS.traj_postfix)), 
+                                    format=PWDATA.lammps_dump, atom_names=atom_names))
+        # cvt_lammps.dump to extxyz
+        image_list.to(data_path=self.direct_dir, format=PWDATA.extxyz, data_name="{}".format(EXPLORE_FILE_STRUCTURE.candidate_xyz))
+        # copy direct script
+        copy_file(self.input_param.strategy.direct_script, os.path.join(self.direct_dir, os.path.basename(self.input_param.strategy.direct_script)))
+        # make direct work slurm file
+                           
+        self.make_drct_slurm_jobs([self.direct_dir])
+
+    def make_drct_slurm_jobs(self, md_work_list:list[str]):
+        # delete old job file
+        del_file_list_by_patten(self.direct_dir, "*{}".format(EXPLORE_FILE_STRUCTURE.direct_job))
+        group_list = split_job_for_group(1, md_work_list, 1)
+        for g_index, group in enumerate(group_list):
+            if group[0] == "NONE":
+                continue
+            jobname = "direct{}".format(g_index)
+            tag_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.direct_tag)
+            tag = os.path.join(self.direct_dir, tag_name)
+
+            run_cmd = self.resource.direct_resource.command
+
+            group_slurm_script = set_slurm_script_content(
+                            gpu_per_node=self.resource.direct_resource.gpu_per_node, 
+                            number_node = self.resource.direct_resource.number_node, #1
+                            cpu_per_node = self.resource.direct_resource.cpu_per_node,
+                            queue_name = self.resource.direct_resource.queue_name,
+                            custom_flags = self.resource.direct_resource.custom_flags,
+                            env_script = self.resource.direct_resource.env_script,
+                            job_name = jobname,
+                            run_cmd_template = run_cmd,
+                            group = group,
+                            job_tag = tag,
+                            task_tag = EXPLORE_FILE_STRUCTURE.direct_tag,
+                            task_tag_faild = EXPLORE_FILE_STRUCTURE.direct_tag_faild,
+                            parallel_num=self.resource.direct_resource.parallel_num,
+                            check_type=None
+                            )
+            slurm_script_name = "{}-{}".format(g_index, EXPLORE_FILE_STRUCTURE.direct_job)
+            slurm_job_file = os.path.join(self.direct_dir, slurm_script_name)
+            write_to_file(slurm_job_file, group_slurm_script, "w")
+
+    def do_drct_jobs(self):
+        mission = Mission()
+        slurm_remain, slurm_success = get_slurm_job_run_info(self.direct_dir, \
+            job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.direct_job), \
+            tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.direct_tag))
+        # for slurm remain, check if tags done
+        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
+        if slurm_done is False:
+            slurm_remain = recheck_slurm_by_jobtag(slurm_remain, EXPLORE_FILE_STRUCTURE.md_tag)
+        if len(slurm_remain) > 0:
+            #recover slurm jobs
+            if len(slurm_remain) > 0:
+                print("Run these MD Direct Jobs:\n")
+                print(slurm_remain)
+                for i, script_path in enumerate(slurm_remain):
+                    slurm_job = SlurmJob()
+                    tag_name = "{}-{}".format(os.path.basename(script_path).split('-')[0].strip(), EXPLORE_FILE_STRUCTURE.direct_tag)
+                    tag = os.path.join(os.path.dirname(script_path),tag_name)
+                    slurm_job.set_tag(tag, job_type=SLURM_JOB_TYPE.direct)
+                    slurm_job.set_cmd(script_path)
+                    mission.add_job(slurm_job)
+
+            if len(mission.job_list) > 0:
+                mission.commit_jobs()
+                mission.check_running_job()
+                mission.all_job_finished()
+    
+    def post_drct(self):
+        select_idx = np.loadtxt(os.path.join(self.direct_dir, "{}".format(EXPLORE_FILE_STRUCTURE.select_idx)))
+        count = 0
+        with open(os.path.join(self.direct_dir, EXPLORE_FILE_STRUCTURE.candidate_xyz), 'r') as file:
+            for line in file:
+                count += line.count("Lattice")
         
+        summary = "Direct selection: Before : {} configs, After : {} selected.\n\n".format(select_idx.shape[0], count)
+        write_to_file(os.path.join(self.input_param.root_dir, EXPLORE_FILE_STRUCTURE.iter_select_file), summary, mode='a')
+        print(summary)
+        return summary

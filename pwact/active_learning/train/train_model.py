@@ -33,6 +33,7 @@ class ModelTrian(object):
         self.itername = itername
         self.resource = resource
         self.input_param = input_param
+        self.train_flag = True
         self.iter = get_iter_from_iter_name(self.itername)
         # train work dir
         self.train_dir = os.path.join(self.input_param.root_dir, self.itername, TEMP_STRUCTURE.tmp_run_iter_dir, AL_STRUCTURE.train)
@@ -68,11 +69,16 @@ class ModelTrian(object):
             if not os.path.exists(model_i_dir):
                 os.makedirs(model_i_dir)
             # make train.json file
-            train_dict = self.set_train_input_dict(work_dir=model_i_dir, model_index = model_index)
+            train_dict, train_tag = self.set_train_input_dict(work_dir=model_i_dir, model_index = model_index)
             train_json_file_path = os.path.join(model_i_dir, TRAIN_FILE_STRUCTUR.train_json)
             save_json_file(train_dict, train_json_file_path)
             train_list.append(model_i_dir)
-        self.make_train_slurm_job_files(train_list)
+        if train_tag:
+            self.make_train_slurm_job_files(train_list)
+        else:
+            pre_iter_name = make_iter_name(self.iter - 1)
+            pre_iter_dir = os.path.join(self.input_param.root_dir, pre_iter_name, AL_STRUCTURE.train)
+            copy_dir(pre_iter_dir, self.train_dir)
     
     def make_train_slurm_job_files(self, train_list:list[str]):
         # make train slurm script
@@ -158,6 +164,7 @@ class ModelTrian(object):
         # search train_feature_path in iter*/label/result/*/PWdata/*
         iter_index = get_iter_from_iter_name(self.itername)
         start_iter = 0
+        train_tag = True
         while start_iter < iter_index:
             if self.input_param.data_format == PWDATA.extxyz: # result/train.xyz
                 iter_data_list = search_files(self.input_param.root_dir, 
@@ -172,6 +179,9 @@ class ModelTrian(object):
                 train_feature_path.extend(iter_data_list)
             start_iter += 1
         
+        if start_iter > 0 and len(iter_data_list) == 0:
+            train_tag = False
+
         # reset seed
         train_json[TRAIN_INPUT_PARAM.seed] = get_seed_by_time()
         train_json[TRAIN_INPUT_PARAM.raw_files] = []
@@ -181,7 +191,7 @@ class ModelTrian(object):
         train_json[TRAIN_INPUT_PARAM.format] = self.input_param.data_format
         if self.input_param.strategy.uncertainty == UNCERTAINTY.kpu:
             train_json[TRAIN_INPUT_PARAM.save_p_matrix] = True
-        return train_json
+        return train_json, train_tag
 
     def do_train_job(self):
         mission = Mission()

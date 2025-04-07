@@ -105,6 +105,18 @@ class StrategyParam(object):
             if self.compress:
                 error_log = "Error! the kpu uncertainty does not support compress, please set the 'compress' in strategy dict to be false!"
                 raise Exception(error_log)
+        
+        self.direct = get_parameter("direct", json_dict, False)
+        if self.direct:
+            self.direct_script = get_parameter("direct_script", json_dict, None)
+            if self.direct_script is not None:
+                self.direct_script = os.path.abspath(self.direct_script)
+                if not os.path.exists(self.direct_script):
+                    raise Exception("ERROR! The direct script {} does not exist!".format(self.direct_script))
+            else:
+                raise Exception("ERROR! The direct script does not exist!")
+        else:
+            self.direct_script = None
 
     def to_dict(self):
         res = {}
@@ -146,7 +158,7 @@ class ExploreParam(object):
             elif isinstance(sys_config, dict):
                 config = os.path.join(sys_config_prefix, sys_config["config"]) if sys_config_prefix is not None else sys_config["config"]
                 config_format = get_parameter("format", sys_config, PWDATA.pwmat_config)
-            if not os.path.exists:
+            if not os.path.exists(config):
                 raise Exception("ERROR! The sys_config {} file does not exist!".format(config))
             self.sys_configs.append(SysConfig(config, config_format))
         

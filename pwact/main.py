@@ -5,7 +5,7 @@ import glob
 import sys
 import json
 import argparse
-from pwact.utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE
+from pwact.utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, DFT_STYLE
 from pwact.utils.format_input_output import make_iter_name
 from pwact.utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
 from pwact.utils.json_operation import convert_keys_to_lowercase
@@ -79,18 +79,23 @@ def run_iter():
             if jj == 2 and not input_param.reserve_work: # delete temp_work_dir under current iteration after the labeling done
                 del_file_list([os.path.join(input_param.root_dir, iter_name, TEMP_STRUCTURE.tmp_run_iter_dir)])
 
-    print("Active learning done! \nYou could use cmd 'al_pwmlff gather_pwdata' to collect all datas sampled from iterations.")
+    print("Active learning done! \nYou could use cmd 'pwact gather_pwdata' to collect all datas sampled from iterations.")
 
 def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)
     #1. if the label work done before, back up and do new work
     lab.back_label()
     #2. make scf work
-    lab.make_scf_work()
-    #3. do scf work
-    lab.do_scf_jobs()
-    #4. collect scf configs outcar or movement, then to pwdata format
-    lab.do_post_labeling()
+    if input_param.dft_style == DFT_STYLE.bigmodel:
+        lab.make_bigmodel_work()
+        lab.do_bigmodel_jobs()
+        lab.do_post_bigmodel()
+    else:
+        lab.make_scf_work()
+        #3. do scf work
+        lab.do_scf_jobs()
+        #4. collect scf configs outcar or movement, then to pwdata format
+        lab.do_post_labeling()
     
 def do_training_work(itername:str, resource : Resource, input_param: InputParam):
     mtrain = ModelTrian(itername, resource, input_param)
@@ -129,8 +134,13 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
     summary = "{}  {}\n".format(itername, summary)
     write_to_file(os.path.join(input_param.root_dir, EXPLORE_FILE_STRUCTURE.iter_select_file), summary, mode='a')
 
+    if input_param.strategy.direct:
+        md.make_drct_work()
+        md.do_drct_jobs()
+        md.post_drct()
     print("config selection done!")
-    # 5. do post process after lammps md running
+
+    # 5. do post process 
     md.post_process_md()
     print("exploring done!")
 

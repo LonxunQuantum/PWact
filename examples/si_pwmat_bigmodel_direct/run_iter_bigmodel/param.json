@@ -1,0 +1,90 @@
+{
+    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/run_iter_bigmodel",
+
+    "reserve_work":true,
+    "reserve_md_traj": false,
+    "reserve_scf_files": true,
+
+    "data_format":"pwmlff/npy",
+
+    "init_data": [
+        "../init_bulk_bigmodel/collection/bigmodel/direct/PWdata/Si128"
+    ],
+
+    "train": {
+        "model_type": "NEP",
+        "atom_type": [14],
+        "optimizer": {
+            "optimizer": "LKF",
+            "epochs": 10,
+            "batch_size": 4,
+            "print_freq": 10,
+            "block_size": 5120,
+            "kalman_lambda": 0.98,
+            "kalman_nue": 0.9987,
+            "train_energy": true,
+            "train_force": true,
+            "train_ei": false,
+            "train_virial": true,
+            "train_egroup": false,
+            "pre_fac_force": 2.0,
+            "pre_fac_etot": 1.0,
+            "pre_fac_ei": 1.0,
+            "pre_fac_virial": 1.0,
+            "pre_fac_egroup": 0.1,
+            "p0_weight": 0.01
+        }
+    },
+
+    "strategy": {
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.05,
+        "upper_model_deiv_f": 450,
+        "model_num": 4,
+        "max_select": 10
+    },
+
+    "explore": {
+        "sys_config_prefix": "../../structures",
+        "sys_configs": [
+                        {"config":"POSCAR", "format":"vasp/poscar"},
+                        "49.config",
+                        "45.config",
+                        "41.config",
+                        "37.config",
+                        "33.config",
+                        "29.config",
+                        "25.config",
+                        "21.config",
+                        "17.config",
+                        "1.config"
+            ],
+        "md_jobs": [
+            [{"sys_idx": [ 1,4],
+            "select_sys":[10,15],
+            "nsteps": 1000,
+            "md_dt": 0.001,
+            "trj_freq": 10,
+            "boundary":true,
+            "ensemble": "npt",
+            "press": [100.0, 200.0],
+            "taup": 0.5,
+            "temps": [500,700],
+            "taut":0.1},
+            {"sys_idx": [1],
+            "nsteps": 1000,
+            "md_dt": 0.001,
+            "trj_freq": 10,
+            "boundary":true,
+            "ensemble": "nvt",
+            "temps": [500, 700],
+            "taut":0.1}
+            ]
+        ]
+   },
+
+    "DFT": {
+            "dft_style": "bigmodel",
+            "bigmodel_script":"../eqv2_label.py"
+    }
+}

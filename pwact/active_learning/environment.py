@@ -8,7 +8,7 @@ def comm_info():
     print("\n" + "=" * 50) 
     print("         PWACT Basic Information")
     print("=" * 50) 
-    print("Version: 0.2.0")
+    print("Version: 0.3.1")
     print("Compatible pwdata: >= 0.5.0")
     print("Compatible MatPL: >= 2025.3")
     print("Contact: support@pwmat.com")

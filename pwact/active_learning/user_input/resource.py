@@ -20,10 +20,22 @@ class Resource(object):
             if "-in" in self.explore_resource.command:
                 self.explore_resource.command = self.explore_resource.command.split('-in')[0].strip()
             self.explore_resource.command = "{} -in {} > {}".format(self.explore_resource.command, LAMMPS.input_lammps, SLURM_OUT.md_out)
-
+        else:
+            if "explore" in json_dict.keys():
+                self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+            else:
+                self.explore_resource = None
         # check dft resource
-        self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
-        
+        if "dft" in json_dict.keys():
+            self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
+        else:
+            self.dft_resource = ResourceDetail("mpirun -np 1 PWmat", 1, 1, 1, 1, 1, None, None, None)
+
+        if "direct" in json_dict.keys():
+            self.direct_resource = self.get_resource(get_required_parameter("direct", json_dict))
+        else:
+            self.direct_resource = None
+
         if "scf" in json_dict.keys():
             self.scf_resource = self.get_resource(get_parameter("scf", json_dict, None))
         else:
@@ -33,11 +45,11 @@ class Resource(object):
         #     self.dft_resource.dftb_command  = "{} > {}".format(dftb_command, SLURM_OUT.dft_out)
         self.dft_style = dft_style
         self.scf_style = scf_style
-        if DFT_STYLE.vasp.lower() == dft_style.lower():
+        if DFT_STYLE.vasp.lower() == dft_style:
             self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
-        elif DFT_STYLE.pwmat.lower() == dft_style.lower():
+        elif DFT_STYLE.pwmat.lower() == dft_style:
             self.dft_resource.command = "{} > {}".format(self.dft_resource.command, SLURM_OUT.dft_out)
-        elif DFT_STYLE.cp2k.lower() == dft_style.lower():
+        elif DFT_STYLE.cp2k.lower() == dft_style:
             self.dft_resource.command = "{} {} > {}".format(self.dft_resource.command, CP2K.cp2k_inp, SLURM_OUT.dft_out)
         
         if self.scf_resource is not None and scf_style is not None:
@@ -114,7 +126,7 @@ class ResourceDetail(object):
         if self.gpu_per_node is None and self.cpu_per_node is None:
             raise Exception("ERROR! Both CPU and GPU resources are not specified!")
         # check param
-        if "$SLURM_NTASKS".lower() in command.lower():
+        if "$SLURM".lower() in command.lower():
             pass
         else:
             if "mpirun -np" in command:

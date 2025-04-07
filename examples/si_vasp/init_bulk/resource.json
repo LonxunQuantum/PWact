@@ -1,13 +1,18 @@
 {
     "DFT": {
-        "command":"vasp_gam",
+        "command":"mpirun -np $SLURM_NPROCS vasp_std_cpu",
         "number_node": 1,
         "cpu_per_node": 64,
         "queue_name": "cpu",
         "custom_flags": [
         ],
         "module_list": [
-            "vasp/6.4.2"
+            "module load mkl",
+            "module load intel",
+            "module load cuda/11.4"
+        ],
+        "env_list" : [
+            "export PATH=/data/home/wuxingxing/modulefiles/vasp/Vasp-6.3.2:$PATH"
         ]
     }
 }

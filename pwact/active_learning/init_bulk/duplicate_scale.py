@@ -1,5 +1,5 @@
 import os
-
+import bisect
 from pwact.utils.file_operation import search_files, link_file, copy_file, write_to_file
 from pwact.utils.constant import INIT_BULK, DFT_STYLE, TEMP_STRUCTURE
 

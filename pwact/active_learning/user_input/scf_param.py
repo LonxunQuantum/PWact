@@ -10,7 +10,9 @@ class SCFParam(object):
         is_scf:bool=False, 
         root_dir:str=None, 
         dft_style:str=None,
-        scf_style:str=None) -> None:# for scf relabel in init_bulk
+        scf_style:str=None,
+        is_bigmodel:bool=False,
+        is_direct:bool=False) -> None:# for scf relabel in init_bulk
         
         self.dft_style = dft_style
         self.root_dir = root_dir
@@ -24,12 +26,18 @@ class SCFParam(object):
 
         if is_scf:
             if "scf_input" in json_dict.keys(): # for init_bulk relabel
-                json_scf = get_required_parameter("scf_input", json_dict)
-                self.scf_input_list = self.set_input(json_scf, flag_symm=0)
+                if dft_style == DFT_STYLE.bigmodel:
+                    self.bigmodel_script = get_required_parameter("bigmodel_script", json_dict)
+                else:
+                    json_scf = get_required_parameter("scf_input", json_dict)
+                    self.scf_input_list = self.set_input(json_scf, flag_symm=0)
             else: # for run_iter
-                self.scf_input_list = self.set_input(json_dict, flag_symm=0)
-                if self.scf_input_list[0].use_dftb:
-                    self.use_dftb = True
+                if dft_style == DFT_STYLE.bigmodel:
+                    self.bigmodel_script = get_required_parameter("bigmodel_script", json_dict)
+                else:
+                    self.scf_input_list = self.set_input(json_dict, flag_symm=0)
+                    if self.scf_input_list[0].use_dftb:
+                        self.use_dftb = True
         if is_aimd:
             json_aimd = get_required_parameter("aimd_input", json_dict)
             self.aimd_input_list = self.set_input(json_aimd, flag_symm=0)
@@ -40,6 +48,16 @@ class SCFParam(object):
             self.relax_input_list = self.set_input(json_relax, flag_symm=3) 
             if self.relax_input_list[0].use_dftb:
                 self.use_dftb = True
+
+        if is_bigmodel: # init_bulk
+            json_bigmodel = get_required_parameter("bigmodel_input", json_dict)
+            self.bigmodel_input_list = self.set_input(json_bigmodel, flag_symm=3) 
+
+        if is_direct: # init_bulk
+            json_direct = get_required_parameter("direct_input", json_dict)
+            self.direct_input_list = self.set_input(json_direct, flag_symm=3) 
+
+        self.scf_max_num = get_parameter("scf_max_num", json_dict, None)
         # for pwmat, use 'pseudo' key
         # for vasp is INCAR file, use 'pseudo' key        
         pseudo = get_parameter("pseudo", json_dict, [])

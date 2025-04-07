@@ -1,0 +1,40 @@
+#!/bin/sh
+#SBATCH --job-name=bigmodel9
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+#SBATCH --partition=new3080ti,3080ti
+
+echo "SLURM_SUBMIT_DIR is $SLURM_SUBMIT_DIR"
+
+echo "Starting job $SLURM_JOB_ID at " `date`
+
+echo "Running on nodes: $SLURM_NODELIST"
+
+start=$(date +%s)
+source /share/app/anaconda3/envs/SevenNet/env.sh
+
+{
+cd /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/init_config_1/super_cell/0_bigmodel
+if [ ! -f tag.bigmodel.success ] ; then
+    python sevennet_md.py
+    if test $? == 0; then
+        touch tag.bigmodel.success
+    else
+        touch tag.bigmodel.failed
+    fi
+fi
+} &
+
+wait
+
+echo "Job $SLURM_JOB_ID done at " `date`
+
+if [ -f /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/init_config_1/super_cell/0_bigmodel/tag.bigmodel.success ]; then
+    end=$(date +%s)
+    take=$(( end - start ))
+    echo Time taken to execute commands is ${take} seconds > /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/9-tag.bigmodel.success
+    exit 0
+else
+    exit 1
+fi

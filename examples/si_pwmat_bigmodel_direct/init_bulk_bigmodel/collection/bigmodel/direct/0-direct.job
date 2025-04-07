@@ -1,0 +1,40 @@
+#!/bin/sh
+#SBATCH --job-name=direct0
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+#SBATCH --partition=new3080ti,3080ti
+
+echo "SLURM_SUBMIT_DIR is $SLURM_SUBMIT_DIR"
+
+echo "Starting job $SLURM_JOB_ID at " `date`
+
+echo "Running on nodes: $SLURM_NODELIST"
+
+start=$(date +%s)
+source /share/app/anaconda3/envs/m3gnet/env.sh
+
+{
+cd /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/direct
+if [ ! -f tag.direct.success ] ; then
+    python direct.py
+    if test $? == 0; then
+        touch tag.direct.success
+    else
+        touch tag.direct.failed
+    fi
+fi
+} &
+
+wait
+
+echo "Job $SLURM_JOB_ID done at " `date`
+
+if [ -f /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/direct/tag.direct.success ]; then
+    end=$(date +%s)
+    take=$(( end - start ))
+    echo Time taken to execute commands is ${take} seconds > /data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_bigmodel/temp_init_bulk_work/bigmodel/direct/0-tag.direct.success
+    exit 0
+else
+    exit 1
+fi

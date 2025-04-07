@@ -1,5 +1,5 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat/init_bulk",
+    "reserve_work": true,
     "sys_configs": [{"config":"../../structures/atom.config", 
                     "relax":false, 
                     "relax_input_idx":0, 

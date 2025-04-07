@@ -1,0 +1,61 @@
+{
+    "train": {
+        "command": "MATPL",
+        "group_size": 1,
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+            
+        ],
+        "source_list": [
+            "/share/app/anaconda3/etc/profile.d/conda.sh"
+        ],
+        "env_list": [
+            "conda activate matpl-2025.3"
+        ],
+        "module_list": [
+            "cuda/11.8-share",
+            "intel/2020",
+            "matpl/2025.3"
+        ]
+    },
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi",
+        "group_size": 2,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "new3080ti,3080ti,3090",
+        "custom_flags": [
+
+        ],
+        "source_list": [
+
+        ],
+        "module_list": [
+            "lammps4matpl/2025.3"
+        ],
+        "env_list":[
+
+        ]
+    },
+    "DFT": {
+        "command":"mpirun -np $SLURM_NPROCS vasp_std_cpu",
+        "number_node": 1,
+        "cpu_per_node": 12,
+        "queue_name": "cpu",
+        "custom_flags": [
+        ],
+        "module_list": [
+            "module load mkl",
+            "module load intel",
+            "module load cuda/11.4"
+        ],
+        "env_list" : [
+            "export PATH=/data/home/wuxingxing/modulefiles/vasp/Vasp-6.3.2:$PATH"
+        ]
+    }
+}

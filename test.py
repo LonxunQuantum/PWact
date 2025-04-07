@@ -79,7 +79,7 @@ def run_iter():
             if jj == 2 and not input_param.reserve_work: # delete temp_work_dir under current iteration after the labeling done
                 del_file_list([os.path.join(input_param.root_dir, iter_name, TEMP_STRUCTURE.tmp_run_iter_dir)])
 
-    print("Active learning done! \nYou could use cmd 'al_pwmlff gather_pwdata' to collect all datas sampled from iterations.")
+    print("Active learning done! \nYou could use cmd 'pwact gather_pwdata' to collect all datas sampled from iterations.")
 
 def run_fp(itername:str, resource : Resource, input_param: InputParam):
     lab = Labeling(itername, resource, input_param)

@@ -1,0 +1,34 @@
+{
+    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat_bigmodel_direct/init_bulk_pwmat",
+    "reserve_work": true,
+    "data_format" :"pwmlff/npy",
+    "sys_config_prefix": "../../structures",
+    "sys_configs": [{"config":"./49.config", 
+                    "relax":false, 
+                    "_relax_input_idx":0, 
+                    "super_cell":[1, 1, 2], 
+                    "scale":[0.9,0.95, 1.0], 
+                    "perturb":2, 
+                    "cell_pert_fraction":0, 
+                    "atom_pert_distance":0.01, 
+                    "bigmodel":true,
+                    "bigmodel_input_idx":0,
+                    "direct":true,
+                    "scf":true,
+                    "scf_input_idx":0
+                    },
+                    {"config":"./44_POSCAR", 
+                    "format":"vasp/poscar", 
+                    "relax":false, 
+                    "super_cell":[[1,0,0],[0, 2, 0],[0,0,1]], 
+                    "perturb":2
+                    }
+        ],
+
+    "bigmodel_input":["../sevennet_md.py"],
+    "direct_input":"../direct.py",
+    "dft_style":"PWmat",
+    "scf_input": ["scf_etot.input"],
+    "scf_max_num":10,
+    "pseudo" : ["../Si.SG15.PBE.UPF"]
+}

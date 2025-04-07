@@ -1,0 +1,82 @@
+{
+    "record_file" : "si.al",
+    "reserve_work":false,
+    "reserve_md_traj": false,
+    "reserve_scf_files": false,
+    "init_data": [
+        "../init_bulk/collection/init_config_0/train.xyz"
+    ],
+
+    "train": {
+        "model_type": "DP",
+        "atom_type": [
+            14
+        ],
+        "max_neigh_num": 100
+    },
+
+    "strategy": {
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.1,
+        "upper_model_deiv_f": 0.2,
+        "model_num": 4,
+        "max_select": 1
+    },
+
+    "explore": {
+        "sys_config_prefix": "../../structures",
+        "sys_configs": ["11.config",
+                        "12.config",
+                        "13.config",
+                        "14.config",
+                        "15.config",
+                        "16.config"
+        ],
+        "md_jobs": [
+            [{  
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [0, 1],
+                "_select_sys":[50, 50],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            },
+            {  
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [1,2,3,4],
+                "_select_sys":[50, 50, 50, 50],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            }],
+            {
+                "ensemble": "nvt",
+                "nsteps": 1000,
+                "md_dt": 0.002,
+                "trj_freq": 10,
+                "sys_idx": [0, 1],
+                "temps": [500, 800],
+                "taut":0.1,
+                "press": [ 1.0],
+                "taup": 0.5,
+                "boundary":true
+            }
+        ]
+   },
+
+    "DFT": {
+            "dft_style":"vasp",
+            "input": "INCAR_scf",
+            "pseudo" : ["../Si_POTCAR"]
+    }
+}

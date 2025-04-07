@@ -1,12 +1,10 @@
 {
-    "reserve_work":false,
-    "reserve_feature": false,
-    "reserve_md_traj": false,
-    "reserve_scf_files": false,
-
+    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat/run_iter",
+    "reserve_work":true,
+    "data_format": "extxyz",
     "init_data": [
-        "../init_bulk/collection/init_config_0/Si64",
-        "../init_bulk/collection/init_config_1/Si128"
+        "../init_bulk/collection/init_config_0/train.xyz",
+        "../init_bulk/collection/init_config_1/train.xyz"
     ],
 
     "train": {
@@ -75,7 +73,7 @@
     },
 
     "explore": {
-        "sys_config_prefix": "../init_bulk/collection/init_config_0/relax_pertub",
+        "sys_config_prefix": "../init_bulk/collection/init_config_0/init_pertub",
         "sys_configs": [
                         "1_pertub.config",
                         "2_pertub.config",

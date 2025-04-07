@@ -41,6 +41,7 @@ class SLURM_JOB_TYPE:
     vasp_scf = "vasp/scf"
     vasp_aimd = "vasp/aimd"
     lammps = "lammps"
+    direct = "direct"
 
 '''
 description: 
@@ -138,6 +139,7 @@ class DFT_STYLE:
     pwmat = "pwmat"
     cp2k = "cp2k"
     lammps = "lammps"
+    bigmodel="bigmodel"
 
     '''
     description: 
@@ -156,6 +158,8 @@ class DFT_STYLE:
                 return PWDATA.cp2k_scf
             else:
                 return PWDATA.vasp_poscar
+        if dft_style.lower() == DFT_STYLE.bigmodel.lower():
+            return PWDATA.extxyz
 
     @staticmethod
     def get_normal_config(dft_style:str): # the input config file name of pwmat vasp and cp2k
@@ -248,17 +252,6 @@ class DFT_STYLE:
 
         scf_list = [_.lower() for _ in scf_list]
         return scf_list
-    
-    '''
-    description: 
-        the files in scf does not need reserve
-    return {*}
-    author: wuxingxing
-    '''    
-    @staticmethod
-    def get_scf_del_list():
-        del_list = ["final.config"]
-        return del_list
     
     @staticmethod
     def get_aimd_config(dft_style:str):
@@ -357,6 +350,20 @@ class INIT_BULK:
     scf_tag = "tag.scf.success"
     scf_tag_failed ="tag.scf.failed"
 
+    bigmodel="bigmodel"
+    bigmodel_job = "bigmodel.job"
+    bigmodel_tag = "tag.bigmodel.success"
+    bigmodel_tag_failed ="tag.bigmodel.failed"
+    bigmodel_traj = "traj.xyz"
+    
+    direct="direct"
+    direct_job = "direct.job"
+    direct_tag = "tag.direct.success"
+    direct_tag_failed ="tag.direct.failed"
+    candidate_xyz="candidate.xyz"
+    candidate_idx="candidate.json"
+    direct_traj = "select.xyz"
+
     collection = "collection"
     npy_format_save_dir = "PWdata"
     npy_format_name = "datapath.txt"
@@ -413,11 +420,18 @@ class EXPLORE_FILE_STRUCTURE:
     kpu= "kpu"
     md = "md"
     select = "select"
+    direct = "direct"
     md_tag = "tag.md.success"
     md_tag_faild = "tag.md.error"
     md_job = "md.job"
+    direct_tag = "tag.direct.success"
+    direct_tag_faild = "tag.direct.error"
+    direct_job = "direct.job"
     # selected image info file names
     candidate = "candidate.csv"
+    candidate_xyz="candidate.xyz"
+    select_idx = "select_idx.dat"
+    select_xyz = "select.xyz"
     # candidate_random = "candidate_random.csv"
     candidate_delete = "candidate_delete.csv"
     failed = "fail.csv"
@@ -446,11 +460,17 @@ class EXPLORE_FILE_STRUCTURE:
 
 
 class LABEL_FILE_STRUCTURE:
+    bigmodel="bigmodel"
     scf = "scf"
     result = "result"
     scf_tag = "tag.scf.success"
     scf_tag_failed = "tag.scf.failed"
     scf_job = "scf.job"
+    bigmodel_job="bigmodel.job"
+    bigmodel_tag = "tag.bigmodel.success"
+    bigmodel_tag_failed = "tag.bigmodel.failed"
+    train_xyz = "train.xyz"
+
 
 class LAMMPS:
     input_lammps="in.lammps"
