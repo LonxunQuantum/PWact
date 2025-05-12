@@ -1,5 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_vasp/init_bulk",
     "reserve_work": true,
     "sys_config_prefix": "../../structures",
     "data_format":"extxyz",

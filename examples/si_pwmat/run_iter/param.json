@@ -1,5 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/examples/si_pwmat/run_iter",
     "reserve_work":true,
     "data_format": "extxyz",
     "init_data": [

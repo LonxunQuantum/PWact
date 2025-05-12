@@ -164,15 +164,7 @@ def do_collection(resource: Resource, input_param:InitBulkParam):
         copy_dir(bigmodel_dir, os.path.join(collection_dir, INIT_BULK.bigmodel))        
     
     if len(result_save_path) > 0:
-        _path_path = []
-        for _data_path in result_save_path:
-            if input_param.data_format == PWDATA.extxyz:
-                _path_path.append(_data_path)
-            elif input_param.data_format == PWDATA.pwmlff_npy: # */PWdata/*.npy
-                tmp = search_files(_data_path, "*/position.npy")
-                _path_path.extend([os.path.dirname(_) for _ in tmp])
-            
-        result_lines = ["\"{}\",".format(_) for _ in _path_path]
+        result_lines = ["\"{}\",".format(_) for _ in result_save_path]
         result_lines = "\n".join(result_lines)
         # result_lines = result_lines[:-1] # Filter the last ','
         result_save_path = os.path.join(collection_dir, INIT_BULK.npy_format_name)

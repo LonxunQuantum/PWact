@@ -183,14 +183,20 @@ def gather_pwmata(input_cmds):
     pwdata_lists = sorted(pwdata_lists)
     save_dir = "./final_pwdata"
     res_data_list = []
-    for pwdata in pwdata_lists: # /path/iter.0001/label/result/md.000.sys.001.t.001
-        data_name = os.path.basename(pwdata) # md.000.sys.001.t.001
-        iter_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(pwdata)))) #iter.0001
-        target_dir = os.path.join(save_dir, iter_name, data_name) #./final_pwdata/iter.0001/md.000.sys.001.t.001
-        copy_dir(pwdata, target_dir)
-        # print("target: {}\n source: {}\n".format(target_dir, pwdata))
-        res_data_list.append(target_dir)
 
+    for pwdata in pwdata_lists: # /path/iter.0001/label/result/*
+        data_name = os.path.basename(pwdata) 
+        iter_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(pwdata)))) #iter.0001
+        target_dir = os.path.join(save_dir, iter_name, data_name) #./final_pwdata/iter.0001
+        copy_dir(pwdata, target_dir)
+        for path, dirList, fileList in os.walk(pwdata):
+            for _ in fileList:
+                if "train.xyz" in _:
+                    res_data_list.append(os.path.join(path, _))
+        for root, dirs, files in os.walk(pwdata):
+                if 'energies.npy' in files:
+                    res_data_list.append(root)
+        
     result_lines = ["\"{}\",".format(_) for _ in res_data_list]
     result_lines = "\n".join(result_lines)
     # result_lines = result_lines[:-1] # Filter the last ','

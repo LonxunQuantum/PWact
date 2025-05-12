@@ -1,6 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/al_dir/si_7_pwmat_gaussian/run_iter",
-
     "reserve_work":true,
     "reserve_md_traj": false,
     "reserve_scf_files": true,

@@ -1,7 +1,6 @@
 {
     "train": {
         "command": "MatPL",
-        "group_size": 1,
         "_parallel_num":1,
         "number_node": 1,
         "gpu_per_node": 1,
@@ -19,7 +18,6 @@
     },
     "explore": {
         "command": "mpirun -np 1 lmp_mpi",
-        "group_size": 2,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
@@ -37,7 +35,6 @@
         "number_node": 1,
         "cpu_per_node": 1,
         "gpu_per_node": 1,
-        "group_size": 1,
         "queue_name": "3080ti",
         "custom_flags": [
         "#SBATCH -x gn18,gn17"

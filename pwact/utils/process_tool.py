@@ -8,7 +8,7 @@ def kill_process(pid:str, job_id:str):
     if job_id is None:
         try:
             # 发送终止信号 (SIGTERM) 给指定的进程
-            os.kill(pid, signal.SIGTERM)
+            os.kill(int(pid), signal.SIGTERM)
             print(f"process {pid} has been terminated.")
         except ProcessLookupError:
             print(f"process {pid} non-existent.")

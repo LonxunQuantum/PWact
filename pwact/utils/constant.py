@@ -10,9 +10,9 @@ class AL_WORK:
     run_iter = "run"
 
 class AL_STRUCTURE:
-    train = "train"
-    explore = "explore"
-    labeling = "label"
+    train = "00.train"
+    explore = "01.explore"
+    labeling = "02.label"
     pertub = "pertub"
     aimd = "aimd"
     collection = "collection"

@@ -6,7 +6,7 @@ class Resource(object):
     # scf_style for init_bulk relabel
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None, scf_style:str=None) -> None:
         if job_type == AL_WORK.run_iter:
-            self.train_resource = self.get_resource(get_required_parameter("train", json_dict))
+            self.train_resource = self.get_resource(get_required_parameter("train", json_dict), default_groupsize=1)
             if self.train_resource.number_node > 1:
                 self.train_resource.number_node = 1
             if self.train_resource.gpu_per_node > 1:
@@ -16,28 +16,28 @@ class Resource(object):
             print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
             self.train_resource.command = self.train_resource.command.upper()
              
-            self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+            self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict), default_groupsize=1)
             if "-in" in self.explore_resource.command:
                 self.explore_resource.command = self.explore_resource.command.split('-in')[0].strip()
             self.explore_resource.command = "{} -in {} > {}".format(self.explore_resource.command, LAMMPS.input_lammps, SLURM_OUT.md_out)
         else:
             if "explore" in json_dict.keys():
-                self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict))
+                self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict), default_groupsize=1)
             else:
                 self.explore_resource = None
         # check dft resource
         if "dft" in json_dict.keys():
-            self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict))
+            self.dft_resource = self.get_resource(get_required_parameter("dft", json_dict), default_groupsize=-1)
         else:
             self.dft_resource = ResourceDetail("mpirun -np 1 PWmat", 1, 1, 1, 1, 1, None, None, None)
 
         if "direct" in json_dict.keys():
-            self.direct_resource = self.get_resource(get_required_parameter("direct", json_dict))
+            self.direct_resource = self.get_resource(get_required_parameter("direct", json_dict), default_groupsize=1)
         else:
             self.direct_resource = None
 
         if "scf" in json_dict.keys():
-            self.scf_resource = self.get_resource(get_parameter("scf", json_dict, None))
+            self.scf_resource = self.get_resource(get_parameter("scf", json_dict, None), default_groupsize=-1) 
         else:
             self.scf_resource = None
         # dftb_command = get_parameter("dftb_command", json_dict["dft"], None)
@@ -66,9 +66,9 @@ class Resource(object):
     #         cls._instance = cls(json_dict)
     #     return cls._instance
     
-    def get_resource(self, json_dict:dict):
+    def get_resource(self, json_dict:dict, default_groupsize=1):
         command = get_required_parameter("command", json_dict)
-        group_size = get_parameter("group_size", json_dict, 1)
+        group_size = get_parameter("group_size", json_dict, default_groupsize)
         parallel_num = get_parameter("parallel_num", json_dict, 1)
         number_node = get_parameter("number_node", json_dict, 1)
         gpu_per_node = get_parameter("gpu_per_node", json_dict, 0)

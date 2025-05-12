@@ -1,6 +1,4 @@
 {
-    "work_dir":"/data/home/wuxingxing/codespace/dev_pwact/al_dir/si_7_pwmat_gaussian/init_bulk",
-    "_work_dir":"for debug code",
     "reserve_work": true,
     "_data_shuffle":true,
     "_train_valid_ratio": 0.8,

@@ -35,11 +35,13 @@ Obtain the execution status of the slurm jobs under the 'dir'
 
         0-scf.job 1-scf.job 2-scf.job 3-scf.job 4-scf.job
         0-tag.scf.success 1-tag.scf.success 2-tag.scf.success 3-tag.scf.success 4-tag.scf.success
+    new change:
+        only jugt the slurm file is done by the tag under each subwork tag. so the tag of job file is nouse maybe
 param {*} dir
 Returns: 
 Author: WU Xingxing
 '''
-def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.*.success"):
+def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.*.success", for_back:bool=False):
     slurm_job_files = sorted(glob.glob(os.path.join(dir, job_patten)))
     slrum_job_dirs = [int(os.path.basename(_).split('-')[0]) for _ in slurm_job_files]
 
@@ -49,13 +51,38 @@ def get_slurm_job_run_info(dir:str, job_patten:str="*.job", tag_patten:str="tag.
     slurm_failed = []
     slurm_success = []
 
-    for i, d in enumerate(slrum_job_dirs):
-        if d in slrum_tag_sucess_dirs:
-            slurm_success.append(slurm_job_files[i])
-        else:
-            slurm_failed.append(slurm_job_files[i])
+    if for_back is False:
+        for slurm_file in slurm_job_files:
+            if slurm_job_done_by_jobtag(slurm_file):
+                slurm_success.append(slurm_file)
+            else:
+                slurm_failed.append(slurm_file)
+    else:
+        for i, d in enumerate(slrum_job_dirs):
+            if d in slrum_tag_sucess_dirs:
+                slurm_success.append(slurm_job_files[i])
+            else:
+                slurm_failed.append(slurm_job_files[i])
             
     return slurm_failed, slurm_success
+
+
+def slurm_job_done_by_jobtag(slurm_file):
+    with open(slurm_file, 'r') as f:
+        content = f.read()
+    cd_pattern = r'cd\s+([^\n]+)'
+    directories = re.findall(cd_pattern, content)        
+    if not directories:
+        raise Exception("Error! There is no task in the slurm.job file {}".format(slurm_file))
+    for directory in directories:
+        directory = directory.strip()
+        success_file = glob.glob(os.path.join(directory, "*.success"))
+        if len(success_file) > 0:
+            continue
+        else:
+            return False
+    return True
+
 
 def recheck_slurm_by_jobtag(slurm_files:list[str], tag):
     remain_job = []
@@ -76,6 +103,27 @@ def recheck_slurm_by_jobtag(slurm_files:list[str], tag):
                 break
     return remain_job
 
+# def slurm_job_is_done_by_jobtag(dir:str, job_patten:str="*.job", tag_patten:str="tag.*.success"):
+#     slurm_job_files = sorted(glob.glob(os.path.join(dir, job_patten)))
+#     slurm_failed = []
+#     for slurm_file in slurm_job_files:
+#         with open(slurm_file, 'r') as f:
+#             content = f.read()
+#         cd_pattern = r'cd\s+([^\n]+)'
+#         directories = re.findall(cd_pattern, content)        
+#         if not directories:
+#             raise Exception("Error! There is no task in the slurm.job file {}".format(slurm_file))
+#         for directory in directories:
+#             directory = directory.strip()
+#             success_file = os.path.join(directory, tag_patten)
+#             if os.path.exists(success_file):
+#                 continue
+#             else:
+#                 slurm_failed.append(slurm_file)
+#                 break
+#     return slurm_failed
+
+
 '''
 description: 
     split the job_list with groupsize
@@ -85,7 +133,7 @@ return {*} [["job1","job2",...,"job_groupseze"], ..., [..., "job_N", "NONE",...,
 author: wuxingxing
 '''
 def split_job_for_group(groupsize:int , job_list:list[str], parallel_num=1):
-    groupsize = 1 if groupsize is None else groupsize
+    groupsize = len(job_list) if groupsize == -1 else groupsize
     if groupsize > 1:
         groupsize_adj = ceil(groupsize/parallel_num)
         if groupsize_adj*parallel_num > groupsize:

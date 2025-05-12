@@ -149,7 +149,8 @@ class Labeling(object):
         if self.input_param.scf.dft_style == DFT_STYLE.bigmodel:
             slurm_remain, slurm_success = get_slurm_job_run_info(self.real_bigmodel_dir, \
                 job_patten="*-{}".format(LABEL_FILE_STRUCTURE.bigmodel_job), \
-                tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.bigmodel_tag))
+                tag_patten="*-{}".format(LABEL_FILE_STRUCTURE.bigmodel_tag),
+                for_back = True)
             slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False        
         else:
             slurm_remain, slurm_success = get_slurm_job_run_info(self.real_scf_dir, \

@@ -1,7 +1,6 @@
 {
     "train": {
         "command": "MATPL",
-        "group_size": 1,
         "_parallel_num":1,
         "number_node": 1,
         "gpu_per_node": 1,
@@ -24,7 +23,6 @@
     },
     "explore": {
         "command": "mpirun -np 1 lmp_mpi",
-        "group_size": 2,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,

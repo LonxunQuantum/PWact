@@ -5,7 +5,6 @@
         "number_node": 1,
         "cpu_per_node": 64,
         "gpu_per_node": 0,
-        "group_size": 3,
         "queue_name": "cpu",
         "custom_flags": [
         ],

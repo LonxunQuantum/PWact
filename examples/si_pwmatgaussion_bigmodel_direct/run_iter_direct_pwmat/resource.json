@@ -1,7 +1,6 @@
 {
     "train": {
         "command": "MatPL",
-        "group_size": 1,
         "_parallel_num":1,
         "number_node": 1,
         "gpu_per_node": 1,
@@ -19,8 +18,7 @@
     },
     
     "explore": {
-        "command": "mpirun -np 1 lmp_mpi -in in.lammps",
-        "group_size": 1,
+        "command": "mpirun -np 1 lmp_mpi",
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
@@ -37,7 +35,6 @@
 
     "direct": {
         "command": "python direct.py",
-        "group_size": 1,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
@@ -57,7 +54,6 @@
         "number_node": 1,
         "cpu_per_node": 4,
         "gpu_per_node": 4,
-        "group_size": 5,
         "queue_name": "new3080ti,3080ti",
         "custom_flags": [
         ],

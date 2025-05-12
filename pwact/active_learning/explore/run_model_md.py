@@ -80,7 +80,8 @@ class Explore(object):
     def back_explore(self):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.real_md_dir, \
         job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
-        tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
+        tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag),
+        for_back = True)
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
         if slurm_done:
             # bk and do new job
@@ -180,9 +181,6 @@ class Explore(object):
             job_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_job), \
             tag_patten="*-{}".format(EXPLORE_FILE_STRUCTURE.md_tag))
         # for slurm remain, check if tags done
-        slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False
-        if slurm_done is False:
-            slurm_remain = recheck_slurm_by_jobtag(slurm_remain, EXPLORE_FILE_STRUCTURE.md_tag)
         if len(slurm_remain) > 0:
             #recover slurm jobs
             if len(slurm_remain) > 0:

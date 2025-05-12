@@ -1,18 +1,15 @@
 {
-    "_commit" : "The following settings are used for the PWMLFF and lammps inferface environment installed in Mcloud",
-
     "train": {
-        "command": "PWMLFF",
-        "group_size": 1,
+        "command": "MatPL",
         "_parallel_num":1,
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
-        "queue_name": "new3080ti,3080ti,3090",
+        "queue_name": "3080ti,3090",
         "custom_flags": [
         ],
         "source_list": [
-            "/share/app/PWMLFF/PWMLFF2024.5/env.sh"
+            "/share/app/MATPL/MatPL-2025.3/env.sh"
         ],
         "module_list": [
         ],
@@ -20,19 +17,17 @@
         ]
     },
     "explore": {
-        "command": "mpirun -np 1 lmp_mpi_gpu",
-        "_command": "mpirun -np 8 lmp_mpi",
-        "group_size": 2,
+        "command": "mpirun -np 1 lmp_mpi",
         "number_node": 1,
         "gpu_per_node": 1,
         "cpu_per_node": 1,
-        "queue_name": "new3080ti,3080ti,3090",
+        "queue_name": "3080ti",
         "custom_flags": [
         ],
         "source_list": [
         ],
         "module_list": [
-            "lammps4pwmlff/2024.5"
+            "lammps4matpl/2025.3"
         ]
     },
     "DFT": {
@@ -41,7 +36,6 @@
         "number_node": 1,
         "cpu_per_node": 64,
         "gpu_per_node": 0,
-        "group_size": 3,
         "queue_name": "cpu",
         "custom_flags": [
         ],

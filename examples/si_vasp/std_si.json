@@ -47,6 +47,5 @@
         "pre_fac_virial": 1.0,
         "pre_fac_egroup": 0.1
     },
-    "work_dir": "/data/home/wuxingxing/datas/al_dir/si/iter.0000/train/train.001/work_dir",
     "reserve_work_dir": false
 }

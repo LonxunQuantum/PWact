@@ -50,7 +50,8 @@ class ModelTrian(object):
     def back_train(self):
         slurm_remain, slurm_success = get_slurm_job_run_info(self.real_train_dir, \
             job_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_job), \
-            tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag))
+            tag_patten="*-{}".format(TRAIN_FILE_STRUCTUR.train_tag),
+            for_back = True)
         slurm_done = True if len(slurm_remain) == 0 and len(slurm_success) > 0 else False # len(slurm_remain) > 0 exist slurm jobs need to do
         if slurm_done:
             # bk and do new job

@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pwact", 
-    version="0.3.1",
+    version="0.3.4",
     author="LonxunQuantum",
     author_email="lonxun@pwmat.com",
-    description="PWACT is an open-source automated active learning platform based on PWMLFF for efficient data sampling.",
+    description="PWACT is an open-source automated active learning platform based on MatPL for efficient data sampling.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/LonxunQuantum/PWact",
