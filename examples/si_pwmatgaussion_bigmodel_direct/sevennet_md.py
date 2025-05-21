@@ -88,7 +88,7 @@ def domd():
     externalstress=P_in_ev_per_ang3,
     mask=np.eye(3),
     ttime=25*fs,
-    pfactor=50*fs,
+    pfactor=50*fs, #None nvt
     trajectory=traj_name,
     logfile="npt.log",
     loginterval=100

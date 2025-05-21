@@ -1,0 +1,24 @@
+#!/bin/sh
+#SBATCH --job-name=infer
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+#SBATCH --partition=3080ti
+
+echo "SLURM_SUBMIT_DIR is $SLURM_SUBMIT_DIR"
+
+echo "Starting job $SLURM_JOB_ID at " `date`
+
+echo "Running on nodes: $SLURM_NODELIST"
+
+start=$(date +%s)
+source /share/app/anaconda3/envs/fair-chem/env.sh
+
+python eqv2_label.py
+
+echo "Job $SLURM_JOB_ID done at " `date`
+
+end=$(date +%s)
+take=$(( end - start ))
+echo Time taken to execute commands is ${take} seconds
+

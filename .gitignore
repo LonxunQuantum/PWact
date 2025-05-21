@@ -9,4 +9,7 @@ build
 dist
 pwact.egg-info
 pwact/utils/tmp.py
+pwact/active_learning/test/*
+examples/bigmodels/ORB/*
+examples/bigmodels/CHGNet/*
 
