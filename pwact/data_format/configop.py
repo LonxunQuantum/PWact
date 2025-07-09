@@ -153,17 +153,20 @@ def extract_pwdata(input_data_list:list[str],
         save_data_path = os.path.join(os.getcwd(), save_data_path)
     image_data = None
     for dir in input_data_list:
-        if image_data is not None:
-            tmp_config = Config(format=intput_data_format, data_path=dir)
-            # if not isinstance(tmp_config, list):
-            #     tmp_config = [tmp_config]
-            image_data.images.extend(tmp_config.images)
-        else:
-            image_data = Config(format=intput_data_format, data_path=dir)
-            
-            if not isinstance(image_data.images, list):
-                image_data.images = [image_data.images]
-        
+        try:
+            if image_data is not None:
+                tmp_config = Config(format=intput_data_format, data_path=dir)
+                # if not isinstance(tmp_config, list):
+                #     tmp_config = [tmp_config]
+                image_data.images.extend(tmp_config.images)
+            else:
+                image_data = Config(format=intput_data_format, data_path=dir)
+                
+                if not isinstance(image_data.images, list):
+                    image_data.images = [image_data.images]
+        except Exception as e:
+            print("Warning! Read the traj file error {}".format(dir))
+            pass
             # if not isinstance(image_data, list):
             #     image_data = [image_data]
     if interval > 1:

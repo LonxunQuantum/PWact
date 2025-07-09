@@ -236,3 +236,143 @@ def get_all_dumped_forces(file_name):
     return ret
 
 
+def make_lammps_input_from_lmp_in_file(
+    md_file,
+    md_type,
+    forcefiled,
+    lmp_in_file,
+    atom_type,
+    trj_freq,
+    boundary, #true is 'p p p', false is 'f f f', default is true
+    merge_traj,
+    max_seed=100000,
+    restart=0,
+    model_deviation_file = "model_deviation.out"
+):
+    with open(lmp_in_file, 'r') as rf:
+        lmp_content = rf.readlines()
+    runline_idx = find_first_run_cmd_line(lmp_content)
+    if runline_idx is None:
+        raise Exception("Error! The input lmp.in file: {} is missing the 'RUN' command, please modify it!".format(lmp_in_file))
+    # remove the units boundary atom_stype lines
+    # units           metal
+    # boundary        p p p
+    # atom_style      atomic
+    # remove mass pair_style pair_coeff dump
+    lmp_content, insert_info = remove_lmps_lines(lmp_content)
+    lmp_content.insert(0, "variable        DUMP_FREQ       equal %d\n" % trj_freq)
+    lmp_content.insert(1, "variable        restart         equal %d\n" % restart)
+    
+    md_script = ""
+    md_script += "units           metal\n"
+    if boundary:
+        md_script += "boundary        p p p\n"
+    else:
+        md_script += "boundary        f f f\n"
+    md_script += "atom_style      atomic\n"
+    md_script += "\n"
+    lmp_content.insert(2, md_script)
+    
+    md_script = (
+        'if "${restart} > 0" then "read_restart lmps.restart.*" else "read_data %s"\n'
+        % md_file
+    )
+    lmp_content.insert(3, md_script)
+    
+    md_script = make_mass(atom_type)
+    dump_info = "out_freq ${{DUMP_FREQ}} out_file {} ".format(model_deviation_file)
+    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info)
+    #put_freq ${freq} out_file error
+    md_script += "\n"
+    lmp_content.insert(4, md_script)
+    # md_script += "thermo_style    custom step temp pe ke etotal press vol lx ly lz xy xz yz\n"
+    # md_script += "thermo          ${THERMO_FREQ}\n"
+    
+    if merge_traj is True:
+        dump_line = "dump            1 all custom ${DUMP_FREQ} all.lammpstrj id type x y z fx fy fz\n"
+        if "dump_modify" in insert_info.keys():
+            dump_line += 'if "${restart} > 0" then' + 'dump_modify 1 {} append yes\n'.format(" ".join(insert_info['dump_modify'].split()[2:]))
+        else:
+            dump_line += 'if "${restart} > 0" then "dump_modify     1 append yes"\n'
+    else:
+        dump_line = "dump            1 all custom ${DUMP_FREQ} traj/*.lammpstrj id type x y z fx fy fz\n"
+        if "dump_modify" in insert_info.keys():
+            dump_line += 'dump_modify 1 {}\n'.format(" ".join(insert_info['dump_modify'].split()[2:]))
+
+    dump_line += "restart         10000 lmps.restart\n"
+    dump_line += "\n"
+    
+    dump_line += 'if "${restart} == 0" then "velocity        all create ${TEMP} %d"' % (
+            random.randrange(max_seed - 1) + 1
+        )
+        
+    dump_line += "\n"
+    lmp_content.insert(runline_idx, dump_line)
+    
+    return "".join(lmp_content)
+
+def remove_lmps_lines(lmps_lines):
+    removes = ["dump_freq", "restart","read_data"]
+    remove_head = ["mass", "units", "boundary", "atom_style", "pair_style", "pair_coeff", "dump"]
+
+    insert_head = ["dump_modify"]
+    new_line = []
+    insert_info = {}
+    for idx, line in enumerate(lmps_lines):
+        if line.lstrip() == '' or line.lstrip().startswith('#'):
+            new_line.append(line)
+            continue
+        if any (keyword.lower() == line.lstrip().split()[0].lower() for keyword in insert_head):
+            insert_info[line.lstrip().split()[0].lower()] = line
+            continue
+        if any(
+            keyword.lower() in line.lower() for keyword in removes
+        ):
+            continue
+        if any (keyword.lower() == line.lstrip().split()[0].lower() for keyword in remove_head):
+            continue
+        new_line.append(line)
+    # new_lines = [
+    #     line for line in lmps_lines 
+    #     if line.lstrip().startswith('#')
+    #     or (not any(
+    #         keyword.lower() in line.lower() 
+    #         for keyword in removes
+    #     ) and not (
+    #         keyword.lower() in line.lstrip().split()[0].lower() 
+    #         for keyword in remove_head
+    #     ))
+    #     ]
+    return new_line, insert_info
+
+def find_first_run_cmd_line(lmps_lines):
+    for i, line in enumerate(lmps_lines):
+        if 'run' in line.lower():
+            # 计算倒数行数(从1开始计数)
+            return -(len(lmps_lines) - i)
+    return None
+
+if __name__=="__main__":
+    lmp_in_file = "/data/home/wuxingxing/datas/debugs/czy/lammps.in"
+    with open(lmp_in_file, 'r') as rf:
+        lmp_content = rf.readlines()
+    runline_idx = find_first_run_cmd_line(lmp_content)
+    if runline_idx is None:
+        raise Exception("Error! The input lmp.in file: {} is missing the 'RUN' command, please modify it!".format(lmp_in_file))
+    # remove the units boundary atom_stype lines
+    # units           metal
+    # boundary        p p p
+    # atom_style      atomic
+    # remove mass pair_style pair_coeff dump
+    lmp_content,insert_info = remove_lmps_lines(lmp_content)
+    merge_traj = False
+    if merge_traj is True:
+        dump_line = "dump            1 all custom ${DUMP_FREQ} all.lammpstrj id type x y z fx fy fz\n"
+        if "dump_modify" in insert_info.keys():
+            dump_line += 'if "${restart} > 0" then' + 'dump_modify 1 {} append yes\n'.format(" ".join(insert_info['dump_modify'].split()[2:]))
+        else:
+            dump_line += 'if "${restart} > 0" then "dump_modify     1 append yes"\n'
+    else:
+        dump_line = "dump            1 all custom ${DUMP_FREQ} traj/*.lammpstrj id type x y z fx fy fz\n"
+        if "dump_modify" in insert_info.keys():
+            dump_line += 'dump_modify 1 {}\n'.format(" ".join(insert_info['dump_modify'].split()[2:]))

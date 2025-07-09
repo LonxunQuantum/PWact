@@ -1,0 +1,92 @@
+{
+    "work_dir":"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_pwmat/run_iter_lmps",
+    "reserve_work":true,
+    "reserve_md_traj": false,
+    "reserve_scf_files": true,
+    "data_format":"extxyz",
+    "init_data": [
+        "../init_bulk/collection/init_config_0/train.xyz",
+        "../init_bulk/collection/init_config_1/train.xyz",
+        "../init_bulk/collection/init_config_2/train.xyz",
+        "../init_bulk/collection/init_config_3/train.xyz",
+        "../init_bulk/collection/init_config_4/train.xyz",
+        "../init_bulk/collection/init_config_5/train.xyz"
+    ],
+
+    "train": {
+        "model_type": "NEP",
+        "atom_type": [47, 79]
+    },
+
+    "strategy": {
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.15,
+        "upper_model_deiv_f": 0.25,
+        "model_num": 4,
+        "max_select": 2
+    },
+
+    "explore": {
+        "sys_configs": [
+                        "../init_bulk/collection/init_config_0/*_scale_pertub/*.config",
+                        "../init_bulk/collection/init_config_1/*_scale_pertub/*.config",
+                        "../init_bulk/collection/init_config_2/*_scale_pertub/*.config",
+                        "../init_bulk/collection/init_config_3/*_scale_pertub/*.config",
+                        "../init_bulk/collection/init_config_4/*_scale_pertub/*.config",
+                        "../init_bulk/collection/init_config_5/*_scale_pertub/*.config"
+                        ],
+
+        "lmps_prefix": "../../in_lmps_files/AuAg",
+        "lmps_in": [
+                        "in0.lmps",
+                        "in1.lmps",
+                        "in2.lmps",
+                        "in3.lmps",
+                        "in4.lmps",
+                        "in5.lmps"
+            ],
+        "md_jobs": [
+            [{
+                "sys_idx": [0,1,2,3,4],
+                "select_sys":[2,2,2,2,2],
+                "lmps_in_idx":[0,1,2,3,4],
+                "trj_freq": 5
+            },{
+                "sys_idx": [4,5],
+                "lmps_in_idx":5,
+                "trj_freq": 10
+            },{
+                "sys_idx": [1,5],
+                "select_sys":[2, 2],
+                "nsteps": 4000,
+                "md_dt": 0.001,
+                "trj_freq": 10,
+                "boundary":true,
+                "ensemble": "npt",
+                "press": [100.0, 200.0],
+                "taup": 0.5,
+                "temps": [500,700],
+                "taut":0.1
+            },{
+                "sys_idx": [2, 3],
+                "select_sys":[1, 2],
+                "nsteps": 4000,
+                "md_dt": 0.001,
+                "trj_freq": 10,
+                "boundary":true,
+                "ensemble": "nvt",
+                "temps": [500, 700],
+                "taut":0.1
+            }]
+        ]
+   },
+
+    "DFT": {
+            "dft_style": "pwmat",
+            "input": "scf_etot.input",
+            "kspacing":0.5,
+            "flag_symm":0,
+            "pseudo" : ["../Ag.SG15.PBE.UPF","../Au.SG15.PBE.UPF"],
+            "_flag":"1个整数，or scf 0 , aimd 3, 磁性体系2"
+    }
+}

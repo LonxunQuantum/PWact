@@ -114,7 +114,8 @@ def select_image(
             rand_candi = pd.concat([rand_candi, tmp_rand_candi])
             remove_candi = pd.concat([remove_candi, tmp_remove_candi])
     right_md, error_md = count_mdstop_info(model_devi_files)
-    md_run_info = "A total of {} MD trajectories were run. with {} trajectories correctly executed and {} trajectories normally completed. \nFor detailed information, refer to File {}.".format(len(right_md) + len(error_md), len(right_md), len(error_md), EXPLORE_FILE_STRUCTURE.md_traj_error_record)
+    md_run_info = "A total of {} MD trajectories were run. with {} trajectories correctly executed and {} trajectories normally completed. \nFor detailed information, refer to File {}."\
+        .format(len(right_md) + len(error_md), len(right_md), len(error_md), EXPLORE_FILE_STRUCTURE.md_traj_error_record)
     
     summary_info, summary = count_info(save_dir, error_pd, accurate_pd, rand_candi, remove_candi, md_run_info)
     print("Image select result:\n {}\n\n".format(summary_info))

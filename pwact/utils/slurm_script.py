@@ -196,7 +196,7 @@ def set_slurm_script_content(
         script = ""
         if gpu_per_node is None or gpu_per_node == 0:
             script += CPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, queue_name)
-            script += "export CUDA_VISIBLE_DEVICES=''\n"
+            # script += "export CUDA_VISIBLE_DEVICES=''\n"
         else:
             script += GPU_SCRIPT_HEAD.format(job_name, number_node, cpu_per_node, gpu_per_node, queue_name)
         

@@ -1,0 +1,22 @@
+{
+    "DFT": {
+        "command":"mpirun -np $SLURM_NPROCS vasp_std_cpu",
+        "group_size":6,
+        "number_node": 1,
+        "cpu_per_node": 16,
+        "queue_name": "cpu",
+        "custom_flags": [
+        ],
+        "module_list": [
+            "module load mkl",
+            "module load intel",
+            "module load cuda/11.4"
+        ],
+        "env_list" : [
+            "export PATH=/data/home/wuxingxing/modulefiles/vasp/Vasp-6.3.2:$PATH"
+        ]
+    }
+}
+
+
+

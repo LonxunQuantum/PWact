@@ -5,6 +5,7 @@ bk/*
 .vscode/*
 dpgen_al
 al_dir
+25-pwact-demo
 build
 dist
 pwact.egg-info

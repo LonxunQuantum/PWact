@@ -1,0 +1,94 @@
+{
+    "work_dir":"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/run_iter_lmps",
+    "reserve_work":true,
+    "reserve_md_traj": false,
+    "reserve_scf_files": true,
+    "data_format":"extxyz",
+    "init_data": [
+        "../init_bulk/collection/init_config_0/train.xyz",
+        "../init_bulk/collection/init_config_1/train.xyz",
+        "../init_bulk/collection/init_config_2/train.xyz",
+        "../init_bulk/collection/init_config_3/train.xyz",
+        "../init_bulk/collection/init_config_4/train.xyz",
+        "../init_bulk/collection/init_config_5/train.xyz"
+    ],
+
+    "train": {
+        "model_type": "NEP",
+        "atom_type": [47, 79]
+    },
+
+    "strategy": {
+        "uncertainty":"committee",
+        "lower_model_deiv_f": 0.15,
+        "upper_model_deiv_f": 0.25,
+        "model_num": 4,
+        "max_select": 2
+    },
+
+    "explore": {
+        "sys_configs": [
+                        {"format":"vasp/poscar", "config":"../init_bulk/collection/init_config_[0-2]/*_scale_pertub/*.poscar"},
+                        {"format":"vasp/poscar", "config":"../init_bulk/collection/init_config_3/*_scale_pertub/*.poscar"},
+                        {"format":"vasp/poscar", "config":"../init_bulk/collection/init_config_4/*_scale_pertub/*.poscar"},
+                        {"format":"vasp/poscar", "config":"../init_bulk/collection/init_config_5/*_scale_pertub/*.poscar"}
+                        ],
+
+        "lmps_prefix": "../../in_lmps_files/AuAg",
+        "lmps_in": [
+                        "in0.lmps",
+                        "in1.lmps",
+                        "in2.lmps",
+                        "in3.lmps",
+                        "in4.lmps",
+                        "in5.lmps"
+            ],
+        "md_jobs": [
+            [{
+                "sys_idx": [0,1,2],
+                "select_sys":[2,2,2],
+                "lmps_in_idx":[0,1,2],
+                "trj_freq": 5
+            },{
+                "sys_idx": [2,3],
+                "lmps_in_idx":5,
+                "trj_freq": 10
+            },{
+                "sys_idx": [1,2],
+                "select_sys":[2, 2],
+                "nsteps": 4000,
+                "md_dt": 0.001,
+                "trj_freq": 10,
+                "boundary":true,
+                "ensemble": "npt",
+                "press": [100.0, 200.0],
+                "taup": 0.5,
+                "temps": [500,700],
+                "taut":0.1
+            },{
+                "sys_idx": [2, 3],
+                "select_sys":[1, 2],
+                "nsteps": 4000,
+                "md_dt": 0.001,
+                "trj_freq": 10,
+                "boundary":true,
+                "ensemble": "nvt",
+                "temps": [500, 700],
+                "taut":0.1
+            }]
+        ]
+   },
+
+    "DFT": {
+            "dft_style":"cp2k",
+            "input":"scf.inp",
+            "gaussian_param": {
+                "basis_set_file":"../BASIS_MOLOPT_1",
+                "potential_file":"../POTENTIAL_1",
+                "atom_list":["Ag", "Au"],
+                "basis_set_list":["SZV-MOLOPT-SR-GTH-q11", "SZV-MOLOPT-SR-GTH-q11"],
+                "potential_list":["GTH-PBE", "GTH-PBE"],
+                "kspacing":0.5
+            }
+    }
+}

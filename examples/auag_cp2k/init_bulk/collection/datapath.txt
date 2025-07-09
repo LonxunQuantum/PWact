@@ -1,0 +1,6 @@
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_0/train.xyz",
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_1/train.xyz",
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_2/train.xyz",
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_3/train.xyz",
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_4/train.xyz",
+"/share/public/PWMLFF_test_data/pwact_examples/25-pwact-demo/auag_cp2k/init_bulk/collection/init_config_5/train.xyz",

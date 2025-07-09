@@ -1,0 +1,19 @@
+1 1
+job = RELAX
+in.atom = atom.config
+IN.PSP1 = Au.SG15.PBE.UPF
+ecut =  60
+ecut2 = 240
+e_error = 1e-06
+rho_error = 0.0001
+out.force = T
+energy_decomp = T
+out.stress = T
+scf_iter0_1 = 6 4 3 0.0000 0.025 2
+scf_iter0_2 = 94 4 3 1.0000 0.025 2
+mp_n123 = 2 2 2 0 0 0 
+out.wg = F
+out.rho = F
+out.mlmd = F
+relax_detail = 1  20  0.005
+

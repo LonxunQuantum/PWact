@@ -24,10 +24,10 @@ from pwact.utils.constant import AL_STRUCTURE, TEMP_STRUCTURE, EXPLORE_FILE_STRU
         FORCEFILED, ENSEMBLE, LAMMPS, LAMMPS_CMD, UNCERTAINTY, DFT_STYLE, SLURM_OUT, SLURM_JOB_TYPE, PWDATA, MODEL_TYPE
 
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_sub_md_sys_template_name,\
-    make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_train_name
+    make_md_sys_name, get_md_sys_template_name, make_temp_press_name, make_temp_name, make_lmps_name, make_train_name
 from pwact.utils.file_operation import write_to_file, add_postfix_dir, link_file, read_data, search_files, copy_dir, copy_file, del_file, del_dir, del_file_list, del_file_list_by_patten, mv_file
 from pwact.utils.draw.hist_model_devi import draw_hist_list
-from pwact.utils.app_lib.lammps import make_lammps_input
+from pwact.utils.app_lib.lammps import make_lammps_input, make_lammps_input_from_lmp_in_file
 from pwact.data_format.configop import save_config, get_atom_type
 
 from pwdata import Config
@@ -94,30 +94,40 @@ class Explore(object):
     def make_md_work(self):
         md_work_list = []
         for md_index, md in enumerate(self.md_job):
-            for sys_index in md.sys_idx:
+            for sys_id, sys_index in enumerate(md.sys_idx):
                 char_len = 3 if len(md.sys_idx) < 1000 else len(str(len(md.sys_idx)))
                 md_sys_name = make_md_sys_name(md_index, sys_index, char_len)
                 md_sys_dir = os.path.join(self.md_dir, md_sys_name)
                 if not os.path.exists(md_sys_dir):
                     os.makedirs(md_sys_dir)
-                for temp_index, temp in enumerate(md.temp_list):
-                    if ENSEMBLE.nvt in md.ensemble:#for nvt ensemble
-                        temp_name = make_temp_name(md_index, sys_index, temp_index, char_len)
-                        temp_dir = os.path.join(md_sys_dir, temp_name)
-                        # mkdir: md.000.sys.000/md.000.sys.000.t.000
-                        if not os.path.exists(temp_dir):
+                if md.use_lmps_in:
+                    # for lmp_id, lmps_idx in enumerate(md.lmp_in_idx):
+                    temp_name = make_lmps_name(md_index, sys_index, sys_id, char_len)
+                    temp_dir = os.path.join(md_sys_dir, temp_name)
+                    # mkdir: md.000.sys.000/md.000.sys.000.lmps.000
+                    if not os.path.exists(temp_dir):
                             os.makedirs(temp_dir)
-                        self.set_md_files(len(md_work_list), temp_dir, sys_index, temp_index, None, md)
-                        md_work_list.append(temp_dir)
-                    elif ENSEMBLE.npt in md.ensemble: # for npt ensemble
-                        for press_index, press in enumerate(md.press_list):
-                            temp_press_name = make_temp_press_name(md_index, sys_index, temp_index, press_index, char_len)
-                            temp_press_dir = os.path.join(md_sys_dir, temp_press_name)
-                            # mkdir: md.000.sys.000/md.000.sys.000.p.000.t.000
-                            if not os.path.exists(temp_press_dir):
-                                os.makedirs(temp_press_dir)
-                            self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md)
-                            md_work_list.append(temp_press_dir)
+                    self.set_md_files(len(md_work_list), temp_dir, sys_index, sys_id, None, md)
+                    md_work_list.append(temp_dir)
+                else:
+                    for temp_index, temp in enumerate(md.temp_list):
+                        if ENSEMBLE.nvt in md.ensemble:#for nvt ensemble
+                            temp_name = make_temp_name(md_index, sys_index, temp_index, char_len)
+                            temp_dir = os.path.join(md_sys_dir, temp_name)
+                            # mkdir: md.000.sys.000/md.000.sys.000.t.000
+                            if not os.path.exists(temp_dir):
+                                os.makedirs(temp_dir)
+                            self.set_md_files(len(md_work_list), temp_dir, sys_index, temp_index, None, md)
+                            md_work_list.append(temp_dir)
+                        elif ENSEMBLE.npt in md.ensemble: # for npt ensemble
+                            for press_index, press in enumerate(md.press_list):
+                                temp_press_name = make_temp_press_name(md_index, sys_index, temp_index, press_index, char_len)
+                                temp_press_dir = os.path.join(md_sys_dir, temp_press_name)
+                                # mkdir: md.000.sys.000/md.000.sys.000.p.000.t.000
+                                if not os.path.exists(temp_press_dir):
+                                    os.makedirs(temp_press_dir)
+                                self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md)
+                                md_work_list.append(temp_press_dir)
                            
         self.make_md_slurm_jobs(md_work_list)
              
@@ -218,33 +228,48 @@ class Explore(object):
         
         #3. set lammps input file
         input_lammps_file = os.path.join(md_dir, LAMMPS.input_lammps)
-        press=md_detail.press_list[press_index] if press_index is not None else None
         # get atom type
         atom_type_list, atomic_number_list = get_atom_type(md_detail.config_file_list[sys_index], md_detail.config_file_format[sys_index])
         atom_type_file = os.path.join(md_dir, LAMMPS.atom_type_file)
         write_to_file(atom_type_file, " ".join(atom_type_list), "w")
         restart_file = search_files(md_dir, "lmps.restart.*")
         restart = 1 if len(restart_file) > 0 else 0 
-        lmp_input_content = make_lammps_input(
-                        md_file=LAMMPS.lammps_sys_config, #save_file
-                        md_type = self.input_param.strategy.md_type,
-                        forcefiled = md_model_paths,
-                        atom_type = atomic_number_list,
-                        ensemble = md_detail.ensemble,
-                        nsteps = md_detail.nsteps,
-                        dt = md_detail.md_dt,
-                        neigh_modify = md_detail.neigh_modify,
-                        trj_freq = md_detail.trj_freq,
-                        mass = md_detail.mass,
-                        temp = md_detail.temp_list[temp_index],
-                        tau_t=md_detail.taut, # for fix
-                        press=press,
-                        tau_p=md_detail.taup if press is not None else None, # for fix    
-                        boundary=True, #true is 'p p p', false is 'f f f'
-                        merge_traj=md_detail.merge_traj,
-                        restart = restart,
-                        model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi
-        )
+        if md_detail.use_lmps_in: # lammps.in file from user input
+            lmp_input_content = make_lammps_input_from_lmp_in_file(
+                            md_file=LAMMPS.lammps_sys_config, #save_file
+                            md_type = self.input_param.strategy.md_type,
+                            forcefiled = md_model_paths,
+                            lmp_in_file = md_detail.lmp_in_file_list[sys_index],
+                            atom_type = atomic_number_list,
+                            trj_freq = md_detail.trj_freq,
+                            boundary=True, #true is 'p p p', false is 'f f f'
+                            merge_traj=md_detail.merge_traj,
+                            restart = restart,
+                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi
+            )
+        
+        else: # lammps.in from param.json
+            press=md_detail.press_list[press_index] if press_index is not None else None
+            lmp_input_content = make_lammps_input(
+                            md_file=LAMMPS.lammps_sys_config, #save_file
+                            md_type = self.input_param.strategy.md_type,
+                            forcefiled = md_model_paths,
+                            atom_type = atomic_number_list,
+                            ensemble = md_detail.ensemble,
+                            nsteps = md_detail.nsteps,
+                            dt = md_detail.md_dt,
+                            neigh_modify = md_detail.neigh_modify,
+                            trj_freq = md_detail.trj_freq,
+                            mass = md_detail.mass,
+                            temp = md_detail.temp_list[temp_index],
+                            tau_t=md_detail.taut, # for fix
+                            press=press,
+                            tau_p=md_detail.taup if press is not None else None, # for fix    
+                            boundary=True, #true is 'p p p', false is 'f f f'
+                            merge_traj=md_detail.merge_traj,
+                            restart = restart,
+                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi
+            )
         write_to_file(input_lammps_file, lmp_input_content, "w")
         if md_detail.merge_traj is False:
             traj_dir = os.path.join(md_dir, "traj")

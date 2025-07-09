@@ -19,7 +19,7 @@ def check_model_type(model_load_path):
             raise Exception("ERROR! The input model file cannot be parsed!")
         else:
             model_type  = "NEP"
-        return model_type
+    return model_type
 
 '''
 description: 
@@ -287,6 +287,11 @@ author: wuxingxing
 def search_files(search_root_dir:str, template:str):
     file_list = glob.glob(os.path.join(search_root_dir, template))
     return file_list
+
+def search_file_by_shell(search_patten:str):
+    result = subprocess.run(["ls"], capture_output=True, text=True)
+    filtered = [line for line in result.stdout.split("\n") if "pattern" in line]
+    return filtered
 
 def str_list_format(input_value):
     input_list = []

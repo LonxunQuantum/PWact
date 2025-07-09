@@ -32,10 +32,11 @@ from pwact.utils.constant import DFT_TYPE, VASP, PWDATA, AL_STRUCTURE, TEMP_STRU
 from pwact.utils.slurm_script import get_slurm_job_run_info, split_job_for_group, set_slurm_script_content
 from pwact.utils.format_input_output import get_iter_from_iter_name, get_md_sys_template_name
 from pwact.utils.file_operation import write_to_file, copy_file, copy_dir, search_files, mv_file, add_postfix_dir, del_dir, del_file_list_by_patten, link_file
-from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script
+from pwact.utils.app_lib.common import link_pseudo_by_atom, set_input_script, check_convergence
 
 from pwact.data_format.configop import extract_pwdata, save_config, get_atom_type
 from pwdata import Config
+
 class Labeling(object):
     @staticmethod
     def kill_job(root_dir:str, itername:str):
@@ -381,8 +382,9 @@ class Labeling(object):
 
         # scf files to pwdata format
         scf_configs = self.collect_scf_configs()
-        if len(scf_configs) > 0:
-            extract_pwdata(input_data_list=scf_configs,
+        cvg_files, uncvg_files, cvg_infos, cvg_detail_infos = check_convergence(scf_configs, self.resource.dft_style)
+        if len(cvg_files) > 0:
+            extract_pwdata(input_data_list=cvg_files,
                     intput_data_format =DFT_STYLE.get_format_by_postfix(os.path.basename(scf_configs[0])),
                     save_data_path =self.result_dir,
                     save_data_name = INIT_BULK.get_save_format(self.input_param.data_format),
@@ -391,6 +393,8 @@ class Labeling(object):
             )
             # copy to main dir
             copy_dir(self.result_dir, self.real_result_dir)
+        print(cvg_detail_infos)
+        write_to_file(os.path.join(self.input_param.root_dir, EXPLORE_FILE_STRUCTURE.iter_select_file), cvg_detail_infos, mode='a')
 
     def do_post_bigmodel(self):
         # copy the bigmodel labeled.xyz to result

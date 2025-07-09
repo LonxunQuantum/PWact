@@ -1,0 +1,68 @@
+{
+    "train": {
+        "command": "MatPL",
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+        "/share/app/MATPL/MatPL-2025.3/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    },
+
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi",
+        "number_node": 1,
+        "group_size": 10,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,1080ti",
+        "custom_flags": [],
+        "source_list": [
+        ],
+        "module_list": [
+            "lammps4matpl/2025.3"
+        ],
+        "env_list": [
+        ]
+    },
+    "DFT": {
+        "command":"mpirun -np $SLURM_NPROCS vasp_std_cpu",
+        "group_size":20,
+        "number_node": 1,
+        "cpu_per_node": 16,
+        "queue_name": "cpu",
+        "custom_flags": [
+        ],
+        "module_list": [
+            "module load mkl",
+            "module load intel",
+            "module load cuda/11.4"
+        ],
+        "env_list" : [
+            "export PATH=/data/home/wuxingxing/modulefiles/vasp/Vasp-6.3.2:$PATH"
+        ]
+    },
+    "direct": {
+        "command": "python do_direct_sample.py",
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,3090",
+        "custom_flags": [],
+        "source_list": [
+            "/share/app/anaconda3/envs/m3gnet/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    }
+}

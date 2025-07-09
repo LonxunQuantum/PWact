@@ -159,3 +159,89 @@ def set_input_script(
 
     else:
         pass
+
+def is_convergence(file_path, format):
+    def _is_cvg_vasp(file_path:str):
+        with open(file_path, 'r') as rf:
+            outcar_contents = rf.readlines()
+        nelm = None
+        ediff = None
+        for idx, ii in enumerate(outcar_contents):
+            if 'NELM   =' in ii:
+                nelm = int(ii.split()[2][:-1])
+            if 'EDIFF = ' in ii:
+                ediff = float(ii.split()[-1])
+        
+        with open(os.path.join(os.path.dirname(os.path.abspath(file_path)), "OSZICAR"), 'r') as rf:
+            oszi_contents = rf.readlines()
+        _split = oszi_contents[-2].split()
+        real_nelm = int(_split[1])
+        real_ediff1 = abs(float(_split[3]))
+        real_ediff2 = abs(float(_split[4]))
+
+        if real_nelm < nelm:
+            return True
+        elif real_ediff1 <= ediff and real_ediff2 <=ediff:
+            return True
+        else:
+            False
+
+    def _is_cvg_pwmat(file_path:str):
+        with open(os.path.join(os.path.dirname(os.path.abspath(file_path)), "REPORT"), 'r') as rf:
+            report_contents = rf.readlines()
+        e_error   = None
+        rho_error = None
+        etot_idx = -1
+        drho_idx = -1
+        for idx, ii in enumerate(report_contents):
+            if e_error is None and 'E_ERROR   =' in ii:
+                e_error = abs(float(ii.split()[-1]))
+            if rho_error is None and 'RHO_ERROR =' in ii:
+                rho_error = abs(float(ii.split()[-1]))
+            if 'E_tot(eV)            =' in ii:
+                etot_idx = idx
+            if 'dv_ave, drho_tot     =' in ii:
+                drho_idx = idx
+            if 'niter reached' in ii:
+                break
+            elif 'ending_scf_reason = tol' in ii:
+                return True
+
+        if e_error >= abs(float(report_contents[etot_idx].split()[-1])) or \
+            rho_error >= abs(float(report_contents[drho_idx].split()[-1])):
+            return True
+        return False
+    
+    def _is_cvg_cp2k(file_path:str):
+        with open(os.path.join(os.path.dirname(os.path.abspath(file_path)), "dft.log"), 'r') as rf:
+            report_contents = rf.readlines()
+        for idx, ii in enumerate(report_contents):
+            if 'SCF run NOT converged' in ii:
+                return False
+        return True
+
+    if format == DFT_STYLE.vasp:
+        return _is_cvg_vasp(file_path)
+    elif format == DFT_STYLE.pwmat:
+        return _is_cvg_pwmat(file_path)
+    elif format == DFT_STYLE.cp2k:
+        return _is_cvg_cp2k(file_path)
+    else: # for other format
+        return True
+
+def check_convergence(file_path:list[str], format:str):
+    cvg_files = []
+    uncvg_files = []
+    cvg_infos = ""
+    cvg_detail_infos=""
+    for file in file_path:
+        if is_convergence(file, format):
+            cvg_files.append(file)
+        else:
+            uncvg_files.append(file)
+    cvg_infos += "Number of converged files: {}, number of non-converged files: {}\n".format(len(cvg_files), len(uncvg_files))
+    cvg_detail_infos += cvg_infos
+    if len(uncvg_files) > 0:
+        cvg_detail_infos += "List of non-converged files:\n{}".format("\n".join(uncvg_files))
+    return cvg_files, uncvg_files, cvg_infos, cvg_detail_infos
+    

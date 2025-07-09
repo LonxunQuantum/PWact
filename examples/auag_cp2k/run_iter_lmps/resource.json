@@ -1,0 +1,67 @@
+{
+    "train": {
+        "command": "MatPL",
+        "_parallel_num":1,
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,3090",
+        "custom_flags": [
+        ],
+        "source_list": [
+        "/share/app/MATPL/MatPL-2025.3/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    },
+
+    "explore": {
+        "command": "mpirun -np 1 lmp_mpi",
+        "number_node": 1,
+        "group_size": 10,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,1080ti",
+        "custom_flags": [],
+        "source_list": [
+        ],
+        "module_list": [
+            "lammps4matpl/2025.3"
+        ],
+        "env_list": [
+        ]
+    },
+    "DFT": {
+        "command":"mpirun -np $SLURM_NTASKS cp2k.popt",
+        "task_run_num":1,
+        "number_node": 1,
+        "cpu_per_node": 16,
+        "gpu_per_node": 0,
+        "group_size": 10,
+        "queue_name": "cpu,cpu3",
+        "custom_flags": [
+        ],
+        "source_list": [
+            "source /data/home/wuxingxing/modulefiles/cp2k/cp2k_2024_3"
+        ],
+        "module_list": [
+        ]
+    },
+    "direct": {
+        "command": "python do_direct_sample.py",
+        "number_node": 1,
+        "gpu_per_node": 1,
+        "cpu_per_node": 1,
+        "queue_name": "3080ti,3090",
+        "custom_flags": [],
+        "source_list": [
+            "/share/app/anaconda3/envs/m3gnet/env.sh"
+        ],
+        "module_list": [
+        ],
+        "env_list": [
+        ]
+    }
+}

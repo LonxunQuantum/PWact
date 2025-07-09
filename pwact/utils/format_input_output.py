@@ -36,6 +36,12 @@ def make_temp_name(md_index:int, sys_index:int, temp_index:int, len_char:int = N
     return "md."+(md_name % md_index)+".sys."+(sys_name % sys_index)+\
         ".t."+ (sys_name % temp_index)
 
+def make_lmps_name(md_index:int, sys_index:int, lmps_index:int, len_char:int = None):
+    md_name = "%03d"
+    sys_name = "%03d" if len_char is None else "%0{}d".format(len_char)
+    return "md."+(md_name % md_index)+".sys."+(sys_name % sys_index)+\
+        ".lmps."+ (sys_name % lmps_index)
+
 def get_sub_md_sys_template_name():
     return "md.*.sys.*/md.*.sys.*"
 
