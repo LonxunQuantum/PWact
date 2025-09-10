@@ -212,10 +212,13 @@ def read_pd_files(model_devi_files:list[str]):
                 tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[2]] = os.path.dirname(devi_file)
                 devi_pd = pd.concat([devi_pd, tmp_pd])
     else:
+        #step       avg_devi_f       min_devi_f       max_devi_f       avg_devi_e       min_devi_e       max_devi_e
+        #   0       0.008682422      0.000574555      0.014187865      0.030333196      0.011702489      0.043806718
+        #  10       0.016611307      0.000627126      0.027185410      0.031661788      0.005340899      0.048241921
         for devi_file in model_devi_files:
             devi_force = read_data(devi_file, skiprows=0)
             tmp_pd = pd.DataFrame()
-            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] = devi_force[:, 1]
+            tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[0]] = devi_force[:, 3] # max_devi_f
             tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[1]] = devi_force[:, 0]
             tmp_pd[EXPLORE_FILE_STRUCTURE.devi_columns[2]] = os.path.dirname(devi_file)
             devi_pd = pd.concat([devi_pd, tmp_pd])
