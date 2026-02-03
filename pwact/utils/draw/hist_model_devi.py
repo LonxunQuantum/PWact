@@ -48,7 +48,7 @@ def read_model_devi(file_path, low=None, high=None):
     for file in devi_files:
         _data = np.loadtxt(file, skiprows=0)
         if _data.shape[0] > 1:
-            data.extend(list(_data[:, 1])) # force
+            data.extend(list(_data[:, 3])) # force
     
     right = 0
     mid = 0

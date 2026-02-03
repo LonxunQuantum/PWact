@@ -7,7 +7,7 @@ import json
 import argparse
 from pwact.utils.constant import TEMP_STRUCTURE, UNCERTAINTY, AL_WORK, AL_STRUCTURE, LABEL_FILE_STRUCTURE, EXPLORE_FILE_STRUCTURE, DFT_STYLE
 from pwact.utils.format_input_output import make_iter_name
-from pwact.utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir
+from pwact.utils.file_operation import write_to_file, del_file_list, search_files, del_dir, copy_dir, copy_file
 from pwact.utils.json_operation import convert_keys_to_lowercase
 
 from pwact.active_learning.user_input.resource import Resource
@@ -183,19 +183,18 @@ def gather_pwmata(input_cmds):
     pwdata_lists = sorted(pwdata_lists)
     save_dir = "./final_pwdata"
     res_data_list = []
-
     for pwdata in pwdata_lists: # /path/iter.0001/label/result/*
         data_name = os.path.basename(pwdata) 
         iter_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(pwdata)))) #iter.0001
-        target_dir = os.path.join(save_dir, iter_name, data_name) #./final_pwdata/iter.0001
-        copy_dir(pwdata, target_dir)
-        for path, dirList, fileList in os.walk(pwdata):
-            for _ in fileList:
-                if "train.xyz" in _:
-                    res_data_list.append(os.path.join(path, _))
-        for root, dirs, files in os.walk(pwdata):
-                if 'energies.npy' in files:
-                    res_data_list.append(root)
+        target_dir = os.path.join(save_dir, iter_name, data_name) #./final_pwdata/iter.0001/train.xyz or ./final_pwdata/iter.0001/pwdata/...
+        if os.path.isfile(pwdata) and data_name == "train.xyz":
+            copy_file(pwdata, target_dir)
+            res_data_list.append(os.path.realpath(target_dir))
+        else:
+            copy_dir(pwdata, target_dir)
+            for root, dirs, files in os.walk(pwdata):
+                    if 'energies.npy' in files:
+                        res_data_list.append(root)
         
     result_lines = ["\"{}\",".format(_) for _ in res_data_list]
     result_lines = "\n".join(result_lines)
