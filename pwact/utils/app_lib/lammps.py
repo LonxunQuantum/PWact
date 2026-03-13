@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 import random
 import os
 import numpy as np
@@ -13,7 +14,7 @@ def _sample_sphere():
             continue
         return vv / vn
 
-def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str):
+def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str, matpl): # matpl/dp matpl/nep or matpl/nep/kk
     pair_style = ""
     
     if md_type == FORCEFILED.fortran_lmps:
@@ -24,7 +25,7 @@ def make_pair_style(md_type, forcefiled, atom_type:list[int], dump_info:str):
         pair_names = ""
         for fi in forcefiled:
             pair_names += "{} ".format(os.path.basename(fi))
-        pair_style = "pair_style   matpl  {} {}\n".format(pair_names, dump_info)
+        pair_style = "pair_style   {}  {} {}\n".format(matpl, pair_names, dump_info)
     atom_names = " ".join(map(str, atom_type))
     pair_style += "pair_coeff       * * {}\n".format(atom_names)
     return pair_style
@@ -74,9 +75,15 @@ def make_lammps_input(
     merge_traj,
     max_seed=100000,
     restart=0,
-    model_deviation_file = "model_deviation.out"
+    model_deviation_file = "model_deviation.out",
+    kokkos_head=False,
+    matpl="matpl/nep"
 ):
-    md_script = ""
+    if kokkos_head:
+        md_script = "package kokkos neigh half comm device\n"
+        md_script += "newton on\n"
+    else:
+        md_script = ""
     md_script += "variable        NSTEPS          equal %d\n" % nsteps
     md_script += "variable        THERMO_FREQ     equal %d\n" % trj_freq
     md_script += "variable        DUMP_FREQ       equal %d\n" % trj_freq
@@ -117,7 +124,7 @@ def make_lammps_input(
     
     md_script += make_mass(atom_type)
     dump_info = "out_freq ${{DUMP_FREQ}} out_file {} ".format(model_deviation_file)
-    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info)
+    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info, matpl)
     #put_freq ${freq} out_file error
     
     md_script += "\n"
@@ -247,10 +254,14 @@ def make_lammps_input_from_lmp_in_file(
     merge_traj,
     max_seed=100000,
     restart=0,
-    model_deviation_file = "model_deviation.out"
+    model_deviation_file = "model_deviation.out",
+    matpl="matpl/nep"
 ):
     with open(lmp_in_file, 'r') as rf:
         lmp_content = rf.readlines()
+    # 如果存在 kokkos 设置在去掉之后追加到文件头
+    lmp_content, has_kokos = remove_package_and_newton_lines(lmp_content)
+
     runline_idx = find_first_run_cmd_line(lmp_content)
     if runline_idx is None:
         raise Exception("Error! The input lmp.in file: {} is missing the 'RUN' command, please modify it!".format(lmp_in_file))
@@ -281,7 +292,7 @@ def make_lammps_input_from_lmp_in_file(
     
     md_script = make_mass(atom_type)
     dump_info = "out_freq ${{DUMP_FREQ}} out_file {} ".format(model_deviation_file)
-    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info)
+    md_script += make_pair_style(md_type, forcefiled, atom_type, dump_info, matpl)
     #put_freq ${freq} out_file error
     md_script += "\n"
     lmp_content.insert(4, md_script)
@@ -308,7 +319,10 @@ def make_lammps_input_from_lmp_in_file(
         
     dump_line += "\n"
     lmp_content.insert(runline_idx, dump_line)
-    
+
+    if has_kokos:
+        lmp_content.insert(0, "package kokkos neigh half comm device\n") 
+        lmp_content.insert(1, "newton on\n")
     return "".join(lmp_content)
 
 def remove_lmps_lines(lmps_lines):
@@ -344,6 +358,23 @@ def remove_lmps_lines(lmps_lines):
     #     ))
     #     ]
     return new_line, insert_info
+
+
+def remove_package_and_newton_lines(lines):
+    package_pattern = re.compile(r'package\s+kokkos\s+neigh', re.IGNORECASE)
+    newton_pattern = re.compile(r'newton\s+on', re.IGNORECASE)
+
+    has_package = any(package_pattern.search(line) for line in lines)
+    if not (has_package):
+        return lines, False
+    
+    new_lines = []
+    for line in lines:
+        if package_pattern.search(line) or newton_pattern.search(line):
+            continue
+        new_lines.append(line)
+    return new_lines, True
+
 
 def find_first_run_cmd_line(lmps_lines):
     for i, line in enumerate(lmps_lines):

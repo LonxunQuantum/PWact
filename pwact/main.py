@@ -124,8 +124,8 @@ def do_exploring_work(itername:str, resource : Resource, input_param: InputParam
                 save_dir=md.select_dir,
                 md_job=md.md_job,
                 devi_name=EXPLORE_FILE_STRUCTURE.get_devi_name(UNCERTAINTY.committee),
-                lower=input_param.strategy.lower_model_deiv_f,  
-                higer=input_param.strategy.upper_model_deiv_f
+                lower=input_param.strategy.lower_model_devi_f,  
+                higer=input_param.strategy.upper_model_devi_f
         )
         # summary = md.select_image_by_committee()
         # committee: read model deviation file under md file

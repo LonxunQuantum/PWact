@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pwact", 
-    version="0.4.4",
+    version="0.4.6",
     author="LonxunQuantum",
     author_email="lonxun@pwmat.com",
     description="PWACT is an open-source automated active learning platform based on MatPL for efficient data sampling.",

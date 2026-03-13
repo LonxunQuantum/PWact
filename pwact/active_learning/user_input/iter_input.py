@@ -90,8 +90,14 @@ class StrategyParam(object):
             self.model_num = get_parameter("model_num", json_dict, 4)
             if self.model_num < 3:
                 raise Exception("ERROR! for {}, make sure model_num >= 3".format(UNCERTAINTY.committee))
-            self.lower_model_deiv_f = get_required_parameter("lower_model_deiv_f", json_dict)
-            self.upper_model_deiv_f = get_required_parameter("upper_model_deiv_f", json_dict)
+
+            self.lower_model_devi_f = get_parameter("lower_model_deiv_f", json_dict, None)#  lower_model_deiv_f 早期版本手误错写为deiv_f, 这里做兼容性处理
+            self.upper_model_devi_f = get_parameter("upper_model_deiv_f", json_dict, None)
+            if self.lower_model_devi_f is None:
+                self.lower_model_devi_f = get_required_parameter("lower_model_devi_f", json_dict) 
+            if self.upper_model_devi_f is None:
+                self.upper_model_devi_f = get_required_parameter("upper_model_devi_f", json_dict)
+
         else:
             raise Exception("ERROR! uncertainty strategy {} not support! Please check!".format(self.uncertainty))
 

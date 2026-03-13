@@ -280,7 +280,7 @@ class Mission(object):
             error_log_content = ""
             for error_job in error_jobs:
                 error_log_path = os.path.join(error_job.slurm_job_run_dir, "slurm-{}.out".format(error_job.job_id))
-                error_log_content += "JOB ERRIR! The cmd '{}' failed!\nFor more details on errors, please refer to the following documents:\n"\
+                error_log_content += "JOB ERROR! The cmd '{}' failed!\nFor more details on errors, please refer to the following documents:\n"\
                     .format(error_job.submit_cmd)
 
                 slurm_content = "    Slurm script file is {}\n    The slurm log is {}\n"\

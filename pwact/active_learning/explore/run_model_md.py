@@ -93,6 +93,21 @@ class Explore(object):
 
     def make_md_work(self):
         md_work_list = []
+        if "lmp_mpi" in self.resource.explore_resource.command.lower():
+            is_lmps_26_3 = False
+        else:
+            is_lmps_26_3 = True
+        if self.input_param.train.model_type == MODEL_TYPE.dp:
+            matpl = "matpl/dp" if is_lmps_26_3 else "matpl"
+            kokkos_head=False
+        else:
+            if "kokkos" in self.resource.explore_resource.command.lower():
+                kokkos_head = True
+                matpl = "matpl/nep/kk"
+            else:
+                kokkos_head = False
+                matpl = "matpl/nep"  if is_lmps_26_3 else "matpl"
+
         for md_index, md in enumerate(self.md_job):
             for sys_id, sys_index in enumerate(md.sys_idx):
                 char_len = 3 if len(md.sys_idx) < 1000 else len(str(len(md.sys_idx)))
@@ -107,7 +122,7 @@ class Explore(object):
                     # mkdir: md.000.sys.000/md.000.sys.000.lmps.000
                     if not os.path.exists(temp_dir):
                             os.makedirs(temp_dir)
-                    self.set_md_files(len(md_work_list), temp_dir, sys_index, sys_id, None, md)
+                    self.set_md_files(len(md_work_list), temp_dir, sys_index, sys_id, None, md, kokkos_head=kokkos_head, matpl=matpl)
                     md_work_list.append(temp_dir)
                 else:
                     for temp_index, temp in enumerate(md.temp_list):
@@ -117,7 +132,7 @@ class Explore(object):
                             # mkdir: md.000.sys.000/md.000.sys.000.t.000
                             if not os.path.exists(temp_dir):
                                 os.makedirs(temp_dir)
-                            self.set_md_files(len(md_work_list), temp_dir, sys_index, temp_index, None, md)
+                            self.set_md_files(len(md_work_list), temp_dir, sys_index, temp_index, None, md, kokkos_head=kokkos_head, matpl=matpl)
                             md_work_list.append(temp_dir)
                         elif ENSEMBLE.npt in md.ensemble: # for npt ensemble
                             for press_index, press in enumerate(md.press_list):
@@ -126,7 +141,7 @@ class Explore(object):
                                 # mkdir: md.000.sys.000/md.000.sys.000.p.000.t.000
                                 if not os.path.exists(temp_press_dir):
                                     os.makedirs(temp_press_dir)
-                                self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md)
+                                self.set_md_files(len(md_work_list), temp_press_dir, sys_index, temp_index, press_index, md, kokkos_head=kokkos_head, matpl=matpl)
                                 md_work_list.append(temp_press_dir)
                            
         self.make_md_slurm_jobs(md_work_list)
@@ -210,7 +225,7 @@ class Explore(object):
                 mission.all_job_finished(error_type=SLURM_OUT.md_out)
                 
                         
-    def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail):
+    def set_md_files(self, md_index:int, md_dir:str, sys_index:int, temp_index:int, press_index:int, md_detail:MdDetail, kokkos_head=False, matpl="matpl/nep"):
         target_config = save_config(config=md_detail.config_file_list[sys_index],
                                     input_format=md_detail.config_file_format[sys_index],
                                     wrap = False, 
@@ -245,7 +260,8 @@ class Explore(object):
                             boundary=True, #true is 'p p p', false is 'f f f'
                             merge_traj=md_detail.merge_traj,
                             restart = restart,
-                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi
+                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi,
+                            matpl = matpl
             )
         
         else: # lammps.in from param.json
@@ -268,8 +284,11 @@ class Explore(object):
                             boundary=True, #true is 'p p p', false is 'f f f'
                             merge_traj=md_detail.merge_traj,
                             restart = restart,
-                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi
+                            model_deviation_file = EXPLORE_FILE_STRUCTURE.model_devi,
+                            kokkos_head=kokkos_head,
+                            matpl = matpl
             )
+        
         write_to_file(input_lammps_file, lmp_input_content, "w")
         if md_detail.merge_traj is False:
             traj_dir = os.path.join(md_dir, "traj")
@@ -326,8 +345,8 @@ class Explore(object):
                 draw_hist_list(file_path=[md_sys_dir], 
                                 legend_label=["{}-{}".format(self.itername, os.path.basename(md_sys_dir))], 
                                 save_path = os.path.join(md_sys_dir, "model_devi_distribution.png"),
-                                low=self.input_param.strategy.lower_model_deiv_f, 
-                                high=self.input_param.strategy.upper_model_deiv_f)
+                                low=self.input_param.strategy.lower_model_devi_f, 
+                                high=self.input_param.strategy.upper_model_devi_f)
 
         for md_sys_dir in md_sys_dir_list:
             sub_md_sys_dir_list =search_files(md_sys_dir, get_md_sys_template_name())
@@ -398,8 +417,8 @@ class Explore(object):
         #3. select images with lower and upper limitation
         summary_info, summary = select_image(save_dir=self.select_dir, 
                         devi_pd=devi_pd, 
-                        lower=self.input_param.strategy.lower_model_deiv_f, 
-                        higer=self.input_param.strategy.upper_model_deiv_f, 
+                        lower=self.input_param.strategy.lower_model_devi_f, 
+                        higer=self.input_param.strategy.upper_model_devi_f, 
                         max_select=self.input_param.strategy.max_select)
         print("Image select result:\n {}\n\n".format(summary_info))
         return summary
