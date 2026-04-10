@@ -27,6 +27,11 @@ class InputParam(object):
         self.nep_param = None
 
         self.cmd = cmd
+        _train_input_file = get_parameter("train_input_file", json_input, None)
+        if _train_input_file is not None:
+            if not os.path.exists(_train_input_file) or not os.path.isfile(_train_input_file):
+                raise Exception("ERROR! The train_input_file can not be found!")
+            json_input = json.load(open(_train_input_file))
         self.inference = True if self.cmd == "test".upper() else False
         self.model_type = get_required_parameter("model_type", json_input).upper()
         # self.atom_type = get_required_parameter("atom_type", json_input)
@@ -34,6 +39,9 @@ class InputParam(object):
         self.model_num = get_parameter("model_num", json_input, 1)
         self.recover_train = get_parameter("recover_train", json_input, True)
         self.max_neigh_num = get_parameter("max_neigh_num", json_input, 100)
+        self.save_step = get_parameter("save_step", json_input, None)
+        self.max_save_num = get_parameter("max_save_num", json_input, 10)
+        self.max_allow_atom_type = get_parameter("batch_max_types", json_input, -1)  # for nep multi batch training
         self.profiling = get_parameter("profiling", json_input, False)#not realized
 
         self.set_feature_params(json_input)
@@ -89,9 +97,11 @@ class InputParam(object):
         #     nep_param.set_nep_param_from_nep_in(nep_in_file, self.atom_type)
         nep_txt_file = get_parameter("nep_txt_file", json_input, None)
         if nep_txt_file is not None:
-            nep_param.set_nep_nn_c_param_from_nep_txt(nep_txt_file)
+            nep_param.set_nep_nn_c_param_from_nep_txt(nep_txt_file, self.atom_type)
         else:
             nep_param.set_nep_param_from_json(json_input, self.atom_type)
+        # if fixed
+        nep_param.set_fixed_params(json_input)
         self.nep_param = nep_param
         self.model_param.fitting_net.network_size = nep_param.neuron
         self.descriptor.cutoff = nep_param.cutoff
@@ -152,8 +162,8 @@ class InputParam(object):
         elif self.model_type == "Linear".upper():
             pass
         elif self.model_type == "NEP".upper():
-            self.set_nep_params(json_input) #  nep.in 输入的适配可能并不需要
-            self.file_paths.set_nep_native_file_paths()#  nep.in 输入的适配可能并不需要
+            self.set_nep_params(json_input)
+            self.file_paths.set_nep_native_file_paths()
         elif self.model_type == "CHEBY".upper():
             self.model_param = ModelParam()
             self.model_param.set_nn_fitting_net(get_parameter("fitting_net",model_dict, {}))
@@ -178,13 +188,18 @@ class InputParam(object):
         # "number of data loading workers (default: 4)
         self.workers = get_parameter("workers", json_input, 1)
         # dist training by horovod, when multi GPU train, need True,
-        self.hvd = get_parameter("hvd", json_input, False)
-        self.world_size = get_parameter("world_size", json_input, -1)
-        self.rank = get_parameter("rank", json_input, -1)
-        self.dist_url = get_parameter("dist_url", json_input, "tcp://localhost:23456")  
+        self.hvd = get_parameter("hvd", json_input, False) # 本身不支持hvd，所以不需要设置
         self.dist_backend = get_parameter("dist_backend", json_input, "nccl")
+        # self.dist_socket_ifname = get_parameter("dist_backend_ifname", json_input, "eth0")
         self.distributed = get_parameter("distributed", json_input, False)
-        self.gpu = get_parameter("gpu", json_input, None)
+        self.master_addr = get_parameter("master_addr", json_input, None)
+        self.master_port = get_parameter("master_port", json_input, None)
+        self.multi_nodes = False
+        self.multi_gpus = False
+        self.local_rank = 0
+        self.rank = 0
+        self.world_size = 0
+        self.reduce_loss = get_parameter("reduce_loss", json_input, False)
 
     '''
     description: 
@@ -332,17 +347,15 @@ class InputParam(object):
         print(params_dict)
         
 def help_info():
-    # 使用双线边框和加粗标题
-    print("\n\033[1;36m╔" + "=" * 48 + "╗\033[0m")  # 双线上边框
-    print("\033[1;36m║" + " " * 10 + "\033[1;35m PWMLFF Basic Information \033[0m" + " " * 12 + "\033[1;36m║\033[0m")  # 标题
-    print("\033[1;36m╚" + "=" * 48 + "╝\033[0m")  # 双线下边框
-    print(f"\033[1;32mVersion:\033[0m 2025.02")
-    print(f"\033[1;32mCompatible pwdata:\033[0m >= 0.4.8")
-    print(f"\033[1;32mCompatible pwact:\033[0m >= 0.2.1")
-    print(f"\033[1;32mLast Commit:\033[0m 2025.03.05")
-    print(f"\033[1;32mGit Hash:\033[0m 7bdaa90da15a5bfca6a831e739ebdd67fca22299")
-    print(f"\033[1;32mContact:\033[0m support@pwmat.com")
-    print(f"\033[1;32mCitation:\033[0m https://github.com/LonxunQuantum/PWMLFF")
-    print(f"\033[1;32mManual online:\033[0m http://doc.lonxun.com/PWMLFF/")
-    print("\033[1;36m" + "=" * 50 + "\033[0m")  # 青色分隔线
+    print("\n" + "=" * 50) 
+    print("         MatPL Basic Information")
+    print("=" * 50) 
+    print("Version: 2025.03")
+    print("Compatible pwdata: >= 0.5.0")
+    print("Compatible pwact: >= 0.3.3")
+    print("Last Commit: 2025.05.07")
+    print("Contact: support@pwmat.com")
+    print("Citation: https://github.com/LonxunQuantum/PWMLFF")
+    print("Manual online: http://doc.lonxun.com/PWMLFF/")
+    print("=" * 50)  
     print("\n\n")

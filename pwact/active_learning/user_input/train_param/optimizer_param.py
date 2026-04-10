@@ -1,5 +1,6 @@
 from pwact.utils.json_operation import get_parameter, get_required_parameter
 from pwact.active_learning.user_input.train_param.nep_param import NepParam
+
 class OptimizerParam(object):
     def __init__(self) -> None:
         pass
@@ -8,11 +9,31 @@ class OptimizerParam(object):
         optimizer_dict = get_parameter("optimizer", json_source, {})
         self.opt_name = get_parameter("optimizer", optimizer_dict, "ADAM")
         self.batch_size = get_parameter("batch_size", optimizer_dict, 1)
+        # self.batch_size = 1
         self.epochs = get_parameter("epochs", optimizer_dict, 30)
         self.print_freq = get_parameter("print_freq", optimizer_dict, 10)
         # the start epoch could be reset at the resume model code block
-        self.reset_epoch = get_parameter("reset_epoch", optimizer_dict, False)
+        self.reset_epoch = get_parameter("reset_epoch", optimizer_dict, True)
         self.start_epoch = get_parameter("start_epoch", optimizer_dict, 1)
+
+        self.max_norm    = get_parameter("max_norm", optimizer_dict, None)
+        self.norm_type   = get_parameter("norm_type", optimizer_dict, None)
+        self.clip_value  = get_parameter("clip_value", optimizer_dict, None)
+        if self.clip_value is not None and self.max_norm is not None:
+            raise Exception("ERROR! 'max_norm' and 'norm_type' for Norm clipping and 'clip_value' for value clipping cannot be set simultaneously.!")
+        if self.max_norm is not None:
+            if self.norm_type is None:
+                self.norm_type = 2
+            else:
+                if self.norm_type not in [1, 2]:
+                    raise Exception("ERROR! the input norm_type only could be set as '1' for L1 or '2' for L2!")
+        
+        # learining rate,  https://zhuanlan.zhihu.com/p/261134624
+        self.t_0    = get_parameter("t_0", optimizer_dict, None)
+        self.t_mult   = get_parameter("t_mult", optimizer_dict, None)
+        if (self.t_0 is None and self.t_mult is not None) or (self.t_0 is not None and self.t_mult is None):
+            raise Exception("ERROR! the input t_0 and t_mult need to be set simultaneously!")
+        # self.verbose  = get_parameter("verbose", optimizer_dict, False) # nouse
 
         self.lambda_1 = None
         if "lambda_1" in optimizer_dict:
@@ -25,13 +46,18 @@ class OptimizerParam(object):
         if self.lambda_2 is not None and self.lambda_2 < 0:
             raise Exception("ERROR! the lambda_2 should >= 0 !")
 
+        self.warmup = get_parameter("warm_epochs",optimizer_dict, None) #预热epochs
+        self.scaling_method = get_parameter("scaling_method",optimizer_dict, "sqrt")  # linear_gpu sqrt_batch sqrt_gpu sqrt sqrt_batch_gpu_atom defalt is (avg_atom_nums) ** 0.5
+
         if "KF" in self.opt_name.upper():  #set Kalman Filter Optimizer params
             self.kalman_lambda = get_parameter("kalman_lambda", optimizer_dict, 0.98)
             self.kalman_nue = get_parameter("kalman_nue", optimizer_dict, 0.9987)
             self.block_size = get_parameter("block_size", optimizer_dict, 5120)
             self.nselect = get_parameter("nselect", optimizer_dict, 24)
             self.groupsize = get_parameter("groupsize", optimizer_dict, 6)
-            self.p0_weight = get_parameter("p0_weight", optimizer_dict, None)
+            self.p0_weight = get_parameter("p0_weight", optimizer_dict, 0.01)
+            if self.p0_weight > 1.0:
+                raise Exception("ERROR! the p0_weight must be less than 1.0, with 0.01 as default value. If set to 1, it means regularization is not applicable.")
 
         elif "ADAM" in self.opt_name.upper():   # set ADAM Optimizer params
             self.learning_rate = get_parameter("learning_rate", optimizer_dict, 0.001)
@@ -84,48 +110,14 @@ class OptimizerParam(object):
             self.end_pre_fac_virial = get_parameter("end_pre_fac_virial", optimizer_dict, 1.0) 
             self.end_pre_fac_egroup = get_parameter("end_pre_fac_egroup", optimizer_dict, 1.0) 
 
-        elif "SNES" in self.opt_name.upper():# natural evolution strategies
-            # if get_parameter("nep_in_file", json_source, None) is not None \
-            #     or get_parameter("nep_txt_file", json_source, None) is not None:
-            try: # read from nep.in file
-                self.pre_fac_etot = nep_param.lambda_e
-                self.pre_fac_force = nep_param.lambda_f
-                self.pre_fac_virial = nep_param.lambda_v
-                self.pre_fac_egroup = nep_param.lambda_eg
-                self.pre_fac_ei = nep_param.lambda_ei
-                self.lambda_1 = nep_param.lambda_1
-                self.lambda_2 = nep_param.lambda_2
-                self.force_delta = nep_param.force_delta
-                self.population = nep_param.population
-                self.generation = nep_param.generation
-                self.batch_size = nep_param.batch
-                self.eta_m = None
-                self.eta_s = None
-                return
-
-            except Exception:
-                print('Read snes optimizer param from json file')
-            # from 'optimizer' dict
-            self.pre_fac_ei = get_parameter("lambda_ei", optimizer_dict, 1.0) # weight of energy loss term
-            self.pre_fac_egroup = get_parameter("lambda_eg", optimizer_dict, 0.1) # weight of energy loss term
-            self.pre_fac_etot = get_parameter("lambda_e", optimizer_dict, 1.0) # weight of energy loss term
-            self.pre_fac_force = get_parameter("lambda_f", optimizer_dict, 1.0) # weight of force loss term
-            self.pre_fac_virial = get_parameter("lambda_v", optimizer_dict, 0.1) # weight of virial loss term
-            self.force_delta = get_parameter("force_delta", optimizer_dict, None) # bias term that can be used to make smaller forces more accurate
-            self.batch_size = get_parameter("batch_size", optimizer_dict, 1000) # batch size for training
-            self.population = get_parameter("population", optimizer_dict, 50) # population size used in the SNES algorithm [Schaul2011]
-            self.generation = get_parameter("generation", optimizer_dict, 100000) # number of generations used by the SNES algorithm [Schaul2011]
-            self.eta_m = get_parameter("eta_m", optimizer_dict, None) # population size used in the SNES algorithm [Schaul2011]
-            self.eta_s = get_parameter("eta_s", optimizer_dict, None) # number of generations used by the SNES algorithm [Schaul2011]
-        
     def to_linear_dict(self):
         opt_dict = {}
         opt_dict["train_energy"] = self.train_energy
         opt_dict["train_force"] = self.train_force
-        opt_dict["train_ei"] = self.train_ei
+        # opt_dict["train_ei"] = self.train_ei
         opt_dict["pre_fac_force"] = self.pre_fac_force
         opt_dict["pre_fac_etot"] = self.pre_fac_etot
-        opt_dict["pre_fac_ei"] = self.pre_fac_ei
+        # opt_dict["pre_fac_ei"] = self.pre_fac_ei
         return opt_dict
     
     def to_dict(self):
@@ -148,18 +140,17 @@ class OptimizerParam(object):
 
             opt_dict["train_energy"] = self.train_energy
             opt_dict["train_force"] = self.train_force
-            opt_dict["train_ei"] = self.train_ei
+            # opt_dict["train_ei"] = self.train_ei
             opt_dict["train_virial"] = self.train_virial
-            opt_dict["train_egroup"] = self.train_egroup
+            # opt_dict["train_egroup"] = self.train_egroup
     
             opt_dict["pre_fac_force"] = self.pre_fac_force
             opt_dict["pre_fac_etot"] = self.pre_fac_etot
-            opt_dict["pre_fac_ei"] = self.pre_fac_ei
+            # opt_dict["pre_fac_ei"] = self.pre_fac_ei
             opt_dict["pre_fac_virial"] = self.pre_fac_virial
-            opt_dict["pre_fac_egroup"] = self.pre_fac_egroup
+            # opt_dict["pre_fac_egroup"] = self.pre_fac_egroup
 
-            if self.p0_weight is not None:
-                opt_dict["p0_weight"] = self.p0_weight
+            opt_dict["p0_weight"] = self.p0_weight
 
         elif "SGD" in self.opt_name or "ADAM" in self.opt_name:
             if "SGD" in self.opt_name:
@@ -173,67 +164,31 @@ class OptimizerParam(object):
 
             opt_dict["train_energy"] = self.train_energy
             opt_dict["train_force"] = self.train_force
-            opt_dict["train_ei"] = self.train_ei
+            # opt_dict["train_ei"] = self.train_ei
             opt_dict["train_virial"] = self.train_virial
-            opt_dict["train_egroup"] = self.train_egroup
+            # opt_dict["train_egroup"] = self.train_egroup
 
             opt_dict["start_pre_fac_force"] = self.start_pre_fac_force
             opt_dict["start_pre_fac_etot"] = self.start_pre_fac_etot
-            opt_dict["start_pre_fac_ei"] = self.start_pre_fac_ei
+            # opt_dict["start_pre_fac_ei"] = self.start_pre_fac_ei
             opt_dict["start_pre_fac_virial"] = self.start_pre_fac_virial
-            opt_dict["start_pre_fac_egroup"] = self.start_pre_fac_egroup
+            # opt_dict["start_pre_fac_egroup"] = self.start_pre_fac_egroup
 
             opt_dict["end_pre_fac_force"] = self.end_pre_fac_force
             opt_dict["end_pre_fac_etot"] = self.end_pre_fac_etot
-            opt_dict["end_pre_fac_ei"] = self.end_pre_fac_ei
+            # opt_dict["end_pre_fac_ei"] = self.end_pre_fac_ei
             opt_dict["end_pre_fac_virial"] = self.end_pre_fac_virial
-            opt_dict["end_pre_fac_egroup"] = self.end_pre_fac_egroup
-        elif "SNES" in self.opt_name:
-            opt_dict["train_energy"] = self.train_energy
-            opt_dict["train_force"] = self.train_force
-            opt_dict["train_ei"] = self.train_ei
-            opt_dict["train_virial"] = self.train_virial
-            opt_dict["train_egroup"] = self.train_egroup
-    
-            opt_dict["pre_fac_force"] = self.pre_fac_force
-            opt_dict["pre_fac_etot"] = self.pre_fac_etot
-            opt_dict["pre_fac_ei"] = self.pre_fac_ei
-            opt_dict["pre_fac_virial"] = self.pre_fac_virial
-            opt_dict["pre_fac_egroup"] = self.pre_fac_egroup
+            # opt_dict["end_pre_fac_egroup"] = self.end_pre_fac_egroup
 
-            opt_dict["lambda_1"] =  self.lambda_1
-            opt_dict["lambda_2"] =  self.lambda_2
-            opt_dict["force_delta"] =  self.force_delta
-            opt_dict["population"] =  self.population
-            opt_dict["generation"] =  self.generation
+            if self.max_norm is not None:
+                opt_dict["max_norm"] = self.max_norm
+            if self.norm_type is not None:
+                opt_dict["norm_type"] = self.norm_type
+            if self.clip_value is not None:
+                opt_dict["clip_value"] = self.clip_value
+            if self.t_0 is not None:
+                opt_dict["t_0"] = self.t_0
+            if self.t_mult is not None:
+                opt_dict["t_mult"] = self.t_mult
+
         return opt_dict
-
-    def snes_to_nep_txt(self):
-        content = ""
-        content += "lambda_e    {}\n".format(self.pre_fac_etot)
-        content += "lambda_f    {}\n".format(self.pre_fac_force)
-        content += "lambda_v    {}\n".format(self.pre_fac_virial)
-        content += "batch       {}\n".format(self.batch_size)        
-        # content += "lambda_eg   {}\n".format(self.pre_fac_egroup)
-        # content += "lambda_ei   {}\n".format(self.pre_fac_ei)
-        if self.lambda_1 is not None:
-            content += "lambda_1    {}\n".format(self.lambda_1)
-        else:
-            content += "lambda_1    {}\n".format(-1)
-        if self.lambda_2 is not None:
-            content += "lambda_2    {}\n".format(self.lambda_2)
-        else:
-            content += "lambda_2    {}\n".format(-1)
-        if self.force_delta is not None:
-            content += "force_delta {}\n".format(self.force_delta)
-        else:
-            content += "force_delta {}\n".format(0)
-        if self.population is not None:
-            content += "population  {}\n".format(self.population)
-        else:
-            content += "population  {}\n".format(100)
-        if self.generation is not None:
-            content += "generation  {}\n".format(self.generation)
-        else:
-            content += "generation  {}\n".format(10000)
-        return content

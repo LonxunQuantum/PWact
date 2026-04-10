@@ -7,14 +7,15 @@ class Resource(object):
     def __init__(self, json_dict:dict, job_type:str=AL_WORK.run_iter, dft_style:str=None, scf_style:str=None) -> None:
         if job_type == AL_WORK.run_iter:
             self.train_resource = self.get_resource(get_required_parameter("train", json_dict), default_groupsize=1)
-            if self.train_resource.number_node > 1:
-                self.train_resource.number_node = 1
-            if self.train_resource.gpu_per_node > 1:
-                self.train_resource.gpu_per_node = 1
-            if self.train_resource.cpu_per_node > 1:
-                self.train_resource.cpu_per_node = 1
-            print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
-            self.train_resource.command = self.train_resource.command.upper()
+            # if self.train_resource.number_node > 1:
+            #     self.train_resource.number_node = 1
+            # if self.train_resource.gpu_per_node > 1:
+            #     self.train_resource.gpu_per_node = 1
+            # if self.train_resource.cpu_per_node > 1:
+            #     self.train_resource.cpu_per_node = 1
+            # print("Warining: the resouce of node, gpu per node and cpu per node  in training automatically adjust to [1, 1, 1]")
+            # 应该根据作业类型过滤一下
+            self.train_resource.command = self.train_resource.command
              
             self.explore_resource = self.get_resource(get_required_parameter("explore", json_dict), default_groupsize=1)
             if "-in" in self.explore_resource.command:

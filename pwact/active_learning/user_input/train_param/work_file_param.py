@@ -165,6 +165,8 @@ class WorkFileStructure(object):
             if self.format != "pwmat/movement":
                 raise Exception("Error! For NN or Linear model, the input 'format' should be 'pwmat/movement'!")
         train_data = get_parameter("train_data", json_input, [])
+        if not isinstance(train_data, list):
+            train_data = [train_data]
         
         for _train_data in train_data:
             if os.path.exists(_train_data) is False:
@@ -172,12 +174,16 @@ class WorkFileStructure(object):
             else:
                 self.train_data_path.append(os.path.abspath(_train_data))
         valid_data = get_parameter("valid_data", json_input, [])
+        if not isinstance(valid_data, list):
+            valid_data = [valid_data]
         for _valid_data in valid_data:
             if os.path.exists(_valid_data) is False:
                 raise Exception("Error! valid data: {} file not exist!".format(_valid_data))
             else:
                 self.valid_data_path.append(os.path.abspath(_valid_data))
         test_data = get_parameter("test_data", json_input, [])
+        if not isinstance(test_data, list):
+            test_data = [test_data]
         for _test_data in test_data:
             if os.path.exists(_test_data) is False:
                 raise Exception("Error! test data: {} file not exist!".format(_test_data))

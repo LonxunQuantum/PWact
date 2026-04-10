@@ -416,6 +416,14 @@ class TRAIN_FILE_STRUCTUR:
     nep_model_name ="nep_model.ckpt"
     nep_model_lmps = "nep5.txt"
 
+    def get_model_name(model_type:str):
+        if model_type.upper() == MODEL_TYPE.dp:
+            return TRAIN_FILE_STRUCTUR.dp_model_name
+        elif model_type.upper() == MODEL_TYPE.nep:
+            return TRAIN_FILE_STRUCTUR.nep_model_name
+        else:
+            raise Exception("Error! The data_format only support ")
+
 class EXPLORE_FILE_STRUCTURE:
     kpu= "kpu"
     md = "md"

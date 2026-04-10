@@ -114,7 +114,6 @@ class ModelTrian(object):
             write_to_file(slurm_job_file, group_slurm_script, "w")
 
     def set_train_cmd(self):
-        model_path = "./{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
         cmp_model_path = None
         script = ""
         pwmlff = self.resource.train_resource.command
@@ -122,6 +121,7 @@ class ModelTrian(object):
 
         # do nothing for nep model
         if self.input_param.train.model_type == MODEL_TYPE.dp:
+            model_path = "./{}/{}".format(TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
             if self.input_param.strategy.compress:
                 script += "    {} {} {} -d {} -o {} -s {}/{} >> {}\n\n".format(pwmlff, MODEL_CMD.compress, model_path, \
                     self.input_param.strategy.compress_dx, self.input_param.strategy.compress_order, TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.compree_dp_name, SLURM_OUT.train_out)
@@ -155,7 +155,7 @@ class ModelTrian(object):
         if self.iter > 0 and self.input_param.use_pre_model:
             # use old model param iter.*/train/train.000/model_record/dp_model.ckpt
             pre_model = os.path.join(self.input_param.root_dir, make_iter_name(self.iter-1), \
-                AL_STRUCTURE.train, make_train_name(0), TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.dp_model_name)
+                AL_STRUCTURE.train, make_train_name(0), TRAIN_FILE_STRUCTUR.model_record, TRAIN_FILE_STRUCTUR.get_model_name(self.input_param.train.model_type)) 
             train_json[TRAIN_INPUT_PARAM.recover_train] = True
             train_json[TRAIN_INPUT_PARAM.model_load_file] = pre_model
             train_json[TRAIN_INPUT_PARAM.optimizer][TRAIN_INPUT_PARAM.reset_epoch] = True

@@ -1,5 +1,4 @@
 from pwact.utils.json_operation import get_parameter, get_required_parameter
-
 class NetParam(object):
     def __init__(self, net_type:str) -> None:
         self.net_type = net_type
